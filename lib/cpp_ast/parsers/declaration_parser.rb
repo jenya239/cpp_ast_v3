@@ -1,12 +1,12 @@
 # frozen_string_literal: true
 
-require_relative 'namespace_parser'
-require_relative 'class_parser'
-require_relative 'enum_parser'
-require_relative 'using_parser'
-require_relative 'template_parser'
-require_relative 'variable_parser'
-require_relative 'function_parser'
+require_relative 'declaration/namespace'
+require_relative 'declaration/class'
+require_relative 'declaration/enum'
+require_relative 'declaration/using'
+require_relative 'declaration/template'
+require_relative 'declaration/variable'
+require_relative 'declaration/function'
 
 module CppAst
   module Parsers
