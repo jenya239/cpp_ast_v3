@@ -106,6 +106,26 @@ module CppAst
       end
     end
     
+    # LambdaExpression - lambda: [capture](params) { body }
+    class LambdaExpression < Expression
+      attr_accessor :capture, :parameters, :specifiers, :body
+      attr_accessor :capture_suffix, :params_suffix
+      
+      def initialize(capture: "", parameters: "", specifiers: "", body: "", 
+                     capture_suffix: "", params_suffix: "")
+        @capture = capture
+        @parameters = parameters
+        @specifiers = specifiers
+        @body = body
+        @capture_suffix = capture_suffix
+        @params_suffix = params_suffix
+      end
+      
+      def to_source
+        "[#{capture}]#{capture_suffix}(#{parameters})#{params_suffix}#{specifiers} { #{body} }"
+      end
+    end
+    
     # FunctionCallExpression - function call: foo(arg1, arg2)
     class FunctionCallExpression < Expression
       attr_accessor :callee, :arguments, :argument_separators, :lparen_suffix, :rparen_prefix
@@ -166,6 +186,39 @@ module CppAst
       
       def to_source
         "#{array.to_source}[#{lbracket_suffix}#{index.to_source}#{rbracket_prefix}]"
+      end
+    end
+    
+    # BraceInitializerExpression - brace initialization: Type{arg1, arg2}
+    class BraceInitializerExpression < Expression
+      attr_accessor :type, :arguments, :argument_separators
+      attr_accessor :lbrace_prefix, :lbrace_suffix, :rbrace_prefix
+      
+      def initialize(type:, arguments:, argument_separators: [],
+                     lbrace_prefix: "", lbrace_suffix: "", rbrace_prefix: "")
+        @type = type
+        @arguments = arguments
+        @argument_separators = argument_separators
+        @lbrace_prefix = lbrace_prefix
+        @lbrace_suffix = lbrace_suffix
+        @rbrace_prefix = rbrace_prefix
+      end
+      
+      def to_source
+        result = "#{type.to_source}#{lbrace_prefix}{#{lbrace_suffix}"
+        
+        arguments.each_with_index do |arg, i|
+          result << arg.to_source
+          
+          # Add separator (comma) after each arg except the last
+          if i < arguments.length - 1
+            separator = argument_separators[i] || ", "
+            result << separator
+          end
+        end
+        
+        result << "#{rbrace_prefix}}"
+        result
       end
     end
     

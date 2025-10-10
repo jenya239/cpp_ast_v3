@@ -287,11 +287,11 @@ module CppAst
     class FunctionDeclaration < Statement
       attr_accessor :return_type, :name, :parameters, :body
       attr_accessor :return_type_suffix, :lparen_suffix, :rparen_suffix
-      attr_accessor :param_separators, :modifiers_text
+      attr_accessor :param_separators, :modifiers_text, :prefix_modifiers
       
       def initialize(leading_trivia: "", return_type:, name:, parameters:, body: nil,
                      return_type_suffix: "", lparen_suffix: "", rparen_suffix: "",
-                     param_separators: [], modifiers_text: "")
+                     param_separators: [], modifiers_text: "", prefix_modifiers: "")
         super(leading_trivia: leading_trivia)
         @return_type = return_type
         @name = name
@@ -302,10 +302,11 @@ module CppAst
         @rparen_suffix = rparen_suffix
         @param_separators = param_separators
         @modifiers_text = modifiers_text
+        @prefix_modifiers = prefix_modifiers
       end
       
       def to_source
-        result = "#{leading_trivia}#{return_type}#{return_type_suffix}#{name}(#{lparen_suffix}"
+        result = "#{leading_trivia}#{prefix_modifiers}#{return_type}#{return_type_suffix}#{name}(#{lparen_suffix}"
         
         parameters.each_with_index do |param, i|
           result << param

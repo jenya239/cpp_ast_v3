@@ -242,6 +242,10 @@ module CppAst
             # Array subscript
             expr, trailing = parse_array_subscript(expr, operator_prefix)
             
+          when :lbrace
+            # Brace initialization: Type{args...}
+            expr, trailing = parse_brace_initializer(expr, operator_prefix)
+            
           else
             # No more postfix operators
             # Return the operator_prefix as part of trailing
@@ -277,6 +281,64 @@ module CppAst
           index: index,
           lbracket_suffix: lbracket_suffix,
           rbracket_prefix: rbracket_prefix
+        )
+        
+        [expr, trailing]
+      end
+      
+      # Parse brace initializer: Type{arg1, arg2, ...}
+      # Returns (FunctionCallExpression, trailing) tuple
+      # Note: We reuse FunctionCallExpression node for brace initializers
+      def parse_brace_initializer(callee, lbrace_prefix)
+        # Consume '{'
+        expect(:lbrace)
+        
+        # Collect trivia after '{'
+        lbrace_suffix = collect_trivia_string
+        
+        # Parse arguments (same as function call)
+        arguments = []
+        argument_separators = []
+        rbrace_prefix = ""
+        
+        # Check for empty initializer list
+        unless current_token.kind == :rbrace
+          loop do
+            # Parse argument expression
+            arg, arg_trailing = parse_expression
+            arguments << arg
+            
+            # Collect trivia before comma or '}'
+            separator_prefix = arg_trailing + collect_trivia_string
+            
+            # Check for comma (more arguments) or '}' (done)
+            if current_token.kind == :comma
+              advance_raw
+              separator_suffix = collect_trivia_string
+              argument_separators << "#{separator_prefix},#{separator_suffix}"
+            else
+              # No more arguments, the separator_prefix becomes rbrace_prefix
+              rbrace_prefix = separator_prefix
+              break
+            end
+          end
+        end
+        
+        # Consume '}'
+        expect(:rbrace)
+        
+        # Collect trailing after '}'
+        trailing = collect_trivia_string
+        
+        # Create function call expression (reusing for brace init)
+        # Store lbrace/rbrace info in lparen/rparen fields
+        expr = Nodes::BraceInitializerExpression.new(
+          type: callee,
+          arguments: arguments,
+          argument_separators: argument_separators,
+          lbrace_prefix: lbrace_prefix,
+          lbrace_suffix: lbrace_suffix,
+          rbrace_prefix: rbrace_prefix
         )
         
         [expr, trailing]
@@ -374,6 +436,9 @@ module CppAst
         when :lparen
           parse_parenthesized_expression
           
+        when :lbracket
+          parse_lambda_expression
+          
         else
           raise ParseError, 
             "Unexpected token in expression: #{current_token.kind} at #{current_token.line}:#{current_token.column}"
@@ -406,6 +471,90 @@ module CppAst
           expression: inner_expr,
           open_paren_suffix: open_paren_suffix,
           close_paren_prefix: close_paren_prefix
+        )
+        
+        [expr, trailing]
+      end
+      
+      # Parse lambda expression: [capture](params) { body }
+      # Returns (LambdaExpression, trailing) tuple
+      def parse_lambda_expression
+        # Consume '['
+        expect(:lbracket)
+        
+        # Collect capture list (simplified - just raw text)
+        capture_text = "".dup
+        until current_token.kind == :rbracket || at_end?
+          capture_text << current_token.lexeme
+          advance_raw
+        end
+        
+        # Consume ']'
+        expect(:rbracket)
+        
+        capture_suffix = collect_trivia_string
+        
+        # Consume '('
+        expect(:lparen)
+        
+        # Collect parameters (simplified - just raw text)
+        params_text = "".dup
+        paren_depth = 1
+        until paren_depth.zero? || at_end?
+          if current_token.kind == :lparen
+            paren_depth += 1
+          elsif current_token.kind == :rparen
+            paren_depth -= 1
+            break if paren_depth.zero?
+          end
+          
+          params_text << current_token.lexeme
+          advance_raw
+        end
+        
+        # Consume ')'
+        expect(:rparen)
+        
+        params_suffix = collect_trivia_string
+        
+        # Optional: mutable, constexpr, etc.
+        specifiers_text = "".dup
+        until current_token.kind == :lbrace || at_end?
+          specifiers_text << current_token.lexeme
+          advance_raw
+        end
+        
+        # Parse body (block statement)
+        body_text = "".dup
+        if current_token.kind == :lbrace
+          expect(:lbrace)
+          
+          brace_depth = 1
+          until brace_depth.zero? || at_end?
+            if current_token.kind == :lbrace
+              brace_depth += 1
+            elsif current_token.kind == :rbrace
+              brace_depth -= 1
+              break if brace_depth.zero?
+            end
+            
+            body_text << current_token.lexeme
+            advance_raw
+          end
+          
+          # Consume '}'
+          expect(:rbrace)
+        end
+        
+        trailing = collect_trivia_string
+        
+        expr = Nodes::LambdaExpression.new(
+          capture: capture_text,
+          parameters: params_text,
+          specifiers: specifiers_text,
+          body: body_text,
+          capture_suffix: capture_suffix,
+          params_suffix: params_suffix
         )
         
         [expr, trailing]

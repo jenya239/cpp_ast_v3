@@ -637,7 +637,9 @@ module CppAst
         end
         
         # Parse body (block statement)
+        push_context(:namespace, name: name)
         body, trailing = parse_block_statement("")
+        pop_context
         
         stmt = Nodes::NamespaceDeclaration.new(
           leading_trivia: leading_trivia,
@@ -707,11 +709,80 @@ module CppAst
       
       # Simple heuristic to detect function declarations
       # Look for pattern: type name ( or type ~name ( or std::vector<int> name (
+      # Can have modifiers before: virtual, inline, static, explicit, constexpr
       def looks_like_function_declaration?
         return false unless current_token.kind == :identifier || current_token.kind.to_s.start_with?("keyword_")
         
+        # Check for constructor (ClassName(...) inside class/struct)
+        if in_context?(:class)
+          saved_pos = @position
+          
+          # Skip explicit modifier if present
+          if current_token.kind == :keyword_explicit
+            advance_raw
+            collect_trivia_string
+          end
+          
+          # Check if identifier matches class name
+          if current_token.kind == :identifier && current_token.lexeme == current_class_name
+            advance_raw
+            collect_trivia_string
+            
+            # Check for (
+            if current_token.kind == :lparen
+              @position = saved_pos
+              return true
+            end
+          end
+          
+          @position = saved_pos
+        end
+        
+        # Check for out-of-line constructor (ClassName::ClassName(...))
+        if current_token.kind == :identifier
+          saved_pos = @position
+          class_name = current_token.lexeme
+          advance_raw
+          collect_trivia_string
+          
+          # Check for ::
+          if current_token.kind == :colon_colon
+            advance_raw
+            collect_trivia_string
+            
+            # Check if next identifier matches class name
+            if current_token.kind == :identifier && current_token.lexeme == class_name
+              advance_raw
+              collect_trivia_string
+              
+              # Check for (
+              if current_token.kind == :lparen
+                @position = saved_pos
+                return true
+              end
+            end
+          end
+          
+          @position = saved_pos
+        end
+        
         # Save position
         saved_pos = @position
+        
+        # Skip function modifiers (virtual, inline, static, explicit, constexpr, friend)
+        modifier_keywords = [:keyword_virtual, :keyword_inline, :keyword_static, 
+                             :keyword_explicit, :keyword_constexpr, :keyword_friend]
+        while modifier_keywords.include?(current_token.kind)
+          advance_raw
+          collect_trivia_string
+        end
+        
+        # Don't treat class/struct/enum/namespace/using/template as return type
+        if [:keyword_class, :keyword_struct, :keyword_enum, :keyword_namespace, 
+            :keyword_using, :keyword_template, :keyword_typedef].include?(current_token.kind)
+          @position = saved_pos
+          return false
+        end
         
         # Try to scan: type name (
         advance_raw  # skip type
@@ -744,6 +815,107 @@ module CppAst
           collect_trivia_string
         end
         
+        # Check for operator overloading BEFORE skipping *&
+        # Pattern: Type operator+ or Type* ClassName::operator+
+        if current_token.kind == :keyword_operator
+          # Inline operator: Type operator+
+          @position = saved_pos
+          return true
+        end
+        
+        # Check for out-of-line operator: Type ClassName::operator+ or Type* ClassName::operator+
+        if current_token.kind == :asterisk || current_token.kind == :ampersand
+          # Save position before skipping *&
+          saved_before_ptr = @position
+          
+          # Skip all * and &
+          while [:asterisk, :ampersand].include?(current_token.kind)
+            advance_raw
+            collect_trivia_string
+          end
+          
+          # Check for inline operator after *&: Buffer& operator=
+          if current_token.kind == :keyword_operator
+            # Skip 'operator' keyword
+            advance_raw
+            collect_trivia_string
+            
+            # Skip operator symbol(s)
+            operator_symbols = [:plus, :minus, :asterisk, :slash, :percent, :equals,
+                               :equals_equals, :exclamation_equals, :less, :greater,
+                               :less_equals, :greater_equals, :plus_plus, :minus_minus,
+                               :ampersand, :pipe, :caret, :tilde, :exclamation,
+                               :ampersand_ampersand, :pipe_pipe, :less_less, :greater_greater,
+                               :comma, :arrow, :arrow_asterisk]
+            if operator_symbols.include?(current_token.kind)
+              advance_raw
+              collect_trivia_string
+            elsif current_token.kind == :lparen
+              # operator()
+              advance_raw
+              if current_token.kind == :rparen
+                advance_raw
+                collect_trivia_string
+              end
+            elsif current_token.kind == :lbracket
+              # operator[]
+              advance_raw
+              if current_token.kind == :rbracket
+                advance_raw
+                collect_trivia_string
+              end
+            end
+            
+            # Now check for (
+            if current_token.kind == :lparen
+              @position = saved_pos
+              return true
+            end
+          end
+          
+          # Check if followed by ClassName::operator
+          if current_token.kind == :identifier
+            saved_after_ptr = @position
+            advance_raw
+            collect_trivia_string
+            
+            if current_token.kind == :colon_colon
+              advance_raw
+              collect_trivia_string
+              
+              if current_token.kind == :keyword_operator
+                # Out-of-line operator with pointer/reference return type
+                @position = saved_pos
+                return true
+              end
+            end
+            
+            # Not operator, restore to after pointer
+            @position = saved_after_ptr
+          end
+          
+          # Continue with this position (after *)
+        elsif current_token.kind == :identifier
+          # No pointer, check directly for ClassName::operator
+          saved_operator_pos = @position
+          advance_raw
+          collect_trivia_string
+          
+          if current_token.kind == :colon_colon
+            advance_raw
+            collect_trivia_string
+            
+            if current_token.kind == :keyword_operator
+              # Out-of-line operator without pointer
+              @position = saved_pos
+              return true
+            end
+          end
+          
+          # Restore if not operator
+          @position = saved_operator_pos
+        end
+        
         # Check for destructor ~
         if current_token.kind == :tilde
           advance_raw
@@ -764,72 +936,285 @@ module CppAst
       end
       
       # Parse function declaration: `type name(params);` or `type name(params) { ... }`
+      # Or constructor: `[explicit] ClassName(params) [: initializers] ;` or `{ body }`
       # Returns (FunctionDeclaration, trailing) tuple
       def parse_function_declaration(leading_trivia)
-        # Parse return type (can be simple or template: int, std::vector<int>, etc)
+        # Collect function prefix modifiers (virtual, inline, static, explicit, constexpr, friend)
+        prefix_modifiers = "".dup
+        modifier_keywords = [:keyword_virtual, :keyword_inline, :keyword_static, 
+                             :keyword_explicit, :keyword_constexpr, :keyword_friend]
+        while modifier_keywords.include?(current_token.kind)
+          prefix_modifiers << current_token.lexeme
+          advance_raw
+          prefix_suffix = collect_trivia_string
+          prefix_modifiers << prefix_suffix
+        end
+        
+        # Check if this is a constructor
+        is_constructor = false
+        constructor_class_name = nil
+        
+        # In-class constructor: ClassName(...)
+        if in_context?(:class) && current_token.kind == :identifier && 
+           current_token.lexeme == current_class_name
+          is_constructor = true
+          constructor_class_name = current_class_name
+        end
+        
+        # Out-of-line constructor: ClassName::ClassName(...)
+        if !is_constructor && current_token.kind == :identifier
+          saved_check_pos = @position
+          class_name = current_token.lexeme
+          advance_raw
+          collect_trivia_string
+          
+          if current_token.kind == :colon_colon
+            advance_raw
+            collect_trivia_string
+            
+            if current_token.kind == :identifier && current_token.lexeme == class_name
+              is_constructor = true
+              constructor_class_name = class_name
+            end
+          end
+          
+          @position = saved_check_pos
+        end
+        
+        # Parse return type (skip for constructors)
         return_type = "".dup
-        return_type << current_token.lexeme
-        advance_raw
+        unless is_constructor
+          return_type << current_token.lexeme
+          advance_raw
+        end
         
         # Collect trivia after first part of return type
         trivia_after = collect_trivia_string
         
-        # Handle :: for qualified names (std::vector)
-        while current_token.kind == :colon_colon
-          return_type << trivia_after << current_token.lexeme
-          advance_raw
-          trivia_after = collect_trivia_string
-          
-          if current_token.kind == :identifier
+        unless is_constructor
+          # Handle :: for qualified names (std::vector)
+          while current_token.kind == :colon_colon
             return_type << trivia_after << current_token.lexeme
+            advance_raw
+            trivia_after = collect_trivia_string
+            
+            if current_token.kind == :identifier
+              return_type << trivia_after << current_token.lexeme
+              advance_raw
+              trivia_after = collect_trivia_string
+            end
+          end
+          
+          # Handle <...> for template types (vector<int>)
+          if current_token.kind == :less
+            return_type << trivia_after
+            return_type << current_token.lexeme
+            advance_raw
+            
+            depth = 1
+            while depth > 0 && !at_end?
+              if current_token.kind == :less
+                depth += 1
+              elsif current_token.kind == :greater
+                depth -= 1
+              end
+              
+              return_type << current_token.lexeme
+              advance_raw
+              
+              if depth == 0
+                break
+              end
+            end
+            
+            trivia_after = collect_trivia_string
+          end
+          
+          # Handle * and & for pointers and references (int*, A&, const int*)
+          while [:asterisk, :ampersand].include?(current_token.kind)
+            return_type << trivia_after
+            return_type << current_token.lexeme
             advance_raw
             trivia_after = collect_trivia_string
           end
         end
         
-        # Handle <...> for template types (vector<int>)
-        if current_token.kind == :less
-          return_type << trivia_after
-          return_type << current_token.lexeme
-          advance_raw
-          
-          depth = 1
-          while depth > 0 && !at_end?
-            if current_token.kind == :less
-              depth += 1
-            elsif current_token.kind == :greater
-              depth -= 1
-            end
-            
-            return_type << current_token.lexeme
-            advance_raw
-            
-            if depth == 0
-              break
-            end
-          end
-          
-          trivia_after = collect_trivia_string
-        end
-        
-        return_type_suffix = trivia_after
-        
-        # Check for destructor (~ClassName) or function name
-        # Destructor: ~ immediately before identifier
+        # Check for operator overloading or destructor or constructor or regular function name
         name = "".dup
-        if current_token.kind == :tilde
+        
+        if is_constructor
+          # Constructor: name is class name or ClassName::ClassName
+          return_type_suffix = trivia_after
           name << current_token.lexeme
           advance_raw
-          name << collect_trivia_string
+          
+          # Check for :: (out-of-line constructor)
+          scope_trivia = collect_trivia_string
+          if current_token.kind == :colon_colon
+            name << scope_trivia << current_token.lexeme
+            advance_raw
+            name << collect_trivia_string << current_token.lexeme
+            advance_raw
+          else
+            # Restore trivia for in-class constructor
+            return_type_suffix << scope_trivia if scope_trivia.length > 0
+          end
+        elsif current_token.kind == :identifier
+          # Check for out-of-line operator: ClassName::operator+
+          saved_name_pos = @position
+          class_name = current_token.lexeme
+          advance_raw
+          scope_trivia = collect_trivia_string
+          
+          if current_token.kind == :colon_colon
+            advance_raw
+            after_colon = collect_trivia_string
+            
+            if current_token.kind == :keyword_operator
+              # Out-of-line operator overloading
+              return_type_suffix = trivia_after
+              name << class_name << scope_trivia << "::" << after_colon
+              name << current_token.lexeme
+              advance_raw
+              # Collect trivia between 'operator' and the operator symbol
+              operator_trivia = collect_trivia_string
+              name << operator_trivia
+              
+              # Collect the operator symbol(s)
+              operator_symbols = [:plus, :minus, :asterisk, :slash, :percent, :equals,
+                                 :equals_equals, :exclamation_equals, :less, :greater,
+                                 :less_equals, :greater_equals, :plus_plus, :minus_minus,
+                                 :ampersand, :pipe, :caret, :tilde, :exclamation,
+                                 :ampersand_ampersand, :pipe_pipe, :less_less, :greater_greater,
+                                 :comma, :arrow, :arrow_asterisk]
+              
+              if operator_symbols.include?(current_token.kind)
+                name << current_token.lexeme
+                advance_raw
+              elsif current_token.kind == :lparen
+                # operator()
+                name << current_token.lexeme  # '('
+                advance_raw
+                name << current_token.lexeme  # ')'
+                expect(:rparen)  # consume ')'
+              elsif current_token.kind == :lbracket
+                # operator[]
+                name << current_token.lexeme  # '['
+                advance_raw
+                name << current_token.lexeme  # ']'
+                expect(:rbracket)  # consume ']'
+              elsif current_token.kind == :keyword_new || current_token.kind == :keyword_delete
+                # operator new, operator delete
+                name << " " << current_token.lexeme
+                advance_raw
+                # Check for [] after new/delete
+                if current_token.kind == :lbracket
+                  name << current_token.lexeme  # '['
+                  advance_raw
+                  name << current_token.lexeme  # ']'
+                  expect(:rbracket)  # consume ']'
+                end
+              end
+            else
+              # Not operator, regular function: ClassName::method
+              @position = saved_name_pos
+              return_type_suffix = trivia_after
+              name << current_token.lexeme
+              advance_raw
+              scope_trivia2 = collect_trivia_string
+              name << scope_trivia2 << current_token.lexeme  # ::
+              expect(:colon_colon)
+              advance_raw
+              after_colon2 = collect_trivia_string
+              name << after_colon2 << current_token.lexeme  # method name
+              expect_identifier
+            end
+          else
+            # Regular function name
+            @position = saved_name_pos
+            return_type_suffix = trivia_after
+            name << current_token.lexeme
+            advance_raw
+          end
+        elsif current_token.kind == :keyword_operator
+          # Operator overloading: operator+, operator[], operator==, etc
+          # The trivia_after is space between return type and 'operator'
+          return_type_suffix = trivia_after
+          name << current_token.lexeme
+          advance_raw
+          # Collect trivia between 'operator' and the operator symbol
+          operator_trivia = collect_trivia_string
+          name << operator_trivia
+          
+          # Collect the operator symbol(s)
+          # Can be: +, -, *, /, %, =, ==, !=, <, >, <=, >=, ++, --, [], (), etc
+          operator_symbols = [:plus, :minus, :asterisk, :slash, :percent, :equals,
+                             :equals_equals, :exclamation_equals, :less, :greater,
+                             :less_equals, :greater_equals, :plus_plus, :minus_minus,
+                             :ampersand, :pipe, :caret, :tilde, :exclamation,
+                             :ampersand_ampersand, :pipe_pipe, :less_less, :greater_greater,
+                             :comma, :arrow, :arrow_asterisk]
+          
+          if operator_symbols.include?(current_token.kind)
+            name << current_token.lexeme
+            advance_raw
+          elsif current_token.kind == :lparen
+            # operator()
+            name << current_token.lexeme
+            advance_raw
+            expect(:rparen)
+            name << current_token.lexeme
+            advance_raw
+          elsif current_token.kind == :lbracket
+            # operator[]
+            name << current_token.lexeme
+            advance_raw
+            expect(:rbracket)
+            name << current_token.lexeme
+            advance_raw
+          elsif current_token.kind == :keyword_new || current_token.kind == :keyword_delete
+            # operator new, operator delete
+            name << " " << current_token.lexeme
+            advance_raw
+            # Check for [] after new/delete
+            if current_token.kind == :lbracket
+              name << current_token.lexeme
+              advance_raw
+              expect(:rbracket)
+              name << current_token.lexeme
+              advance_raw
+            end
+          else
+            # Could be conversion operator: operator int()
+            # In this case, the type follows 'operator'
+            # For now, collect until '('
+            while current_token.kind != :lparen && !at_end?
+              name << current_token.lexeme
+              advance_raw
+            end
+          end
+        elsif current_token.kind == :tilde
+          # Destructor: ~ClassName
+          return_type_suffix = trivia_after  # Use trivia before '~'
+          name << current_token.lexeme
+          advance_raw
+          # NO trivia between ~ and class name
+          
+          unless current_token.kind == :identifier
+            raise ParseError, "Expected class name after ~"
+          end
+          name << current_token.lexeme
+          advance_raw
+        else
+          # Regular function name
+          return_type_suffix = trivia_after
+          unless current_token.kind == :identifier
+            raise ParseError, "Expected function name"
+          end
+          
+          name << current_token.lexeme
+          advance_raw
         end
-        
-        # Parse function name
-        unless current_token.kind == :identifier
-          raise ParseError, "Expected function name"
-        end
-        
-        name << current_token.lexeme
-        advance_raw
         
         # Collect trivia before '('
         _lparen_prefix = collect_trivia_string
@@ -890,14 +1275,30 @@ module CppAst
         after_rparen = collect_trivia_string
         
         # Collect modifiers (const, override, final, noexcept, = default, etc)
+        # For constructors: also collect modifiers before : (like noexcept)
         modifiers_text = "".dup
-        until [:lbrace, :semicolon].include?(current_token.kind) || at_end?
+        until [:lbrace, :semicolon, :colon].include?(current_token.kind) || at_end?
           modifiers_text << after_rparen unless after_rparen.empty?
           after_rparen = ""
           
           modifiers_text << current_token.lexeme
           advance_raw
           modifiers_text << collect_trivia_string
+        end
+        
+        # Check for constructor initializer list (: member_(value), ...)
+        if is_constructor && current_token.kind == :colon
+          modifiers_text << after_rparen unless after_rparen.empty?
+          after_rparen = ""
+          
+          # Collect everything from : to { or ;
+          while ![:lbrace, :semicolon].include?(current_token.kind) && !at_end?
+            modifiers_text << current_token.lexeme
+            advance_raw
+          end
+          
+          # Collect trivia before { or ;
+          after_rparen = collect_trivia_string
         end
         
         # Check for body (block) or semicolon
@@ -915,6 +1316,7 @@ module CppAst
         
         stmt = Nodes::FunctionDeclaration.new(
           leading_trivia: leading_trivia,
+          prefix_modifiers: prefix_modifiers,
           return_type: return_type,
           name: name,
           parameters: parameters,
@@ -972,6 +1374,9 @@ module CppAst
         # Collect trivia after '{'
         lbrace_suffix = collect_trivia_string
         
+        # Push class context
+        push_context(:class, name: name)
+        
         # Parse members
         members = []
         member_trailings = []
@@ -1008,6 +1413,9 @@ module CppAst
             member_leading = ""
           end
         end
+        
+        # Pop class context
+        pop_context
         
         # Collect trivia before '}'
         rbrace_suffix = collect_trivia_string
@@ -1082,6 +1490,9 @@ module CppAst
         # Collect trivia after '{'
         lbrace_suffix = collect_trivia_string
         
+        # Push struct context (treat as class for constructors)
+        push_context(:class, name: name)
+        
         # Parse members
         members = []
         member_trailings = []
@@ -1119,6 +1530,9 @@ module CppAst
           end
         end
         
+        # Pop struct context
+        pop_context
+        
         # Collect trivia before '}'
         rbrace_suffix = collect_trivia_string
         
@@ -1154,19 +1568,47 @@ module CppAst
       def parse_variable_declaration(leading_trivia)
         # Parse type (can be multiple tokens: const int*, unsigned long, etc)
         type = "".dup
+        template_depth = 0
         
         # Collect type tokens
         loop do
           # Type keywords and modifiers
           if current_token.kind.to_s.start_with?("keyword_") || 
              current_token.kind == :identifier ||
-             [:asterisk, :ampersand, :less, :greater, :colon_colon].include?(current_token.kind)
+             [:asterisk, :ampersand, :less, :greater, :colon_colon, :comma, :lparen, :rparen].include?(current_token.kind)
+            
+            was_colon_colon = current_token.kind == :colon_colon
+            
+            # Track template depth
+            if current_token.kind == :less
+              template_depth += 1
+            elsif current_token.kind == :greater
+              template_depth -= 1
+            end
+            
+            # Don't include comma in type if not in template
+            if current_token.kind == :comma && template_depth == 0
+              break
+            end
             
             type << current_token.lexeme
             advance_raw
             
             # Collect trivia after this token
             trivia = collect_trivia_string
+            
+            # Don't add trivia after :: if next is identifier/keyword (qualified name)
+            if was_colon_colon && (current_token.kind == :identifier || 
+                                   current_token.kind.to_s.start_with?("keyword_"))
+              # Skip trivia - it will be added by the next iteration
+              next
+            end
+            
+            # Don't add trivia if next token is template delimiter and we're in template
+            if template_depth > 0 && [:comma, :greater, :lparen, :rparen].include?(current_token.kind)
+              # Skip trivia before template delimiters and parens (function types)
+              next
+            end
             
             # Check if we're done with type (next is identifier for variable name)
             if current_token.kind == :identifier
@@ -1177,8 +1619,8 @@ module CppAst
               next_kind = current_token.kind
               @position = saved_pos
               
-              # If followed by =, ; or , then this identifier is the variable name
-              if [:equals, :semicolon, :comma, :lparen, :lbracket].include?(next_kind)
+              # If followed by =, ;, ,, {, (, [ then this identifier is the variable name
+              if [:equals, :semicolon, :comma, :lparen, :lbracket, :lbrace].include?(next_kind)
                 type << trivia
                 break
               end
