@@ -410,7 +410,7 @@ module CppAst
           advance_raw
           [Nodes::CharLiteral.new(value: value), trailing]
           
-        when :keyword_true, :keyword_false, :keyword_nullptr
+        when :keyword_true, :keyword_false, :keyword_nullptr, :keyword_this
           value = current_token.lexeme
           trailing = current_token.trailing_trivia
           advance_raw
