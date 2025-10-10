@@ -170,6 +170,88 @@ module CppAst
         lparen_suffix = current_token.trailing_trivia
         expect(:lparen)
         
+        # Try to parse as range-based for first
+        # Range-based for has pattern: for (decl : range)
+        # Classic for has pattern: for (init; cond; inc)
+        
+        # Look ahead to determine which type
+        saved_pos = @position
+        depth = 0
+        found_colon = false
+        found_semicolon = false
+        
+        while !at_end? && depth >= 0
+          case current_token.kind
+          when :lparen, :lbracket
+            depth += 1
+          when :rparen
+            break if depth == 0
+            depth -= 1
+          when :rbracket
+            depth -= 1
+          when :colon
+            found_colon = true if depth == 0
+            break if depth == 0
+          when :semicolon
+            found_semicolon = true if depth == 0
+            break if depth == 0
+          end
+          advance_raw
+        end
+        
+        @position = saved_pos
+        
+        if found_colon && !found_semicolon
+          parse_range_based_for(leading_trivia, for_suffix, lparen_suffix)
+        else
+          parse_classic_for(leading_trivia, for_suffix, lparen_suffix)
+        end
+      end
+      
+      def parse_range_based_for(leading_trivia, for_suffix, lparen_suffix)
+        # Collect declaration as text (everything until ':')
+        decl_text = "".dup
+        
+        until current_token.kind == :colon || at_end?
+          decl_text << current_leading_trivia << current_token.lexeme << current_token.trailing_trivia
+          advance_raw
+        end
+        
+        # Consume ':'
+        colon_suffix = current_token.trailing_trivia
+        expect(:colon)
+        
+        # Parse range expression
+        range, range_trailing = parse_expression
+        
+        # Collect trivia before ')'
+        rparen_prefix = range_trailing + current_leading_trivia
+        
+        # Consume ')'
+        body_leading = current_token.trailing_trivia
+        expect(:rparen)
+        
+        # Parse body
+        body, trailing = parse_statement(body_leading)
+        
+        # Create node with range-based format
+        stmt = Nodes::ForStatement.new(
+          leading_trivia: leading_trivia,
+          init: Nodes::Identifier.new(name: decl_text),  # Store as text
+          condition: range,
+          increment: nil,
+          body: body,
+          for_suffix: for_suffix,
+          lparen_suffix: lparen_suffix,
+          init_trailing: ":#{colon_suffix}",  # Store colon with suffix
+          condition_trailing: "",
+          rparen_suffix: rparen_prefix
+        )
+        
+        [stmt, trailing]
+      end
+      
+      def parse_classic_for(leading_trivia, for_suffix, lparen_suffix)
         # Parse init (can be empty)
         init = nil
         init_trailing = ""

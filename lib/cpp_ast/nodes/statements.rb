@@ -158,12 +158,23 @@ module CppAst
       
       def to_source
         result = "#{leading_trivia}for#{for_suffix}(#{lparen_suffix}"
-        result << (init ? init.to_source : "")
-        result << ";#{init_trailing}"
-        result << (condition ? condition.to_source : "")
-        result << ";#{condition_trailing}"
-        result << (increment ? increment.to_source : "")
-        result << "#{rparen_suffix})#{body.to_source}"
+        
+        # Range-based for: for (decl : range)
+        if init_trailing.start_with?(":")
+          result << (init ? init.to_source : "")
+          result << init_trailing
+          result << (condition ? condition.to_source : "")
+          result << "#{rparen_suffix})#{body.to_source}"
+        else
+          # Classic for: for (init; cond; inc)
+          result << (init ? init.to_source : "")
+          result << ";#{init_trailing}"
+          result << (condition ? condition.to_source : "")
+          result << ";#{condition_trailing}"
+          result << (increment ? increment.to_source : "")
+          result << "#{rparen_suffix})#{body.to_source}"
+        end
+        
         result
       end
     end
