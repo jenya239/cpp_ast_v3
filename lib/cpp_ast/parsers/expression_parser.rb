@@ -11,13 +11,51 @@ module CppAst
       private
       
       # Operator precedence table
-      # Lower number = lower precedence
+      # Lower number = lower precedence (C++ standard precedence)
       OPERATOR_INFO = {
+        # Assignment (right-associative, precedence 1)
         equals: { precedence: 1, right_assoc: true },
-        plus: { precedence: 10, right_assoc: false },
-        minus: { precedence: 10, right_assoc: false },
-        asterisk: { precedence: 20, right_assoc: false },
-        slash: { precedence: 20, right_assoc: false },
+        plus_equals: { precedence: 1, right_assoc: true },
+        minus_equals: { precedence: 1, right_assoc: true },
+        asterisk_equals: { precedence: 1, right_assoc: true },
+        slash_equals: { precedence: 1, right_assoc: true },
+        
+        # Logical OR (precedence 3)
+        pipe_pipe: { precedence: 3, right_assoc: false },
+        
+        # Logical AND (precedence 4)
+        ampersand_ampersand: { precedence: 4, right_assoc: false },
+        
+        # Bitwise OR (precedence 5)
+        pipe: { precedence: 5, right_assoc: false },
+        
+        # Bitwise XOR (precedence 6)
+        caret: { precedence: 6, right_assoc: false },
+        
+        # Bitwise AND (precedence 7)
+        ampersand: { precedence: 7, right_assoc: false },
+        
+        # Equality (precedence 8)
+        equals_equals: { precedence: 8, right_assoc: false },
+        exclamation_equals: { precedence: 8, right_assoc: false },
+        
+        # Relational (precedence 9)
+        less: { precedence: 9, right_assoc: false },
+        greater: { precedence: 9, right_assoc: false },
+        less_equals: { precedence: 9, right_assoc: false },
+        greater_equals: { precedence: 9, right_assoc: false },
+        
+        # Shift (precedence 10)
+        less_less: { precedence: 10, right_assoc: false },
+        greater_greater: { precedence: 10, right_assoc: false },
+        
+        # Additive (precedence 11)
+        plus: { precedence: 11, right_assoc: false },
+        minus: { precedence: 11, right_assoc: false },
+        
+        # Multiplicative (precedence 12)
+        asterisk: { precedence: 12, right_assoc: false },
+        slash: { precedence: 12, right_assoc: false },
       }.freeze
       
       def operator_info(kind)
@@ -27,12 +65,18 @@ module CppAst
       # Pratt parser for binary expressions
       # Returns (expr, trailing) tuple
       def parse_binary_expression(min_precedence)
-        # Parse left side (primary expression)
-        left, left_trailing = parse_primary
+        # Parse left side (unary or primary expression)
+        left, left_trailing = parse_unary
         
         loop do
           # Collect trivia BEFORE operator
           operator_prefix = left_trailing + collect_trivia_string
+          
+          # Check for ternary operator (special case)
+          if current_token&.kind == :question && 2 >= min_precedence
+            left, left_trailing = parse_ternary(left, operator_prefix)
+            next
+          end
           
           # Check if current token is operator
           info = operator_info(current_token&.kind)
@@ -66,6 +110,232 @@ module CppAst
         [left, left_trailing]
       end
       
+      # Parse ternary expression: condition ? true_expr : false_expr
+      # Returns (TernaryExpression, trailing) tuple
+      def parse_ternary(condition, question_prefix)
+        # Consume '?'
+        expect(:question)
+        
+        # Collect trivia after '?'
+        question_suffix = collect_trivia_string
+        
+        # Parse true expression
+        true_expr, true_trailing = parse_expression
+        
+        # Collect trivia before ':'
+        colon_prefix = true_trailing + collect_trivia_string
+        
+        # Consume ':'
+        expect(:colon)
+        
+        # Collect trivia after ':'
+        colon_suffix = collect_trivia_string
+        
+        # Parse false expression (with ternary precedence for right-associativity)
+        false_expr, false_trailing = parse_binary_expression(2)
+        
+        # Create ternary expression
+        expr = Nodes::TernaryExpression.new(
+          condition: condition,
+          true_expression: true_expr,
+          false_expression: false_expr,
+          question_prefix: question_prefix,
+          question_suffix: question_suffix,
+          colon_prefix: colon_prefix,
+          colon_suffix: colon_suffix
+        )
+        
+        [expr, false_trailing]
+      end
+      
+      # Parse unary expression (prefix operators) or primary
+      # Returns (expr, trailing) tuple
+      def parse_unary
+        # Check for prefix unary operators
+        case current_token.kind
+        when :exclamation, :tilde, :minus, :plus, :asterisk, :ampersand, :plus_plus, :minus_minus
+          operator = current_token.lexeme
+          advance_raw
+          
+          # Collect trivia after operator
+          operator_suffix = collect_trivia_string
+          
+          # Parse operand (recursively handle chained unary operators)
+          operand, operand_trailing = parse_unary
+          
+          # Create unary expression
+          expr = Nodes::UnaryExpression.new(
+            operator: operator,
+            operand: operand,
+            operator_suffix: operator_suffix,
+            prefix: true
+          )
+          
+          [expr, operand_trailing]
+        else
+          # No prefix operator, parse postfix
+          parse_postfix
+        end
+      end
+      
+      # Parse postfix operators (++, --, function calls)
+      # Returns (expr, trailing) tuple
+      def parse_postfix
+        # Parse primary first
+        expr, trailing = parse_primary
+        
+        # Check for postfix operators
+        loop do
+          # Collect trivia before potential postfix operator
+          operator_prefix = trailing + collect_trivia_string
+          
+          case current_token.kind
+          when :plus_plus, :minus_minus
+            operator = current_token.lexeme
+            advance_raw
+            
+            # Postfix operators don't have suffix trivia
+            # (trivia after them belongs to the whole expression)
+            expr = Nodes::UnaryExpression.new(
+              operator: operator,
+              operand: expr,
+              prefix: false
+            )
+            
+            # Collect trailing after postfix operator
+            trailing = collect_trivia_string
+            
+          when :lparen
+            # Function call
+            expr, trailing = parse_function_call(expr, operator_prefix)
+            
+          when :dot, :arrow, :colon_colon
+            # Member access
+            operator = current_token.lexeme
+            advance_raw
+            
+            # Collect trivia after operator
+            operator_suffix = collect_trivia_string
+            
+            # Parse member name (identifier)
+            unless current_token.kind == :identifier
+              raise ParseError, "Expected identifier after #{operator}"
+            end
+            
+            member = Nodes::Identifier.new(name: current_token.lexeme)
+            advance_raw
+            
+            # Create member access expression
+            expr = Nodes::MemberAccessExpression.new(
+              object: expr,
+              operator: operator,
+              member: member,
+              operator_prefix: operator_prefix,
+              operator_suffix: operator_suffix
+            )
+            
+            # Collect trailing
+            trailing = collect_trivia_string
+            
+          when :lbracket
+            # Array subscript
+            expr, trailing = parse_array_subscript(expr, operator_prefix)
+            
+          else
+            # No more postfix operators
+            # Return the operator_prefix as part of trailing
+            return [expr, operator_prefix]
+          end
+        end
+      end
+      
+      # Parse array subscript: array[index]
+      # Returns (ArraySubscriptExpression, trailing) tuple
+      def parse_array_subscript(array, lbracket_prefix)
+        # Consume '['
+        expect(:lbracket)
+        
+        # Collect trivia after '['
+        lbracket_suffix = collect_trivia_string
+        
+        # Parse index expression
+        index, index_trailing = parse_expression
+        
+        # Collect trivia before ']'
+        rbracket_prefix = index_trailing + collect_trivia_string
+        
+        # Consume ']'
+        expect(:rbracket)
+        
+        # Collect trailing after ']'
+        trailing = collect_trivia_string
+        
+        # Create array subscript expression
+        expr = Nodes::ArraySubscriptExpression.new(
+          array: array,
+          index: index,
+          lbracket_suffix: lbracket_suffix,
+          rbracket_prefix: rbracket_prefix
+        )
+        
+        [expr, trailing]
+      end
+      
+      # Parse function call: callee(arg1, arg2, ...)
+      # Returns (FunctionCallExpression, trailing) tuple
+      def parse_function_call(callee, lparen_prefix)
+        # Consume '('
+        expect(:lparen)
+        
+        # Collect trivia after '('
+        lparen_suffix = collect_trivia_string
+        
+        # Parse arguments
+        arguments = []
+        argument_separators = []
+        rparen_prefix = ""
+        
+        # Check for empty argument list
+        unless current_token.kind == :rparen
+          loop do
+            # Parse argument expression
+            arg, arg_trailing = parse_expression
+            arguments << arg
+            
+            # Collect trivia before comma or ')'
+            separator_prefix = arg_trailing + collect_trivia_string
+            
+            # Check for comma (more arguments) or ')' (done)
+            if current_token.kind == :comma
+              advance_raw
+              separator_suffix = collect_trivia_string
+              argument_separators << "#{separator_prefix},#{separator_suffix}"
+            else
+              # No more arguments, the separator_prefix becomes rparen_prefix
+              rparen_prefix = separator_prefix
+              break
+            end
+          end
+        end
+        
+        # Consume ')'
+        expect(:rparen)
+        
+        # Collect trailing after ')'
+        trailing = collect_trivia_string
+        
+        # Create function call expression
+        expr = Nodes::FunctionCallExpression.new(
+          callee: callee,
+          arguments: arguments,
+          argument_separators: argument_separators,
+          lparen_suffix: lparen_suffix,
+          rparen_prefix: rparen_prefix
+        )
+        
+        [expr, trailing]
+      end
+      
       # Parse primary expression (identifier, number, parenthesized, etc)
       # Returns (expr, trailing) tuple
       def parse_primary
@@ -82,10 +352,44 @@ module CppAst
           trailing = collect_trivia_string
           [Nodes::NumberLiteral.new(value: value), trailing]
           
+        when :lparen
+          parse_parenthesized_expression
+          
         else
           raise ParseError, 
             "Unexpected token in expression: #{current_token.kind} at #{current_token.line}:#{current_token.column}"
         end
+      end
+      
+      # Parse parenthesized expression: (expr)
+      # Returns (ParenthesizedExpression, trailing) tuple
+      def parse_parenthesized_expression
+        # Consume '('
+        expect(:lparen)
+        
+        # Collect trivia after '('
+        open_paren_suffix = collect_trivia_string
+        
+        # Parse inner expression
+        inner_expr, inner_trailing = parse_expression
+        
+        # Collect trivia before ')'
+        close_paren_prefix = inner_trailing + collect_trivia_string
+        
+        # Consume ')'
+        expect(:rparen)
+        
+        # Collect trailing after ')'
+        trailing = collect_trivia_string
+        
+        # Create parenthesized expression node
+        expr = Nodes::ParenthesizedExpression.new(
+          expression: inner_expr,
+          open_paren_suffix: open_paren_suffix,
+          close_paren_prefix: close_paren_prefix
+        )
+        
+        [expr, trailing]
       end
     end
   end

@@ -69,21 +69,111 @@ module CppAst
       when /[0-9]/
         scan_number(char, start_line, start_column)
       when "="
-        Token.new(kind: :equals, lexeme: "=", line: start_line, column: start_column)
+        if peek == "="
+          advance
+          Token.new(kind: :equals_equals, lexeme: "==", line: start_line, column: start_column)
+        else
+          Token.new(kind: :equals, lexeme: "=", line: start_line, column: start_column)
+        end
       when ";"
         Token.new(kind: :semicolon, lexeme: ";", line: start_line, column: start_column)
       when "+"
-        Token.new(kind: :plus, lexeme: "+", line: start_line, column: start_column)
+        if peek == "+"
+          advance
+          Token.new(kind: :plus_plus, lexeme: "++", line: start_line, column: start_column)
+        elsif peek == "="
+          advance
+          Token.new(kind: :plus_equals, lexeme: "+=", line: start_line, column: start_column)
+        else
+          Token.new(kind: :plus, lexeme: "+", line: start_line, column: start_column)
+        end
       when "-"
-        Token.new(kind: :minus, lexeme: "-", line: start_line, column: start_column)
+        if peek == "-"
+          advance
+          Token.new(kind: :minus_minus, lexeme: "--", line: start_line, column: start_column)
+        elsif peek == ">"
+          advance
+          Token.new(kind: :arrow, lexeme: "->", line: start_line, column: start_column)
+        elsif peek == "="
+          advance
+          Token.new(kind: :minus_equals, lexeme: "-=", line: start_line, column: start_column)
+        else
+          Token.new(kind: :minus, lexeme: "-", line: start_line, column: start_column)
+        end
       when "*"
-        Token.new(kind: :asterisk, lexeme: "*", line: start_line, column: start_column)
+        if peek == "="
+          advance
+          Token.new(kind: :asterisk_equals, lexeme: "*=", line: start_line, column: start_column)
+        else
+          Token.new(kind: :asterisk, lexeme: "*", line: start_line, column: start_column)
+        end
       when "/"
         if peek == "/"
           scan_line_comment(start_line, start_column)
+        elsif peek == "="
+          advance
+          Token.new(kind: :slash_equals, lexeme: "/=", line: start_line, column: start_column)
         else
           Token.new(kind: :slash, lexeme: "/", line: start_line, column: start_column)
         end
+      when "!"
+        if peek == "="
+          advance
+          Token.new(kind: :exclamation_equals, lexeme: "!=", line: start_line, column: start_column)
+        else
+          Token.new(kind: :exclamation, lexeme: "!", line: start_line, column: start_column)
+        end
+      when "~"
+        Token.new(kind: :tilde, lexeme: "~", line: start_line, column: start_column)
+      when "&"
+        if peek == "&"
+          advance
+          Token.new(kind: :ampersand_ampersand, lexeme: "&&", line: start_line, column: start_column)
+        else
+          Token.new(kind: :ampersand, lexeme: "&", line: start_line, column: start_column)
+        end
+      when "|"
+        if peek == "|"
+          advance
+          Token.new(kind: :pipe_pipe, lexeme: "||", line: start_line, column: start_column)
+        else
+          Token.new(kind: :pipe, lexeme: "|", line: start_line, column: start_column)
+        end
+      when "^"
+        Token.new(kind: :caret, lexeme: "^", line: start_line, column: start_column)
+      when "<"
+        if peek == "<"
+          advance
+          Token.new(kind: :less_less, lexeme: "<<", line: start_line, column: start_column)
+        elsif peek == "="
+          advance
+          Token.new(kind: :less_equals, lexeme: "<=", line: start_line, column: start_column)
+        else
+          Token.new(kind: :less, lexeme: "<", line: start_line, column: start_column)
+        end
+      when ">"
+        if peek == ">"
+          advance
+          Token.new(kind: :greater_greater, lexeme: ">>", line: start_line, column: start_column)
+        elsif peek == "="
+          advance
+          Token.new(kind: :greater_equals, lexeme: ">=", line: start_line, column: start_column)
+        else
+          Token.new(kind: :greater, lexeme: ">", line: start_line, column: start_column)
+        end
+      when ","
+        Token.new(kind: :comma, lexeme: ",", line: start_line, column: start_column)
+      when "."
+        Token.new(kind: :dot, lexeme: ".", line: start_line, column: start_column)
+      when ":"
+        if peek == ":"
+          advance
+          Token.new(kind: :colon_colon, lexeme: "::", line: start_line, column: start_column)
+        else
+          Token.new(kind: :colon, lexeme: ":", line: start_line, column: start_column)
+        end
+      when "?"
+        Token.new(kind: :question, lexeme: "?", line: start_line, column: start_column)
       when "("
         Token.new(kind: :lparen, lexeme: "(", line: start_line, column: start_column)
       when ")"
@@ -92,6 +182,10 @@ module CppAst
         Token.new(kind: :lbrace, lexeme: "{", line: start_line, column: start_column)
       when "}"
         Token.new(kind: :rbrace, lexeme: "}", line: start_line, column: start_column)
+      when "["
+        Token.new(kind: :lbracket, lexeme: "[", line: start_line, column: start_column)
+      when "]"
+        Token.new(kind: :rbracket, lexeme: "]", line: start_line, column: start_column)
       else
         raise "Unexpected character: #{char.inspect} at #{start_line}:#{start_column}"
       end
