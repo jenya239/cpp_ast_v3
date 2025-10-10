@@ -39,6 +39,7 @@ module CppAst
       def parse_variable_type
         type = "".dup
         template_depth = 0
+        last_trivia = ""
         
         loop do
           break unless current_token.kind.to_s.start_with?("keyword_") || 
@@ -56,6 +57,10 @@ module CppAst
           trivia = current_token.trailing_trivia
           advance_raw
           
+          # Always preserve spaces after keywords and identifiers in type
+          type << trivia
+          last_trivia = trivia
+          
           next if was_colon_colon && (current_token.kind == :identifier || 
                                       current_token.kind.to_s.start_with?("keyword_"))
           
@@ -68,14 +73,12 @@ module CppAst
             @position = saved_pos
             
             if [:equals, :semicolon, :comma, :lparen, :lbracket, :lbrace].include?(next_kind)
-              type << trivia
               break
             end
           end
-          
-          type << trivia
         end
         
+        # Extract final trailing whitespace as type_suffix
         type_match = type.match(/^(.*?)(\s*)$/)
         type_match ? [type_match[1], type_match[2]] : [type, ""]
       end
@@ -85,6 +88,8 @@ module CppAst
         
         loop do
           break if at_end? || [:semicolon, :comma].include?(current_token.kind)
+          
+          decl_text << current_leading_trivia
           
           case current_token.kind
           when :equals
@@ -113,6 +118,8 @@ module CppAst
         loop do
           break if at_end? || [:semicolon, :comma].include?(current_token.kind)
           
+          decl_text << current_leading_trivia
+          
           if current_token.kind == :lparen
             decl_text << current_token.lexeme << current_token.trailing_trivia
             advance_raw
@@ -132,6 +139,7 @@ module CppAst
         depth = 1
         loop do
           break if at_end?
+          text << current_leading_trivia
           depth += 1 if current_token.kind == open_kind
           depth -= 1 if current_token.kind == close_kind
           text << current_token.lexeme << current_token.trailing_trivia
@@ -144,7 +152,8 @@ module CppAst
         type_keywords = [:keyword_int, :keyword_float, :keyword_double, :keyword_char, 
                         :keyword_bool, :keyword_void, :keyword_auto,
                         :keyword_const, :keyword_static, :keyword_extern,
-                        :keyword_unsigned, :keyword_signed, :keyword_long, :keyword_short]
+                        :keyword_unsigned, :keyword_signed, :keyword_long, :keyword_short,
+                        :keyword_constexpr, :keyword_inline, :keyword_volatile, :keyword_register]
         
         return true if type_keywords.include?(current_token.kind)
         
