@@ -1,56 +1,78 @@
-#pragma once
-
-#include "demo_scene.hpp"
-#include <vector>
-#include <map>
-#include <functional>
-#include <memory>
-#include <optional>
+#include "demos/demo_manager.hpp"
+#include <algorithm>
+#include <iostream>
 
 namespace gtkgl::demos {
 
-/**
- * Registry and factory for demo scenes
- * Uses modern C++20 features: concepts, ranges, std::optional
- */
-class DemoManager {
-public:
-    using FactoryFunc = std::function<DemoScenePtr()>;
-    using ChangeCallback = std::function<void(const DemoScene*)>;
+void DemoManager::register_demo(const std::string& id, FactoryFunc factory) {
+    factories_[id] = std::move(factory);
+}
 
-    DemoManager() = default;
-
-    // Factory registration
-    void register_demo(const std::string& id, FactoryFunc factory);
-
-    // Scene management
-    bool activate_demo(const std::string& id);
-    DemoScene* current_demo() const { return current_demo_.get(); }
-
-    // Query available demos
-    std::vector<std::string> demo_ids() const;
-    size_t demo_count() const { return factories_.size(); }
-
-    // Callbacks
-    void set_change_callback(ChangeCallback callback) {
-        change_callback_ = std::move(callback);
+bool DemoManager::activate_demo(const std::string& id) {
+    auto it = factories_.find(id);
+    if (it == factories_.end()) {
+        std::cerr << "Demo '" << id << "' not found" << std::endl;
+        return false;
     }
 
-    // Get demo metadata without activating
-    struct DemoInfo {
-        std::string id;
-        std::string name;
-        std::string description;
-        std::string category;
+    // Create new demo instance
+    current_demo_ = it->second();
+
+    // Notify callback
+    if (change_callback_) {
+        change_callback_(current_demo_.get());
+    }
+
+    return true;
+}
+
+std::vector<std::string> DemoManager::demo_ids() const {
+    std::vector<std::string> ids;
+    ids.reserve(factories_.size());
+
+    for (const auto& [id, _] : factories_) {
+        ids.push_back(id);
+    }
+
+    return ids;
+}
+
+std::optional<DemoManager::DemoInfo> DemoManager::get_demo_info(const std::string& id) const {
+    auto it = factories_.find(id);
+    if (it == factories_.end()) {
+        return std::nullopt;
+    }
+
+    // Create temporary instance to get metadata
+    auto temp_demo = it->second();
+
+    return DemoInfo{
+        .id = id,
+        .name = temp_demo->name(),
+        .description = temp_demo->description(),
+        .category = temp_demo->category()
     };
+}
 
-    std::optional<DemoInfo> get_demo_info(const std::string& id) const;
-    std::vector<DemoInfo> all_demos() const;
+std::vector<DemoManager::DemoInfo> DemoManager::all_demos() const {
+    std::vector<DemoInfo> infos;
+    infos.reserve(factories_.size());
 
-private:
-    std::map<std::string, FactoryFunc> factories_;
-    DemoScenePtr current_demo_;
-    ChangeCallback change_callback_;
-};
+    for (const auto& [id, _] : factories_) {
+        if (auto info = get_demo_info(id)) {
+            infos.push_back(*info);
+        }
+    }
+
+    // Sort by category, then by name
+    std::sort(infos.begin(), infos.end(), [](const auto& a, const auto& b) {
+        if (a.category != b.category) {
+            return a.category < b.category;
+        }
+        return a.name < b.name;
+    });
+
+    return infos;
+}
 
 } // namespace gtkgl::demos

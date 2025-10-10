@@ -6,8 +6,7 @@
 #include <epoxy/gl.h>
 #include <memory>
 
-default;
-    override = default;
+override = default;
 
     // Scene lifecycle
     void on_realize(GtkGLArea* area) override;

@@ -29,7 +29,11 @@ private:
     void create_geometry();
     void update_projection();
 
-    operator*(const Mat4& other) const;
+    identity();
+        perspective(float fov, float aspect, float near, float far);
+        rotation_xyz(float x, float y, float z);
+        translation(float x, float y, float z);
+        operator*(const Mat4& other) const;
     };
 
     widgets::LogView* log_view_ = nullptr;

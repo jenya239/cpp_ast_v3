@@ -71,7 +71,7 @@ module CppAst
         
         loop do
           # Collect trivia BEFORE operator
-          operator_prefix = left_trailing + collect_trivia_string
+          operator_prefix = left_trailing + current_leading_trivia
           
           # Check for ternary operator (special case)
           if current_token&.kind == :question && 2 >= min_precedence
@@ -85,10 +85,8 @@ module CppAst
           
           # Consume operator
           operator = current_token.lexeme
+          operator_suffix = current_token.trailing_trivia  # Get trailing BEFORE advance
           advance_raw
-          
-          # Collect trivia AFTER operator
-          operator_suffix = collect_trivia_string
           
           # Parse right side with appropriate precedence
           # For right-associative operators, use same precedence
@@ -115,22 +113,18 @@ module CppAst
       # Returns (TernaryExpression, trailing) tuple
       def parse_ternary(condition, question_prefix)
         # Consume '?'
+        question_suffix = current_token.trailing_trivia
         expect(:question)
-        
-        # Collect trivia after '?'
-        question_suffix = collect_trivia_string
         
         # Parse true expression
         true_expr, true_trailing = parse_expression
         
         # Collect trivia before ':'
-        colon_prefix = true_trailing + collect_trivia_string
+        colon_prefix = true_trailing + current_leading_trivia
         
         # Consume ':'
+        colon_suffix = current_token.trailing_trivia
         expect(:colon)
-        
-        # Collect trivia after ':'
-        colon_suffix = collect_trivia_string
         
         # Parse false expression (with ternary precedence for right-associativity)
         false_expr, false_trailing = parse_binary_expression(2)
@@ -156,10 +150,8 @@ module CppAst
         case current_token.kind
         when :exclamation, :tilde, :minus, :plus, :asterisk, :ampersand, :plus_plus, :minus_minus
           operator = current_token.lexeme
+          operator_suffix = current_token.trailing_trivia
           advance_raw
-          
-          # Collect trivia after operator
-          operator_suffix = collect_trivia_string
           
           # Parse operand (recursively handle chained unary operators)
           operand, operand_trailing = parse_unary
@@ -188,11 +180,12 @@ module CppAst
         # Check for postfix operators
         loop do
           # Collect trivia before potential postfix operator
-          operator_prefix = trailing + collect_trivia_string
+          operator_prefix = trailing + current_leading_trivia
           
           case current_token.kind
           when :plus_plus, :minus_minus
             operator = current_token.lexeme
+            trailing = current_token.trailing_trivia
             advance_raw
             
             # Postfix operators don't have suffix trivia
@@ -203,9 +196,6 @@ module CppAst
               prefix: false
             )
             
-            # Collect trailing after postfix operator
-            trailing = collect_trivia_string
-            
           when :lparen
             # Function call
             expr, trailing = parse_function_call(expr, operator_prefix)
@@ -213,10 +203,8 @@ module CppAst
           when :dot, :arrow, :colon_colon
             # Member access
             operator = current_token.lexeme
+            operator_suffix = current_token.trailing_trivia
             advance_raw
-            
-            # Collect trivia after operator
-            operator_suffix = collect_trivia_string
             
             # Parse member name (identifier)
             unless current_token.kind == :identifier
@@ -224,6 +212,7 @@ module CppAst
             end
             
             member = Nodes::Identifier.new(name: current_token.lexeme)
+            trailing = current_token.trailing_trivia
             advance_raw
             
             # Create member access expression
@@ -234,9 +223,6 @@ module CppAst
               operator_prefix: operator_prefix,
               operator_suffix: operator_suffix
             )
-            
-            # Collect trailing
-            trailing = collect_trivia_string
             
           when :lbracket
             # Array subscript
@@ -261,19 +247,17 @@ module CppAst
         expect(:lbracket)
         
         # Collect trivia after '['
-        lbracket_suffix = collect_trivia_string
+        lbracket_suffix = current_leading_trivia
         
         # Parse index expression
         index, index_trailing = parse_expression
         
         # Collect trivia before ']'
-        rbracket_prefix = index_trailing + collect_trivia_string
+        rbracket_prefix = index_trailing + current_leading_trivia
         
         # Consume ']'
+        trailing = current_token.trailing_trivia
         expect(:rbracket)
-        
-        # Collect trailing after ']'
-        trailing = collect_trivia_string
         
         # Create array subscript expression
         expr = Nodes::ArraySubscriptExpression.new(
@@ -294,7 +278,7 @@ module CppAst
         expect(:lbrace)
         
         # Collect trivia after '{'
-        lbrace_suffix = collect_trivia_string
+        lbrace_suffix = current_leading_trivia
         
         # Parse arguments (same as function call)
         arguments = []
@@ -309,12 +293,12 @@ module CppAst
             arguments << arg
             
             # Collect trivia before comma or '}'
-            separator_prefix = arg_trailing + collect_trivia_string
+            separator_prefix = arg_trailing + current_leading_trivia
             
             # Check for comma (more arguments) or '}' (done)
             if current_token.kind == :comma
+              separator_suffix = current_token.trailing_trivia
               advance_raw
-              separator_suffix = collect_trivia_string
               argument_separators << "#{separator_prefix},#{separator_suffix}"
             else
               # No more arguments, the separator_prefix becomes rbrace_prefix
@@ -325,10 +309,8 @@ module CppAst
         end
         
         # Consume '}'
+        trailing = current_token.trailing_trivia
         expect(:rbrace)
-        
-        # Collect trailing after '}'
-        trailing = collect_trivia_string
         
         # Create function call expression (reusing for brace init)
         # Store lbrace/rbrace info in lparen/rparen fields
@@ -348,10 +330,8 @@ module CppAst
       # Returns (FunctionCallExpression, trailing) tuple
       def parse_function_call(callee, lparen_prefix)
         # Consume '('
+        lparen_suffix = current_token.trailing_trivia
         expect(:lparen)
-        
-        # Collect trivia after '('
-        lparen_suffix = collect_trivia_string
         
         # Parse arguments
         arguments = []
@@ -366,13 +346,18 @@ module CppAst
             arguments << arg
             
             # Collect trivia before comma or ')'
-            separator_prefix = arg_trailing + collect_trivia_string
+            separator_prefix = arg_trailing + current_leading_trivia
             
             # Check for comma (more arguments) or ')' (done)
             if current_token.kind == :comma
+              separator_suffix = current_token.trailing_trivia
               advance_raw
-              separator_suffix = collect_trivia_string
-              argument_separators << "#{separator_prefix},#{separator_suffix}"
+              # Include leading trivia of next argument (for multiline formatting)
+              next_arg_leading = current_leading_trivia
+              argument_separators << "#{separator_prefix},#{separator_suffix}#{next_arg_leading}"
+              
+              # Clear leading_trivia to avoid duplication in arg.to_source
+              current_token.leading_trivia = ""
             else
               # No more arguments, the separator_prefix becomes rparen_prefix
               rparen_prefix = separator_prefix
@@ -382,10 +367,8 @@ module CppAst
         end
         
         # Consume ')'
+        trailing = current_token.trailing_trivia
         expect(:rparen)
-        
-        # Collect trailing after ')'
-        trailing = collect_trivia_string
         
         # Create function call expression
         expr = Nodes::FunctionCallExpression.new(
@@ -405,32 +388,32 @@ module CppAst
         case current_token.kind
         when :identifier
           name = current_token.lexeme
+          trailing = current_token.trailing_trivia
           advance_raw
-          trailing = collect_trivia_string
           [Nodes::Identifier.new(name: name), trailing]
           
         when :number
           value = current_token.lexeme
+          trailing = current_token.trailing_trivia
           advance_raw
-          trailing = collect_trivia_string
           [Nodes::NumberLiteral.new(value: value), trailing]
           
         when :string
           value = current_token.lexeme
+          trailing = current_token.trailing_trivia
           advance_raw
-          trailing = collect_trivia_string
           [Nodes::StringLiteral.new(value: value), trailing]
           
         when :char
           value = current_token.lexeme
+          trailing = current_token.trailing_trivia
           advance_raw
-          trailing = collect_trivia_string
           [Nodes::CharLiteral.new(value: value), trailing]
           
         when :keyword_true, :keyword_false, :keyword_nullptr
           value = current_token.lexeme
+          trailing = current_token.trailing_trivia
           advance_raw
-          trailing = collect_trivia_string
           [Nodes::Identifier.new(name: value), trailing]  # For now, treat as identifiers
           
         when :lparen
@@ -449,22 +432,18 @@ module CppAst
       # Returns (ParenthesizedExpression, trailing) tuple
       def parse_parenthesized_expression
         # Consume '('
+        open_paren_suffix = current_token.trailing_trivia
         expect(:lparen)
-        
-        # Collect trivia after '('
-        open_paren_suffix = collect_trivia_string
         
         # Parse inner expression
         inner_expr, inner_trailing = parse_expression
         
         # Collect trivia before ')'
-        close_paren_prefix = inner_trailing + collect_trivia_string
+        close_paren_prefix = inner_trailing + current_leading_trivia
         
         # Consume ')'
+        trailing = current_token.trailing_trivia
         expect(:rparen)
-        
-        # Collect trailing after ')'
-        trailing = collect_trivia_string
         
         # Create parenthesized expression node
         expr = Nodes::ParenthesizedExpression.new(
@@ -490,9 +469,8 @@ module CppAst
         end
         
         # Consume ']'
+        capture_suffix = current_token.trailing_trivia
         expect(:rbracket)
-        
-        capture_suffix = collect_trivia_string
         
         # Consume '('
         expect(:lparen)
@@ -513,9 +491,8 @@ module CppAst
         end
         
         # Consume ')'
+        params_suffix = current_token.trailing_trivia
         expect(:rparen)
-        
-        params_suffix = collect_trivia_string
         
         # Optional: mutable, constexpr, etc.
         specifiers_text = "".dup
@@ -546,7 +523,7 @@ module CppAst
           expect(:rbrace)
         end
         
-        trailing = collect_trivia_string
+        trailing = current_leading_trivia
         
         expr = Nodes::LambdaExpression.new(
           capture: capture_text,
@@ -562,4 +539,3 @@ module CppAst
     end
   end
 end
-

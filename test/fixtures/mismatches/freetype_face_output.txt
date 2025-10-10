@@ -8,10 +8,9 @@
 #include <string>
 #include <expected>
 
-const FreeTypeLibrary&) = delete;
-    FreeTypeLibrary& operator =(const FreeTypeLibrary&) = delete;
-    ) noexcept;
-    FreeTypeLibrary& operator =(FreeTypeLibrary&&) noexcept;
+& operator=(const FreeTypeLibrary&) = delete;
+    FreeTypeLibrary(FreeTypeLibrary&&) noexcept;
+    & operator=(FreeTypeLibrary&&) noexcept;
 
     FT_Library handle() const { return library_; }
 
@@ -21,10 +20,9 @@ private:
 };
 
 // RAII wrapper для FT_Face
-const FreeTypeFace&) = delete;
-    FreeTypeFace& operator =(const FreeTypeFace&) = delete;
-    ) noexcept;
-    FreeTypeFace& operator =(FreeTypeFace&&) noexcept;
+& operator=(const FreeTypeFace&) = delete;
+    FreeTypeFace(FreeTypeFace&&) noexcept;
+    & operator=(FreeTypeFace&&) noexcept;
 
     // Установить размер шрифта в пикселях
     std::expected<void, FreeTypeError> set_pixel_size(uint16_t size_px);
@@ -56,8 +54,7 @@ private:
 };
 
 // Утилиты для конвертации FreeType метрик
-inline float fixed_to_float(FT_Pos value) {
-        return static_cast<float>(value) / 64.0f;
+float>(value) / 64.0f;
     }
 
     // Извлечь метрики из FT_GlyphSlot

@@ -76,12 +76,37 @@ module CppAst
     def tokenize
       tokens = []
       
+      eof_leading_accumulator = "".dup
+      
       until at_end?
-        token = scan_token
-        tokens << token if token
+        # Collect leading trivia
+        leading = collect_trivia_as_string
+        
+        # Scan non-trivia token
+        token = scan_non_trivia_token
+        
+        if token
+          # Token found - use accumulated + current leading
+          token.leading_trivia = eof_leading_accumulator + leading
+          eof_leading_accumulator = "".dup
+          
+          # Collect trailing trivia (until newline or next non-trivia)
+          trailing = collect_trailing_trivia
+          token.trailing_trivia = trailing
+          
+          tokens << token
+        else
+          # No token - accumulate leading for EOF
+          eof_leading_accumulator << leading
+        end
       end
       
-      tokens << Token.new(kind: :eof, lexeme: "", line: @line, column: @column)
+      # EOF token gets accumulated trivia + any remaining characters
+      until at_end?
+        eof_leading_accumulator << current_char
+        advance
+      end
+      tokens << Token.new(kind: :eof, lexeme: "", line: @line, column: @column, leading_trivia: eof_leading_accumulator)
       tokens
     end
     
@@ -91,41 +116,141 @@ module CppAst
       @position >= @source.length
     end
     
-    def current_char
-      return nil if at_end?
-      @source[@position]
-    end
-    
-    def peek(offset = 0)
-      pos = @position + offset
-      return nil if pos >= @source.length
-      @source[pos]
-    end
-    
-    def advance
-      char = current_char
-      @position += 1
+    # Collect trivia as string (whitespace, comments, newlines, preprocessor)
+    def collect_trivia_as_string
+      result = "".dup
       
-      if char == "\n"
-        @line += 1
-        @column = 0
-      else
-        @column += 1
+      while trivia_ahead?
+        result << scan_trivia_token
       end
       
-      char
+      result
     end
     
-    def scan_token
+    # Collect trailing trivia until newline (inclusive) or next non-trivia
+    def collect_trailing_trivia
+      result = "".dup
+      
+      # Collect whitespace (not newline)
+      while current_char && current_char.match?(/[ \t]/)
+        result << advance
+      end
+      
+      # Check for inline comment
+      if current_char == '/' && peek(1) == '/'
+        # Line comment - collect until newline
+        while current_char && current_char != "\n"
+          result << advance
+        end
+        # Include the newline
+        if current_char == "\n"
+          result << advance
+        end
+      elsif current_char == '/' && peek(1) == '*'
+        # Block comment
+        result << advance  # '/'
+        result << advance  # '*'
+        
+        loop do
+          break if at_end?
+          
+          char = advance
+          result << char
+          
+          if char == '*' && current_char == '/'
+            result << advance
+            break
+          end
+        end
+        
+        # Collect whitespace after block comment (not newline)
+        while current_char && current_char.match?(/[ \t]/)
+          result << advance
+        end
+        
+        # Include newline if present
+        if current_char == "\n"
+          result << advance
+        end
+        # Stop here even if no newline (don't consume more tokens)
+      elsif current_char == "\n"
+        # Just newline
+        result << advance
+      end
+      
+      result
+    end
+    
+    # Check if trivia token ahead (whitespace, comment, newline, preprocessor, attribute)
+    def trivia_ahead?
+      return false if at_end?
+      
+      char = current_char
+      
+      # Whitespace or newline
+      return true if char.match?(/\s/)
+      
+      # Comment
+      return true if char == '/' && (peek(1) == '/' || peek(1) == '*')
+      
+      # Preprocessor
+      return true if char == '#'
+      
+      # Attribute [[...]]
+      return true if char == '[' && peek(1) == '['
+      
+      false
+    end
+    
+    # Scan trivia token and return its lexeme (doesn't add to token list)
+    def scan_trivia_token
+      start_line = @line
+      start_column = @column
+      char = current_char
+      
+      case char
+      when "\n"
+        advance
+        "\n"
+      when /\s/
+        lexeme = advance.dup
+        while current_char&.match?(/\s/) && current_char != "\n"
+          lexeme << advance
+        end
+        lexeme
+      when "/"
+        if peek(1) == "/"
+          scan_line_comment_lexeme
+        elsif peek(1) == "*"
+          scan_block_comment_lexeme
+        else
+          raise "Unexpected /"
+        end
+      when "#"
+        scan_preprocessor_lexeme
+      when "["
+        if peek(1) == "["
+          scan_attribute_lexeme
+        else
+          raise "Unexpected ["
+        end
+      else
+        raise "Not a trivia token: #{char.inspect}"
+      end
+    end
+    
+    # Scan non-trivia token (like old scan_token but without trivia)
+    def scan_non_trivia_token
+      return nil if at_end?
+      
+      # Skip any trivia - should not happen as we collect it separately
+      return nil if trivia_ahead?
+      
       start_line = @line
       start_column = @column
       char = advance
       
       case char
-      when "\n"
-        Token.new(kind: :newline, lexeme: "\n", line: start_line, column: start_column)
-      when /\s/
-        scan_whitespace(char, start_line, start_column)
       when /[a-zA-Z_]/
         scan_identifier(char, start_line, start_column)
       when /[0-9]/
@@ -170,11 +295,7 @@ module CppAst
           Token.new(kind: :asterisk, lexeme: "*", line: start_line, column: start_column)
         end
       when "/"
-        if peek == "/"
-          scan_line_comment(start_line, start_column)
-        elsif peek == "*"
-          scan_block_comment(start_line, start_column)
-        elsif peek == "="
+        if peek == "="
           advance
           Token.new(kind: :slash_equals, lexeme: "/=", line: start_line, column: start_column)
         else
@@ -235,7 +356,6 @@ module CppAst
       when ","
         Token.new(kind: :comma, lexeme: ",", line: start_line, column: start_column)
       when "."
-        # Check if it's a float starting with dot (.5)
         if peek&.match?(/[0-9]/)
           scan_number(char, start_line, start_column)
         else
@@ -259,33 +379,128 @@ module CppAst
       when "}"
         Token.new(kind: :rbrace, lexeme: "}", line: start_line, column: start_column)
       when "["
-        # Check for attribute [[...]]
-        if peek == "["
-          scan_attribute(start_line, start_column)
-        else
-          Token.new(kind: :lbracket, lexeme: "[", line: start_line, column: start_column)
-        end
+        Token.new(kind: :lbracket, lexeme: "[", line: start_line, column: start_column)
       when "]"
         Token.new(kind: :rbracket, lexeme: "]", line: start_line, column: start_column)
       when '"'
         scan_string_literal(start_line, start_column)
       when "'"
         scan_char_literal(start_line, start_column)
-      when "#"
-        scan_preprocessor(start_line, start_column)
       else
         raise "Unexpected character: #{char.inspect} at #{start_line}:#{start_column}"
       end
     end
     
-    def scan_whitespace(first_char, line, column)
-      lexeme = first_char
+    # Helper to scan line comment lexeme only
+    def scan_line_comment_lexeme
+      lexeme = "//".dup
+      advance  # skip first /
+      advance  # skip second /
       
-      while current_char&.match?(/\s/) && current_char != "\n"
+      while current_char && current_char != "\n"
         lexeme << advance
       end
       
-      Token.new(kind: :whitespace, lexeme: lexeme, line: line, column: column)
+      lexeme
+    end
+    
+    # Helper to scan block comment lexeme only
+    def scan_block_comment_lexeme
+      lexeme = "/*".dup
+      advance  # skip /
+      advance  # skip *
+      
+      loop do
+        break if at_end?
+        
+        char = advance
+        lexeme << char
+        
+        if char == '*' && current_char == '/'
+          lexeme << advance
+          break
+        end
+      end
+      
+      lexeme
+    end
+    
+    # Helper to scan preprocessor lexeme only
+    def scan_preprocessor_lexeme
+      lexeme = '#'.dup
+      advance  # skip #
+      
+      loop do
+        break if at_end?
+        
+        char = current_char
+        
+        if char == "\n"
+          if @position > 0 && @source[@position - 1] == '\\'
+            lexeme << advance
+          else
+            break
+          end
+        else
+          lexeme << advance
+        end
+      end
+      
+      lexeme
+    end
+    
+    # Helper to scan attribute lexeme only
+    def scan_attribute_lexeme
+      lexeme = "[[".dup
+      advance  # skip first [
+      advance  # skip second [
+      
+      depth = 1
+      loop do
+        break if at_end?
+        
+        char = current_char
+        
+        if char == "[" && peek == "["
+          depth += 1
+          lexeme << advance
+          lexeme << advance
+        elsif char == "]" && peek == "]"
+          depth -= 1
+          lexeme << advance
+          lexeme << advance
+          break if depth.zero?
+        else
+          lexeme << advance
+        end
+      end
+      
+      lexeme
+    end
+    
+    def current_char
+      return nil if at_end?
+      @source[@position]
+    end
+    
+    def peek(offset = 0)
+      pos = @position + offset
+      return nil if pos >= @source.length
+      @source[pos]
+    end
+    
+    def advance
+      char = current_char
+      @position += 1
+      
+      if char == "\n"
+        @line += 1
+        @column = 0
+      else
+        @column += 1
+      end
+      
+      char
     end
     
     def scan_identifier(first_char, line, column)
@@ -408,38 +623,6 @@ module CppAst
       end
     end
     
-    def scan_line_comment(line, column)
-      advance  # skip second /
-      lexeme = "//".dup
-      
-      while current_char && current_char != "\n"
-        lexeme << advance
-      end
-      
-      Token.new(kind: :comment, lexeme: lexeme, line: line, column: column)
-    end
-    
-    def scan_block_comment(line, column)
-      advance  # skip *
-      lexeme = "/*".dup
-      
-      # Scan until */
-      loop do
-        break if at_end?
-        
-        char = advance
-        lexeme << char
-        
-        # Check for end of comment
-        if char == '*' && current_char == '/'
-          lexeme << advance
-          break
-        end
-      end
-      
-      Token.new(kind: :comment, lexeme: lexeme, line: line, column: column)
-    end
-    
     def scan_string_literal(line, column)
       lexeme = '"'.dup
       
@@ -527,58 +710,6 @@ module CppAst
       end
       
       Token.new(kind: :char, lexeme: lexeme, line: line, column: column)
-    end
-    
-    def scan_preprocessor(line, column)
-      lexeme = '#'.dup
-      
-      # Scan until end of line, handling line continuations
-      loop do
-        break if at_end?
-        
-        char = current_char
-        
-        if char == "\n"
-          # Check for line continuation
-          if @position > 0 && @source[@position - 1] == '\\'
-            lexeme << advance
-          else
-            break
-          end
-        else
-          lexeme << advance
-        end
-      end
-      
-      Token.new(kind: :preprocessor, lexeme: lexeme, line: line, column: column)
-    end
-    
-    def scan_attribute(line, column)
-      lexeme = "[[".dup
-      advance  # skip second [
-      
-      # Scan until ]]
-      depth = 1
-      loop do
-        break if at_end?
-        
-        char = current_char
-        
-        if char == "[" && peek == "["
-          depth += 1
-          lexeme << advance
-          lexeme << advance
-        elsif char == "]" && peek == "]"
-          depth -= 1
-          lexeme << advance
-          lexeme << advance
-          break if depth.zero?
-        else
-          lexeme << advance
-        end
-      end
-      
-      Token.new(kind: :attribute, lexeme: lexeme, line: line, column: column)
     end
   end
 end

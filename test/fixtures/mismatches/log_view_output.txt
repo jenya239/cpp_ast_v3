@@ -4,12 +4,11 @@
 #include <string>
 #include <sstream>
 
-const LogView&) = delete;
-    LogView& operator =(const LogView&) = delete;
+& operator=(const LogView&) = delete;
 
     // Move semantics
-    noexcept;
-    LogView& operator =(LogView&& other) noexcept;
+    LogView(LogView&& other) noexcept;
+    & operator=(LogView&& other) noexcept;
 
     // Getters
     GtkWidget* widget() const noexcept { return frame_; }

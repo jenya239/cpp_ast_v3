@@ -14,7 +14,22 @@
 using namespace gtkgl;
 
 // Simple DemoManager for GTK4
-{id, name, description, category, factory};
+class DemoManagerGTK4 {
+public:
+    struct DemoInfo {
+        std::string id;
+        std::string name;
+        std::string description;
+        std::string category;
+        std::function<std::shared_ptr<demos::DemoScene>()> factory;
+    };
+
+    void register_demo(const std::string& id,
+                      const std::string& name,
+                      const std::string& description,
+                      const std::string& category,
+                      std::function<std::shared_ptr<demos::DemoScene>()> factory) {
+        demos_[id] = DemoInfo{id, name, description, category, factory};
     }
 
     bool activate_demo(const std::string& id) {
@@ -71,3 +86,161 @@ static bool g_need_demo_init = false;
 }
 
 // GL callbacks
+const char*>(glGetString(GL_VERSION))));
+    const char*>(glGetString(GL_RENDERER))));
+
+    g_gl_initialized = true;
+
+    // Initialize current demo
+    auto* demo = g_demo_manager.current_demo()) {
+        demo->on_realize(area);
+    }
+}
+
+auto* demo = g_demo_manager.current_demo()) {
+            demo->on_realize(area);
+            g_need_demo_init = false;
+        }
+    }
+
+    auto* demo = g_demo_manager.current_demo()) {
+        demo->on_render(area, context);
+    } else {
+        // Fallback: clear to dark background
+        glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+    }
+
+    return TRUE;
+}
+
+auto* demo = g_demo_manager.current_demo()) {
+        demo->on_resize(width, height);
+    }
+}
+
+// Demo selection callback
+;
+    }
+
+    const char* demo_id = (const char*)g_object_get_data(G_OBJECT(row), "demo-id");
+    ;
+    }
+
+    auto it = g_demo_manager.all_demos().find(demo_id);
+    if (it != g_demo_manager.all_demos().end()) {
+        log_message("🔄 Переключение на: " + it->second.name);
+    }
+
+    // Clean up old demo if GL is initialized
+    if (g_gl_initialized && g_demo_manager.current_demo()) {
+        gtk_gl_area_make_current(GTK_GL_AREA(g_gl_area));
+        g_demo_manager.current_demo()->on_unrealize(GTK_GL_AREA(g_gl_area));
+    }
+
+    // Activate new demo
+    if (g_demo_manager.activate_demo(demo_id)) {
+        g_need_demo_init = true;
+
+        // Update depth buffer setting based on demo category
+        auto it = g_demo_manager.all_demos().find(demo_id);
+        if (it != g_demo_manager.all_demos().end()) {
+            bool needs_depth = (it->second.category == "3D");
+            gtk_gl_area_set_has_depth_buffer(GTK_GL_AREA(g_gl_area), needs_depth);
+            log_message("📊 Depth buffer: " + std::string(needs_depth ? "включен" : "отключен"));
+        }
+
+        gtk_gl_area_queue_render(GTK_GL_AREA(g_gl_area));
+    }
+}
+
+// Create demo selector widget
+const auto& [id, info] : g_demo_manager.all_demos()) {
+        GtkWidget* row = gtk_list_box_row_new();
+        g_object_set_data_full(G_OBJECT(row), "demo-id", g_strdup(id.c_str()), g_free);
+
+        GtkWidget* box = gtk_box_new(GTK_ORIENTATION_VERTICAL, 5);
+        gtk_widget_set_margin_start(box, 10);
+        gtk_widget_set_margin_end(box, 10);
+        gtk_widget_set_margin_top(box, 8);
+        gtk_widget_set_margin_bottom(box, 8);
+
+        GtkWidget* name_label = gtk_label_new(info.name.c_str());
+        gtk_widget_set_halign(name_label, GTK_ALIGN_START);
+        gtk_widget_add_css_class(name_label, "title-4");
+
+        GtkWidget* desc_label = gtk_label_new(info.description.c_str());
+        gtk_widget_set_halign(desc_label, GTK_ALIGN_START);
+        gtk_label_set_wrap(GTK_LABEL(desc_label), TRUE);
+        gtk_label_set_max_width_chars(GTK_LABEL(desc_label), 30);
+        gtk_widget_add_css_class(desc_label, "dim-label");
+        gtk_widget_add_css_class(desc_label, "caption");
+
+        GtkWidget* category_label = gtk_label_new(info.category.c_str());
+        gtk_widget_set_halign(category_label, GTK_ALIGN_START);
+        gtk_widget_add_css_class(category_label, "accent");
+        gtk_widget_add_css_class(category_label, "caption");
+
+        gtk_box_append(GTK_BOX(box), name_label);
+        gtk_box_append(GTK_BOX(box), desc_label);
+        gtk_box_append(GTK_BOX(box), category_label);
+
+        gtk_list_box_row_set_child(GTK_LIST_BOX_ROW(row), box);
+        gtk_list_box_append(GTK_LIST_BOX(list_box), row);
+
+        index++;
+    }
+
+    gtk_scrolled_window_set_child(GTK_SCROLLED_WINDOW(scrolled), list_box);
+
+    return scrolled;
+}
+
+// Минимальное GTK4 приложение с OpenGL
+[](gpointer data) -> gboolean {
+        if (auto* demo = g_demo_manager.current_demo()) {
+            demo->update(0.016f);  // ~60 FPS
+        }
+        gtk_gl_area_queue_render(GTK_GL_AREA(data));
+        return G_SOURCE_CONTINUE;
+    }, gl_area);
+
+    // Activate first demo
+    [](gpointer) -> gboolean {
+        if (!g_demo_manager.all_demos().empty()) {
+            // Select first row
+            GtkListBoxRow* first_row = gtk_list_box_get_row_at_index(g_demo_list, 0);
+            if (first_row) {
+                gtk_list_box_select_row(g_demo_list, first_row);
+                on_demo_selected(g_demo_list, first_row, nullptr);
+            }
+        }
+        return FALSE;
+    }, nullptr);
+}
+
+[]() { return std::make_shared<demos::AnimatedTriangleDemoGTK4>(); }
+    );
+
+    []() { return std::make_shared<demos::RotatingCubeDemoGTK4>(); }
+    );
+
+    []() { return std::make_shared<demos::BuildingHouseDemoGTK4>(); }
+    );
+
+    []() { return std::make_shared<demos::TextRenderingDemoGTK4>(); }
+    );
+
+    // Создаем GTK4 приложение
+    GtkApplication* app = gtk_application_new(
+        "com.example.gtk4test",
+        G_APPLICATION_DEFAULT_FLAGS
+    );
+
+    g_signal_connect(app, "activate", G_CALLBACK(on_activate), nullptr);
+
+    int status = g_application_run(G_APPLICATION(app), argc, argv);
+    g_object_unref(app);
+
+    return status;
+}

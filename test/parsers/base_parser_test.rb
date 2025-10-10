@@ -14,8 +14,8 @@ class TestBaseParser < Minitest::Test
   end
   
   def test_peek_token
-    assert_equal :whitespace, @parser.peek_token.kind
-    assert_equal :identifier, @parser.peek_token(2).kind
+    assert_equal :identifier, @parser.peek_token.kind
+    assert_equal "bar", @parser.peek_token.lexeme
   end
   
   def test_at_end_false
@@ -31,32 +31,26 @@ class TestBaseParser < Minitest::Test
   
   def test_advance_raw
     @parser.advance_raw
-    assert_equal :whitespace, @parser.current_token.kind
-  end
-  
-  def test_collect_trivia_string
-    @parser.advance_raw  # move to whitespace
-    trivia = @parser.collect_trivia_string
-    
-    assert_equal " ", trivia
     assert_equal :identifier, @parser.current_token.kind
     assert_equal "bar", @parser.current_token.lexeme
   end
   
-  def test_collect_trivia_string_with_newline
-    lexer = CppAst::Lexer.new("foo\n  bar")
-    parser = CppAst::Parsers::BaseParser.new(lexer)
-    
-    parser.advance_raw  # skip "foo"
-    trivia = parser.collect_trivia_string
-    
-    assert_equal "\n  ", trivia
-    assert_equal "bar", parser.current_token.lexeme
+  def test_current_leading_trivia
+    assert_equal "", @parser.current_leading_trivia
+    @parser.advance_raw
+    # После advance, текущий токен "bar" не имеет leading_trivia, 
+    # так как пробел был в trailing_trivia предыдущего токена
+    assert_equal "", @parser.current_leading_trivia
+  end
+  
+  def test_current_trailing_trivia
+    assert_equal " ", @parser.current_trailing_trivia
   end
   
   def test_expect_token_success
     @parser.expect(:identifier)
-    assert_equal :whitespace, @parser.current_token.kind
+    assert_equal :identifier, @parser.current_token.kind
+    assert_equal "bar", @parser.current_token.lexeme
   end
   
   def test_expect_token_raises_on_mismatch
@@ -71,7 +65,8 @@ class TestBaseParser < Minitest::Test
     token = @parser.expect_identifier
     
     assert_equal "foo", token.lexeme
-    assert_equal :whitespace, @parser.current_token.kind
+    assert_equal :identifier, @parser.current_token.kind
+    assert_equal "bar", @parser.current_token.lexeme
   end
 end
 

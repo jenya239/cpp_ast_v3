@@ -5,12 +5,11 @@
 #include <functional>
 #include <memory>
 
-const GLAreaWidget&) = delete;
-    GLAreaWidget& operator =(const GLAreaWidget&) = delete;
+& operator=(const GLAreaWidget&) = delete;
 
     // Move semantics
-    noexcept;
-    GLAreaWidget& operator =(GLAreaWidget&& other) noexcept;
+    GLAreaWidget(GLAreaWidget&& other) noexcept;
+    & operator=(GLAreaWidget&& other) noexcept;
 
     // Getters
     GtkWidget* widget() const noexcept { return widget_; }

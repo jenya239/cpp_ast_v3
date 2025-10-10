@@ -6,18 +6,16 @@
 #include <string>
 #include <vector>
 
-default;
-    constexpr Vec2(float x_, float y_) : x(x_), y(y_) {}
+constexpr Vec2(float x_, float y_) : x(x_), y(y_) {}
 
     operator+(const Vec2& other) const { return {x + other.x, y + other.y}; }
     operator-(const Vec2& other) const { return {x - other.x, y - other.y}; }
     operator*(float s) const { return {x * s, y * s}; }
-    Vec2& operator +=(const Vec2& other) { x += other.x; y += other.y; return *this; }
+    & operator+=(const Vec2& other) { x += other.x; y += other.y; this; }
 };
 
 // Прямоугольник (позиция + размер)
-default;
-    constexpr Rect(float x_, float y_, float w_, float h_)
+constexpr Rect(float x_, float y_, float w_, float h_)
         : x(x_), y(y_), width(w_), height(h_) {}
 
     bool contains(float px, float py) const {
@@ -28,15 +26,14 @@ default;
 };
 
 // Цвет RGBA
-default;
-    constexpr Color(float r_, float g_, float b_, float a_ = 1.0f)
+constexpr Color(float r_, float g_, float b_, float a_ = 1.0f)
         : r(r_), g(g_), b(b_), a(a_) {}
 
-    static constexpr Color white() { return {1.0f, 1.0f, 1.0f, 1.0f}; }
-    static constexpr Color black() { return {0.0f, 0.0f, 0.0f, 1.0f}; }
-    static constexpr Color red()   { return {1.0f, 0.0f, 0.0f, 1.0f}; }
-    static constexpr Color green() { return {0.0f, 1.0f, 0.0f, 1.0f}; }
-    static constexpr Color blue()  { return {0.0f, 0.0f, 1.0f, 1.0f}; }
+    white() { return {1.0f, 1.0f, 1.0f, 1.0f}; }
+    black() { return {0.0f, 0.0f, 0.0f, 1.0f}; }
+    red()   { return {1.0f, 0.0f, 0.0f, 1.0f}; }
+    green() { return {0.0f, 1.0f, 0.0f, 1.0f}; }
+    blue()  { return {0.0f, 0.0f, 1.0f, 1.0f}; }
 };
 
 // Метрики глифа (в пикселях)
@@ -76,9 +73,72 @@ struct AtlasSlot {
 };
 
 // Ключ для кеша глифов
-namespace std {
-    template<>
-    struct hash<gtkgl::text::GlyphCacheKey> {
+struct GlyphCacheKey {
+    FontFaceID font_id {0};
+    GlyphIndex glyph_index {0};
+    uint16_t size_px {0};          // Размер в пикселях
+    RenderMode mode {RenderMode::BITMAP};
+
+    bool operator==(const GlyphCacheKey& other) const {
+        return font_id == other.font_id
+            && glyph_index == other.glyph_index
+            && size_px == other.size_px
+            && mode == other.mode;
+    }
+};
+
+// Закешированный глиф
+struct CachedGlyph {
+    GlyphCacheKey key;
+    GlyphMetrics metrics;
+    AtlasSlot atlas_slot;
+    uint64_t last_used_frame {0};  // Для LRU eviction
+
+    bool is_valid() const { return atlas_slot.is_valid(); }
+};
+
+// Shaped глиф (результат HarfBuzz shaping)
+struct ShapedGlyph {
+    GlyphIndex glyph_index;
+    Vec2 offset;                  // Offset from pen (из HarfBuzz)
+    Vec2 advance;                 // Advance для следующего глифа
+    uint32_t cluster;             // Cluster index (для биди/ligatures)
+};
+
+// Параметры шрифта
+struct FontStyle {
+    uint16_t size_px {16};
+    RenderMode render_mode {RenderMode::BITMAP};
+
+    // Автоматический выбор режима на основе размера
+    static RenderMode auto_mode(uint16_t size_px) {
+        return size_px >= 24 ? RenderMode::MSDF : RenderMode::BITMAP;
+    }
+};
+
+// Результат растеризации глифа
+struct RasterizedGlyph {
+    std::vector<uint8_t> bitmap;  // Данные растра
+    uint32_t width {0};
+    uint32_t height {0};
+    GlyphMetrics metrics;
+    AtlasFormat format {AtlasFormat::A8};
+};
+
+// Команда отрисовки одного глифа (для instanced rendering)
+struct DrawGlyph {
+    TextureID texture_id;         // OpenGL texture (не page_id!)
+    Rect position_rect;           // Позиция на экране (пиксели)
+    Rect uv_rect;                 // UV координаты [0..1]
+    Color color;
+    float px_range {4.0f};         // Для MSDF (distance field range)
+    RenderMode mode;
+};
+
+} // namespace gtkgl::text
+
+// Hash для GlyphCacheKey (для std::unordered_map)
+<gtkgl::text::GlyphCacheKey> {
         size_t operator()(const gtkgl::text::GlyphCacheKey& k) const noexcept {
             size_t h1 = std::hash<uint32_t>{}(k.font_id);
             size_t h2 = std::hash<uint32_t>{}(k.glyph_index);

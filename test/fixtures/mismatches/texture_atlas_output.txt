@@ -6,14 +6,9 @@
 #include <optional>
 #include <memory>
 
-width, uint32_t height, AtlasFormat format);
-    ~AtlasPage();
-
-    // Non-copyable, movable
-    const AtlasPage&) = delete;
-    AtlasPage& operator =(const AtlasPage&) = delete;
-    ) noexcept;
-    AtlasPage& operator =(AtlasPage&&) noexcept;
+& operator=(const AtlasPage&) = delete;
+    AtlasPage(AtlasPage&&) noexcept;
+    & operator=(AtlasPage&&) noexcept;
 
     // Попробовать выделить место для глифа
     std::optional<AtlasSlot> allocate(uint32_t width, uint32_t height);
@@ -39,10 +34,9 @@ private:
 };
 
 // Менеджер атласов (управляет несколькими страницами)
-const TextureAtlasManager&) = delete;
-    TextureAtlasManager& operator =(const TextureAtlasManager&) = delete;
-    ) noexcept;
-    TextureAtlasManager& operator =(TextureAtlasManager&&) noexcept;
+& operator=(const TextureAtlasManager&) = delete;
+    TextureAtlasManager(TextureAtlasManager&&) noexcept;
+    & operator=(TextureAtlasManager&&) noexcept;
 
     // Выделить место для глифа
     std::optional<AtlasSlot> allocate(AtlasFormat format,

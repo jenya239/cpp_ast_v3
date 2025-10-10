@@ -71,11 +71,9 @@ module CppAst
         expr, expr_trailing = parse_expression
         
         # Consume semicolon (with any trivia before it)
-        _semicolon_prefix = expr_trailing + collect_trivia_string
+        _semicolon_prefix = expr_trailing + current_leading_trivia
+        trailing = current_token.trailing_trivia
         expect(:semicolon)
-        
-        # Collect trailing after semicolon
-        trailing = collect_trivia_string
         
         # Create statement node
         stmt = Nodes::ExpressionStatement.new(
@@ -90,20 +88,16 @@ module CppAst
       # Returns (stmt, trailing) tuple
       def parse_return_statement(leading_trivia)
         # Consume 'return' keyword
+        keyword_suffix = current_token.trailing_trivia
         advance_raw  # skip 'return'
-        
-        # Collect trivia after 'return'
-        keyword_suffix = collect_trivia_string
         
         # Parse expression
         expr, expr_trailing = parse_expression
         
         # Consume semicolon (with any trivia before it)
-        _semicolon_prefix = expr_trailing + collect_trivia_string
+        _semicolon_prefix = expr_trailing + current_leading_trivia
+        trailing = current_token.trailing_trivia
         expect(:semicolon)
-        
-        # Collect trailing after semicolon
-        trailing = collect_trivia_string
         
         # Create statement node
         stmt = Nodes::ReturnStatement.new(
@@ -119,31 +113,26 @@ module CppAst
       # Returns (BlockStatement, trailing) tuple
       def parse_block_statement(leading_trivia)
         # Consume '{'
+        lbrace_suffix = current_token.trailing_trivia
         expect(:lbrace)
-        
-        # Collect trivia after '{'
-        lbrace_suffix = collect_trivia_string
         
         # Parse statements until '}'
         statements = []
         statement_trailings = []
         
-        stmt_leading = ""
         until current_token.kind == :rbrace || at_end?
+          stmt_leading = current_leading_trivia
           stmt, trailing = parse_statement(stmt_leading)
           statements << stmt
           statement_trailings << trailing
-          stmt_leading = ""
         end
         
         # Collect trivia before '}'
-        rbrace_prefix = collect_trivia_string
+        rbrace_prefix = current_leading_trivia
         
         # Consume '}'
+        trailing = current_token.trailing_trivia
         expect(:rbrace)
-        
-        # Collect trailing after '}'
-        trailing = collect_trivia_string
         
         stmt = Nodes::BlockStatement.new(
           leading_trivia: leading_trivia,
@@ -160,28 +149,22 @@ module CppAst
       # Returns (IfStatement, trailing) tuple
       def parse_if_statement(leading_trivia)
         # Consume 'if'
+        if_suffix = current_token.trailing_trivia
         expect(:keyword_if)
         
-        # Collect trivia after 'if'
-        if_suffix = collect_trivia_string
-        
         # Consume '('
+        lparen_suffix = current_token.trailing_trivia
         expect(:lparen)
-        
-        # Collect trivia after '('
-        lparen_suffix = collect_trivia_string
         
         # Parse condition
         condition, cond_trailing = parse_expression
         
         # Collect trivia before ')'
-        rparen_prefix = cond_trailing + collect_trivia_string
+        rparen_prefix = cond_trailing + current_leading_trivia
         
         # Consume ')'
+        then_leading = current_token.trailing_trivia
         expect(:rparen)
-        
-        # Collect trivia after ')' (before then statement)
-        then_leading = collect_trivia_string
         
         # Parse then statement
         then_stmt, then_trailing = parse_statement(then_leading)
@@ -191,13 +174,11 @@ module CppAst
         else_prefix = ""
         else_suffix = ""
         
-        potential_else_prefix = then_trailing + collect_trivia_string
+        potential_else_prefix = then_trailing + current_leading_trivia
         if current_token.kind == :keyword_else
           else_prefix = potential_else_prefix
+          else_suffix = current_token.trailing_trivia
           advance_raw  # consume 'else'
-          
-          # Collect trivia after 'else'
-          else_suffix = collect_trivia_string
           
           # Parse else statement
           else_stmt, then_trailing = parse_statement("")
@@ -225,28 +206,22 @@ module CppAst
       # Returns (WhileStatement, trailing) tuple
       def parse_while_statement(leading_trivia)
         # Consume 'while'
+        while_suffix = current_token.trailing_trivia
         expect(:keyword_while)
         
-        # Collect trivia after 'while'
-        while_suffix = collect_trivia_string
-        
         # Consume '('
+        lparen_suffix = current_token.trailing_trivia
         expect(:lparen)
-        
-        # Collect trivia after '('
-        lparen_suffix = collect_trivia_string
         
         # Parse condition
         condition, cond_trailing = parse_expression
         
         # Collect trivia before ')'
-        rparen_prefix = cond_trailing + collect_trivia_string
+        rparen_prefix = cond_trailing + current_leading_trivia
         
         # Consume ')'
+        body_leading = current_token.trailing_trivia
         expect(:rparen)
-        
-        # Collect trivia after ')' (before body)
-        body_leading = collect_trivia_string
         
         # Parse body
         body, trailing = parse_statement(body_leading)
@@ -267,46 +242,36 @@ module CppAst
       # Returns (DoWhileStatement, trailing) tuple
       def parse_do_while_statement(leading_trivia)
         # Consume 'do'
+        do_suffix = current_token.trailing_trivia
         expect(:keyword_do)
-        
-        # Collect trivia after 'do'
-        do_suffix = collect_trivia_string
         
         # Parse body
         body, body_trailing = parse_statement("")
         
         # Collect trivia before 'while'
-        while_prefix = body_trailing + collect_trivia_string
+        while_prefix = body_trailing + current_leading_trivia
         
         # Consume 'while'
+        while_suffix = current_token.trailing_trivia
         expect(:keyword_while)
         
-        # Collect trivia after 'while'
-        while_suffix = collect_trivia_string
-        
         # Consume '('
+        lparen_suffix = current_token.trailing_trivia
         expect(:lparen)
-        
-        # Collect trivia after '('
-        lparen_suffix = collect_trivia_string
         
         # Parse condition
         condition, cond_trailing = parse_expression
         
         # Collect trivia before ')'
-        rparen_prefix = cond_trailing + collect_trivia_string
+        rparen_prefix = cond_trailing + current_leading_trivia
         
         # Consume ')'
+        _semicolon_prefix = current_token.trailing_trivia
         expect(:rparen)
         
-        # Collect trivia before ';'
-        _semicolon_prefix = collect_trivia_string
-        
         # Consume ';'
+        trailing = current_token.trailing_trivia
         expect(:semicolon)
-        
-        # Collect trailing
-        trailing = collect_trivia_string
         
         stmt = Nodes::DoWhileStatement.new(
           leading_trivia: leading_trivia,
@@ -326,16 +291,12 @@ module CppAst
       # Returns (ForStatement, trailing) tuple
       def parse_for_statement(leading_trivia)
         # Consume 'for'
+        for_suffix = current_token.trailing_trivia
         expect(:keyword_for)
         
-        # Collect trivia after 'for'
-        for_suffix = collect_trivia_string
-        
         # Consume '('
+        lparen_suffix = current_token.trailing_trivia
         expect(:lparen)
-        
-        # Collect trivia after '('
-        lparen_suffix = collect_trivia_string
         
         # Parse init (can be empty)
         init = nil
@@ -345,13 +306,11 @@ module CppAst
         end
         
         # Collect trivia before first ';'
-        _semi1_prefix = init_trailing + collect_trivia_string
+        _semi1_prefix = init_trailing + current_leading_trivia
         
         # Consume first ';'
+        after_semi1 = current_token.trailing_trivia
         expect(:semicolon)
-        
-        # Collect trivia after first ';'
-        after_semi1 = collect_trivia_string
         
         # Parse condition (can be empty)
         condition = nil
@@ -361,27 +320,23 @@ module CppAst
         end
         
         # Collect trivia before second ';'
-        _semi2_prefix = condition_trailing + collect_trivia_string
+        _semi2_prefix = condition_trailing + current_leading_trivia
         
         # Consume second ';'
+        after_semi2 = current_token.trailing_trivia
         expect(:semicolon)
-        
-        # Collect trivia after second ';'
-        after_semi2 = collect_trivia_string
         
         # Parse increment (can be empty)
         increment = nil
         rparen_prefix = ""
         unless current_token.kind == :rparen
           increment, inc_trailing = parse_expression
-          rparen_prefix = inc_trailing + collect_trivia_string
+          rparen_prefix = inc_trailing + current_leading_trivia
         end
         
         # Consume ')'
+        body_leading = current_token.trailing_trivia
         expect(:rparen)
-        
-        # Collect trivia after ')' (before body)
-        body_leading = collect_trivia_string
         
         # Parse body
         body, trailing = parse_statement(body_leading)
@@ -406,41 +361,33 @@ module CppAst
       # Returns (SwitchStatement, trailing) tuple
       def parse_switch_statement(leading_trivia)
         # Consume 'switch'
+        switch_suffix = current_token.trailing_trivia
         expect(:keyword_switch)
         
-        # Collect trivia after 'switch'
-        switch_suffix = collect_trivia_string
-        
         # Consume '('
+        lparen_suffix = current_token.trailing_trivia
         expect(:lparen)
-        
-        # Collect trivia after '('
-        lparen_suffix = collect_trivia_string
         
         # Parse expression
         expression, expr_trailing = parse_expression
         
         # Collect trivia before ')'
-        rparen_prefix = expr_trailing + collect_trivia_string
+        rparen_prefix = expr_trailing + current_leading_trivia
         
         # Consume ')'
+        lbrace_prefix = current_token.trailing_trivia
         expect(:rparen)
         
-        # Collect trivia before '{' (space between ) and {)
-        lbrace_prefix = collect_trivia_string
-        
         # Consume '{'
+        lbrace_suffix = current_token.trailing_trivia
         expect(:lbrace)
-        
-        # Collect trivia after '{'
-        lbrace_suffix = collect_trivia_string
         
         # Parse case clauses
         cases = []
         case_leading = ""
         
         until current_token.kind == :rbrace || at_end?
-          case_leading += collect_trivia_string
+          case_leading += current_leading_trivia
           
           if current_token.kind == :keyword_case
             cases << parse_case_clause(case_leading)
@@ -456,13 +403,13 @@ module CppAst
         end
         
         # Collect trivia before '}'
-        rbrace_prefix = collect_trivia_string
+        rbrace_prefix = current_leading_trivia
         
         # Consume '}'
         expect(:rbrace)
         
         # Collect trailing
-        trailing = collect_trivia_string
+        trailing = current_leading_trivia
         
         stmt = Nodes::SwitchStatement.new(
           leading_trivia: leading_trivia,
@@ -482,22 +429,18 @@ module CppAst
       # Parse case clause: `case value: statements`
       def parse_case_clause(leading_trivia)
         # Consume 'case'
+        case_suffix = current_token.trailing_trivia
         expect(:keyword_case)
-        
-        # Collect trivia after 'case'
-        case_suffix = collect_trivia_string
         
         # Parse value
         value, value_trailing = parse_expression
         
         # Collect trivia before ':'
-        _colon_prefix = value_trailing + collect_trivia_string
+        _colon_prefix = value_trailing + current_leading_trivia
         
         # Consume ':'
+        colon_suffix = current_token.trailing_trivia
         expect(:colon)
-        
-        # Collect trivia after ':'
-        colon_suffix = collect_trivia_string
         
         # Parse statements until next case/default/rbrace
         statements = []
@@ -527,16 +470,12 @@ module CppAst
       # Parse default clause: `default: statements`
       def parse_default_clause(leading_trivia)
         # Consume 'default'
+        _colon_prefix = current_token.trailing_trivia
         expect(:keyword_default)
         
-        # Collect trivia before ':'
-        _colon_prefix = collect_trivia_string
-        
         # Consume ':'
+        colon_suffix = current_token.trailing_trivia
         expect(:colon)
-        
-        # Collect trivia after ':'
-        colon_suffix = collect_trivia_string
         
         # Parse statements until next case/default/rbrace
         statements = []
@@ -565,16 +504,12 @@ module CppAst
       # Returns (BreakStatement, trailing) tuple
       def parse_break_statement(leading_trivia)
         # Consume 'break'
+        _semicolon_prefix = current_token.trailing_trivia
         expect(:keyword_break)
         
-        # Collect trivia before ';'
-        _semicolon_prefix = collect_trivia_string
-        
         # Consume ';'
+        trailing = current_token.trailing_trivia
         expect(:semicolon)
-        
-        # Collect trailing
-        trailing = collect_trivia_string
         
         stmt = Nodes::BreakStatement.new(leading_trivia: leading_trivia)
         
@@ -585,16 +520,12 @@ module CppAst
       # Returns (ContinueStatement, trailing) tuple
       def parse_continue_statement(leading_trivia)
         # Consume 'continue'
+        _semicolon_prefix = current_token.trailing_trivia
         expect(:keyword_continue)
         
-        # Collect trivia before ';'
-        _semicolon_prefix = collect_trivia_string
-        
         # Consume ';'
+        trailing = current_token.trailing_trivia
         expect(:semicolon)
-        
-        # Collect trailing
-        trailing = collect_trivia_string
         
         stmt = Nodes::ContinueStatement.new(leading_trivia: leading_trivia)
         
@@ -605,10 +536,8 @@ module CppAst
       # Returns (NamespaceDeclaration, trailing) tuple
       def parse_namespace_declaration(leading_trivia)
         # Consume 'namespace'
+        namespace_suffix = current_token.trailing_trivia
         expect(:keyword_namespace)
-        
-        # Collect trivia after 'namespace'
-        namespace_suffix = collect_trivia_string
         
         # Check if anonymous namespace (no name)
         name = "".dup
@@ -618,10 +547,10 @@ module CppAst
           # Parse name (can be nested with ::)
           loop do
             name << current_token.lexeme
+            trivia_before_colon = current_token.trailing_trivia
             advance_raw
             
             # Check for ::
-            trivia_before_colon = collect_trivia_string
             if current_token.kind == :colon_colon
               name << trivia_before_colon << current_token.lexeme
               advance_raw
@@ -633,7 +562,7 @@ module CppAst
           end
           
           # Collect additional trivia after name
-          name_suffix = name_suffix + collect_trivia_string
+          name_suffix = name_suffix + current_leading_trivia
         end
         
         # Parse body (block statement)
@@ -671,15 +600,15 @@ module CppAst
         
         saved_pos = @position
         advance_raw
-        collect_trivia_string
+        current_leading_trivia
         
         # Skip :: for qualified names (std::vector)
         while current_token.kind == :colon_colon
           advance_raw
-          collect_trivia_string
+          current_leading_trivia
           if current_token.kind == :identifier
             advance_raw
-            collect_trivia_string
+            current_leading_trivia
           end
         end
         
@@ -697,7 +626,7 @@ module CppAst
             advance_raw
           end
           
-          collect_trivia_string
+          current_leading_trivia
         end
         
         # Check if followed by identifier (variable name) or * & (pointers/refs)
@@ -720,13 +649,13 @@ module CppAst
           # Skip explicit modifier if present
           if current_token.kind == :keyword_explicit
             advance_raw
-            collect_trivia_string
+            current_leading_trivia
           end
           
           # Check if identifier matches class name
           if current_token.kind == :identifier && current_token.lexeme == current_class_name
             advance_raw
-            collect_trivia_string
+            current_leading_trivia
             
             # Check for (
             if current_token.kind == :lparen
@@ -743,17 +672,17 @@ module CppAst
           saved_pos = @position
           class_name = current_token.lexeme
           advance_raw
-          collect_trivia_string
+          current_leading_trivia
           
           # Check for ::
           if current_token.kind == :colon_colon
             advance_raw
-            collect_trivia_string
+            current_leading_trivia
             
             # Check if next identifier matches class name
             if current_token.kind == :identifier && current_token.lexeme == class_name
               advance_raw
-              collect_trivia_string
+              current_leading_trivia
               
               # Check for (
               if current_token.kind == :lparen
@@ -774,7 +703,7 @@ module CppAst
                              :keyword_explicit, :keyword_constexpr, :keyword_friend]
         while modifier_keywords.include?(current_token.kind)
           advance_raw
-          collect_trivia_string
+          current_leading_trivia
         end
         
         # Don't treat class/struct/enum/namespace/using/template as return type
@@ -786,15 +715,15 @@ module CppAst
         
         # Try to scan: type name (
         advance_raw  # skip type
-        collect_trivia_string
+        current_leading_trivia
         
         # Skip :: for qualified names (std::vector)
         while current_token.kind == :colon_colon
           advance_raw
-          collect_trivia_string
+          current_leading_trivia
           if current_token.kind == :identifier
             advance_raw
-            collect_trivia_string
+            current_leading_trivia
           end
         end
         
@@ -812,7 +741,7 @@ module CppAst
             advance_raw
           end
           
-          collect_trivia_string
+          current_leading_trivia
         end
         
         # Check for operator overloading BEFORE skipping *&
@@ -831,14 +760,14 @@ module CppAst
           # Skip all * and &
           while [:asterisk, :ampersand].include?(current_token.kind)
             advance_raw
-            collect_trivia_string
+            current_leading_trivia
           end
           
           # Check for inline operator after *&: Buffer& operator=
           if current_token.kind == :keyword_operator
             # Skip 'operator' keyword
             advance_raw
-            collect_trivia_string
+            current_leading_trivia
             
             # Skip operator symbol(s)
             operator_symbols = [:plus, :minus, :asterisk, :slash, :percent, :equals,
@@ -849,20 +778,20 @@ module CppAst
                                :comma, :arrow, :arrow_asterisk]
             if operator_symbols.include?(current_token.kind)
               advance_raw
-              collect_trivia_string
+              current_leading_trivia
             elsif current_token.kind == :lparen
               # operator()
               advance_raw
               if current_token.kind == :rparen
                 advance_raw
-                collect_trivia_string
+                current_leading_trivia
               end
             elsif current_token.kind == :lbracket
               # operator[]
               advance_raw
               if current_token.kind == :rbracket
                 advance_raw
-                collect_trivia_string
+                current_leading_trivia
               end
             end
             
@@ -877,11 +806,11 @@ module CppAst
           if current_token.kind == :identifier
             saved_after_ptr = @position
             advance_raw
-            collect_trivia_string
+            current_leading_trivia
             
             if current_token.kind == :colon_colon
               advance_raw
-              collect_trivia_string
+              current_leading_trivia
               
               if current_token.kind == :keyword_operator
                 # Out-of-line operator with pointer/reference return type
@@ -899,11 +828,11 @@ module CppAst
           # No pointer, check directly for ClassName::operator
           saved_operator_pos = @position
           advance_raw
-          collect_trivia_string
+          current_leading_trivia
           
           if current_token.kind == :colon_colon
             advance_raw
-            collect_trivia_string
+            current_leading_trivia
             
             if current_token.kind == :keyword_operator
               # Out-of-line operator without pointer
@@ -919,13 +848,13 @@ module CppAst
         # Check for destructor ~
         if current_token.kind == :tilde
           advance_raw
-          collect_trivia_string
+          current_leading_trivia
         end
         
         is_func = current_token.kind == :identifier
         if is_func
           advance_raw  # skip name
-          collect_trivia_string
+          current_leading_trivia
           is_func = current_token.kind == :lparen
         end
         
@@ -945,8 +874,9 @@ module CppAst
                              :keyword_explicit, :keyword_constexpr, :keyword_friend]
         while modifier_keywords.include?(current_token.kind)
           prefix_modifiers << current_token.lexeme
+          prefix_suffix = current_token.trailing_trivia
+
           advance_raw
-          prefix_suffix = collect_trivia_string
           prefix_modifiers << prefix_suffix
         end
         
@@ -955,10 +885,20 @@ module CppAst
         constructor_class_name = nil
         
         # In-class constructor: ClassName(...)
+        # Must be followed by ( or :: (not by & or other tokens)
         if in_context?(:class) && current_token.kind == :identifier && 
            current_token.lexeme == current_class_name
-          is_constructor = true
-          constructor_class_name = current_class_name
+          # Look ahead to check if followed by ( or ::
+          saved_constructor_pos = @position
+          advance_raw
+          current_leading_trivia
+          
+          if current_token.kind == :lparen || current_token.kind == :colon_colon
+            is_constructor = true
+            constructor_class_name = current_class_name
+          end
+          
+          @position = saved_constructor_pos
         end
         
         # Out-of-line constructor: ClassName::ClassName(...)
@@ -966,11 +906,11 @@ module CppAst
           saved_check_pos = @position
           class_name = current_token.lexeme
           advance_raw
-          collect_trivia_string
+          current_leading_trivia
           
           if current_token.kind == :colon_colon
             advance_raw
-            collect_trivia_string
+            current_leading_trivia
             
             if current_token.kind == :identifier && current_token.lexeme == class_name
               is_constructor = true
@@ -983,32 +923,33 @@ module CppAst
         
         # Parse return type (skip for constructors)
         return_type = "".dup
+        trivia_after = ""
         unless is_constructor
           return_type << current_token.lexeme
+          trivia_after = current_token.trailing_trivia
           advance_raw
         end
-        
-        # Collect trivia after first part of return type
-        trivia_after = collect_trivia_string
         
         unless is_constructor
           # Handle :: for qualified names (std::vector)
           while current_token.kind == :colon_colon
             return_type << trivia_after << current_token.lexeme
+            trivia_after = current_token.trailing_trivia
+
             advance_raw
-            trivia_after = collect_trivia_string
             
             if current_token.kind == :identifier
               return_type << trivia_after << current_token.lexeme
+              trivia_after = current_token.trailing_trivia
+
               advance_raw
-              trivia_after = collect_trivia_string
             end
           end
           
           # Handle <...> for template types (vector<int>)
           if current_token.kind == :less
             return_type << trivia_after
-            return_type << current_token.lexeme
+            return_type << current_token.lexeme << current_token.trailing_trivia
             advance_raw
             
             depth = 1
@@ -1019,24 +960,32 @@ module CppAst
                 depth -= 1
               end
               
-              return_type << current_token.lexeme
+              return_type << current_leading_trivia << current_token.lexeme
+              if depth == 0
+                # Это закрывающий >, сохраняем его trailing trivia
+                trivia_after = current_token.trailing_trivia
+              else
+                return_type << current_token.trailing_trivia
+              end
               advance_raw
               
               if depth == 0
                 break
               end
             end
-            
-            trivia_after = collect_trivia_string
           end
           
           # Handle * and & for pointers and references (int*, A&, const int*)
           while [:asterisk, :ampersand].include?(current_token.kind)
             return_type << trivia_after
             return_type << current_token.lexeme
+            trivia_after = current_token.trailing_trivia
+
             advance_raw
-            trivia_after = collect_trivia_string
           end
+          
+          # Store return_type_suffix before checking for operator
+          return_type_suffix = trivia_after
         end
         
         # Check for operator overloading or destructor or constructor or regular function name
@@ -1049,11 +998,11 @@ module CppAst
           advance_raw
           
           # Check for :: (out-of-line constructor)
-          scope_trivia = collect_trivia_string
+          scope_trivia = current_leading_trivia
           if current_token.kind == :colon_colon
             name << scope_trivia << current_token.lexeme
             advance_raw
-            name << collect_trivia_string << current_token.lexeme
+            name << current_leading_trivia << current_token.lexeme
             advance_raw
           else
             # Restore trivia for in-class constructor
@@ -1063,12 +1012,14 @@ module CppAst
           # Check for out-of-line operator: ClassName::operator+
           saved_name_pos = @position
           class_name = current_token.lexeme
+          scope_trivia = current_token.trailing_trivia
+
           advance_raw
-          scope_trivia = collect_trivia_string
           
           if current_token.kind == :colon_colon
+            after_colon = current_token.trailing_trivia
+
             advance_raw
-            after_colon = collect_trivia_string
             
             if current_token.kind == :keyword_operator
               # Out-of-line operator overloading
@@ -1077,7 +1028,7 @@ module CppAst
               name << current_token.lexeme
               advance_raw
               # Collect trivia between 'operator' and the operator symbol
-              operator_trivia = collect_trivia_string
+              operator_trivia = current_leading_trivia
               name << operator_trivia
               
               # Collect the operator symbol(s)
@@ -1120,12 +1071,14 @@ module CppAst
               @position = saved_name_pos
               return_type_suffix = trivia_after
               name << current_token.lexeme
+              scope_trivia2 = current_token.trailing_trivia
+
               advance_raw
-              scope_trivia2 = collect_trivia_string
               name << scope_trivia2 << current_token.lexeme  # ::
               expect(:colon_colon)
+              after_colon2 = current_token.trailing_trivia
+
               advance_raw
-              after_colon2 = collect_trivia_string
               name << after_colon2 << current_token.lexeme  # method name
               expect_identifier
             end
@@ -1143,7 +1096,7 @@ module CppAst
           name << current_token.lexeme
           advance_raw
           # Collect trivia between 'operator' and the operator symbol
-          operator_trivia = collect_trivia_string
+          operator_trivia = current_leading_trivia
           name << operator_trivia
           
           # Collect the operator symbol(s)
@@ -1217,13 +1170,11 @@ module CppAst
         end
         
         # Collect trivia before '('
-        _lparen_prefix = collect_trivia_string
+        _lparen_prefix = current_leading_trivia
         
         # Consume '('
+        lparen_suffix = current_token.trailing_trivia
         expect(:lparen)
-        
-        # Collect trivia after '('
-        lparen_suffix = collect_trivia_string
         
         # Parse parameters (simplified - just collect as strings until ')')
         parameters = []
@@ -1237,19 +1188,22 @@ module CppAst
           loop do
             break if at_end?
             
+            # Include leading trivia (for attributes like [[maybe_unused]])
+            param_text << current_leading_trivia
+            
             if current_token.kind == :lparen
               paren_depth += 1
-              param_text << current_token.lexeme
+              param_text << current_token.lexeme << current_token.trailing_trivia
               advance_raw
             elsif current_token.kind == :rparen
               break if paren_depth.zero?
               paren_depth -= 1
-              param_text << current_token.lexeme
+              param_text << current_token.lexeme << current_token.trailing_trivia
               advance_raw
             elsif current_token.kind == :comma && paren_depth.zero?
               break
             else
-              param_text << current_token.lexeme
+              param_text << current_token.lexeme << current_token.trailing_trivia
               advance_raw
             end
           end
@@ -1259,20 +1213,18 @@ module CppAst
           # Check for comma
           if current_token.kind == :comma
             separator = current_token.lexeme.dup
+            separator << current_token.trailing_trivia
             advance_raw
-            separator << collect_trivia_string
             param_separators << separator
           end
         end
         
         # Collect trivia before ')'
-        rparen_suffix = collect_trivia_string
+        rparen_suffix = current_leading_trivia
         
         # Consume ')'
+        after_rparen = current_token.trailing_trivia
         expect(:rparen)
-        
-        # Collect trivia after ')'
-        after_rparen = collect_trivia_string
         
         # Collect modifiers (const, override, final, noexcept, = default, etc)
         # For constructors: also collect modifiers before : (like noexcept)
@@ -1281,9 +1233,8 @@ module CppAst
           modifiers_text << after_rparen unless after_rparen.empty?
           after_rparen = ""
           
-          modifiers_text << current_token.lexeme
+          modifiers_text << current_token.lexeme << current_token.trailing_trivia
           advance_raw
-          modifiers_text << collect_trivia_string
         end
         
         # Check for constructor initializer list (: member_(value), ...)
@@ -1293,12 +1244,12 @@ module CppAst
           
           # Collect everything from : to { or ;
           while ![:lbrace, :semicolon].include?(current_token.kind) && !at_end?
-            modifiers_text << current_token.lexeme
+            modifiers_text << current_token.lexeme << current_token.trailing_trivia
             advance_raw
           end
           
           # Collect trivia before { or ;
-          after_rparen = collect_trivia_string
+          after_rparen = current_leading_trivia
         end
         
         # Check for body (block) or semicolon
@@ -1309,9 +1260,10 @@ module CppAst
           body, trailing = parse_block_statement(after_rparen)
         else
           # Declaration only - expect semicolon
-          _semicolon_prefix = after_rparen + collect_trivia_string
+          _semicolon_prefix = after_rparen + current_leading_trivia
+          trailing = current_token.trailing_trivia
+
           expect(:semicolon)
-          trailing = collect_trivia_string
         end
         
         stmt = Nodes::FunctionDeclaration.new(
@@ -1335,10 +1287,8 @@ module CppAst
       # Returns (ClassDeclaration, trailing) tuple
       def parse_class_declaration(leading_trivia)
         # Consume 'class'
+        class_suffix = current_token.trailing_trivia
         expect(:keyword_class)
-        
-        # Collect trivia after 'class'
-        class_suffix = collect_trivia_string
         
         # Parse name
         unless current_token.kind == :identifier
@@ -1346,10 +1296,8 @@ module CppAst
         end
         
         name = current_token.lexeme
+        name_suffix = current_token.trailing_trivia
         advance_raw
-        
-        # Collect trivia after name
-        name_suffix = collect_trivia_string
         
         # Check for inheritance: `: public Base`
         base_classes_text = ""
@@ -1358,21 +1306,19 @@ module CppAst
           base_classes_text = name_suffix.dup
           name_suffix = ""
           
-          base_classes_text << current_token.lexeme  # :
+          base_classes_text << current_token.lexeme << current_token.trailing_trivia
           advance_raw
           
           # Collect until {
           until current_token.kind == :lbrace || at_end?
-            base_classes_text << current_token.lexeme
+            base_classes_text << current_leading_trivia << current_token.lexeme << current_token.trailing_trivia
             advance_raw
           end
         end
         
         # Consume '{'
+        lbrace_suffix = current_token.trailing_trivia
         expect(:lbrace)
-        
-        # Collect trivia after '{'
-        lbrace_suffix = collect_trivia_string
         
         # Push class context
         push_context(:class, name: name)
@@ -1383,18 +1329,17 @@ module CppAst
         member_leading = ""
         
         until current_token.kind == :rbrace || at_end?
-          member_leading += collect_trivia_string
+          member_leading += current_leading_trivia
           
           # Check for access specifiers
           if [:keyword_public, :keyword_private, :keyword_protected].include?(current_token.kind)
             keyword = current_token.lexeme
+            _colon_prefix = current_token.trailing_trivia
             advance_raw
             
             # Expect ':'
-            _colon_prefix = collect_trivia_string
+            colon_suffix = current_token.trailing_trivia
             expect(:colon)
-            
-            colon_suffix = collect_trivia_string
             
             member = Nodes::AccessSpecifier.new(
               leading_trivia: member_leading,
@@ -1418,19 +1363,15 @@ module CppAst
         pop_context
         
         # Collect trivia before '}'
-        rbrace_suffix = collect_trivia_string
+        rbrace_suffix = current_leading_trivia
         
         # Consume '}'
+        _semicolon_prefix = current_token.trailing_trivia
         expect(:rbrace)
         
-        # Collect trivia before ';'
-        _semicolon_prefix = collect_trivia_string
-        
         # Consume ';'
+        trailing = current_token.trailing_trivia
         expect(:semicolon)
-        
-        # Collect trailing
-        trailing = collect_trivia_string
         
         stmt = Nodes::ClassDeclaration.new(
           leading_trivia: leading_trivia,
@@ -1451,10 +1392,8 @@ module CppAst
       # Returns (StructDeclaration, trailing) tuple  
       def parse_struct_declaration(leading_trivia)
         # Consume 'struct'
+        struct_suffix = current_token.trailing_trivia
         expect(:keyword_struct)
-        
-        # Collect trivia after 'struct'
-        struct_suffix = collect_trivia_string
         
         # Parse name
         unless current_token.kind == :identifier
@@ -1462,10 +1401,8 @@ module CppAst
         end
         
         name = current_token.lexeme
+        name_suffix = current_token.trailing_trivia
         advance_raw
-        
-        # Collect trivia after name
-        name_suffix = collect_trivia_string
         
         # Check for inheritance: `: public Base`
         base_classes_text = ""
@@ -1474,21 +1411,19 @@ module CppAst
           base_classes_text = name_suffix.dup
           name_suffix = ""
           
-          base_classes_text << current_token.lexeme  # :
+          base_classes_text << current_token.lexeme << current_token.trailing_trivia
           advance_raw
           
           # Collect until {
           until current_token.kind == :lbrace || at_end?
-            base_classes_text << current_token.lexeme
+            base_classes_text << current_leading_trivia << current_token.lexeme << current_token.trailing_trivia
             advance_raw
           end
         end
         
         # Consume '{'
+        lbrace_suffix = current_token.trailing_trivia
         expect(:lbrace)
-        
-        # Collect trivia after '{'
-        lbrace_suffix = collect_trivia_string
         
         # Push struct context (treat as class for constructors)
         push_context(:class, name: name)
@@ -1499,18 +1434,17 @@ module CppAst
         member_leading = ""
         
         until current_token.kind == :rbrace || at_end?
-          member_leading += collect_trivia_string
+          member_leading += current_leading_trivia
           
           # Check for access specifiers
           if [:keyword_public, :keyword_private, :keyword_protected].include?(current_token.kind)
             keyword = current_token.lexeme
+            _colon_prefix = current_token.trailing_trivia
             advance_raw
             
             # Expect ':'
-            _colon_prefix = collect_trivia_string
+            colon_suffix = current_token.trailing_trivia
             expect(:colon)
-            
-            colon_suffix = collect_trivia_string
             
             member = Nodes::AccessSpecifier.new(
               leading_trivia: member_leading,
@@ -1534,19 +1468,15 @@ module CppAst
         pop_context
         
         # Collect trivia before '}'
-        rbrace_suffix = collect_trivia_string
+        rbrace_suffix = current_leading_trivia
         
         # Consume '}'
+        _semicolon_prefix = current_token.trailing_trivia
         expect(:rbrace)
         
-        # Collect trivia before ';'
-        _semicolon_prefix = collect_trivia_string
-        
         # Consume ';'
+        trailing = current_token.trailing_trivia
         expect(:semicolon)
-        
-        # Collect trailing
-        trailing = collect_trivia_string
         
         stmt = Nodes::StructDeclaration.new(
           leading_trivia: leading_trivia,
@@ -1592,10 +1522,8 @@ module CppAst
             end
             
             type << current_token.lexeme
+            trivia = current_token.trailing_trivia
             advance_raw
-            
-            # Collect trivia after this token
-            trivia = collect_trivia_string
             
             # Don't add trivia after :: if next is identifier/keyword (qualified name)
             if was_colon_colon && (current_token.kind == :identifier || 
@@ -1614,8 +1542,9 @@ module CppAst
             if current_token.kind == :identifier
               # This might be the variable name - check what follows
               saved_pos = @position
+              next_trivia = current_token.trailing_trivia
+
               advance_raw
-              next_trivia = collect_trivia_string
               next_kind = current_token.kind
               @position = saved_pos
               
@@ -1656,7 +1585,7 @@ module CppAst
               break
             elsif current_token.kind == :equals
               # Assignment initializer: int x = 42
-              decl_text << current_token.lexeme
+              decl_text << current_token.lexeme << current_token.trailing_trivia
               advance_raw
               
               # Parse initializer expression
@@ -1667,7 +1596,7 @@ module CppAst
                 
                 if current_token.kind == :lparen
                   # Handle nested parens in initializer
-                  decl_text << current_token.lexeme
+                  decl_text << current_token.lexeme << current_token.trailing_trivia
                   advance_raw
                   paren_depth = 1
                   loop do
@@ -1677,13 +1606,13 @@ module CppAst
                     elsif current_token.kind == :rparen
                       paren_depth -= 1
                     end
-                    decl_text << current_token.lexeme
+                    decl_text << current_token.lexeme << current_token.trailing_trivia
                     advance_raw
                     break if paren_depth.zero?
                   end
                 elsif current_token.kind == :lbrace
                   # Handle nested braces in initializer
-                  decl_text << current_token.lexeme
+                  decl_text << current_token.lexeme << current_token.trailing_trivia
                   advance_raw
                   brace_depth = 1
                   loop do
@@ -1693,19 +1622,19 @@ module CppAst
                     elsif current_token.kind == :rbrace
                       brace_depth -= 1
                     end
-                    decl_text << current_token.lexeme
+                    decl_text << current_token.lexeme << current_token.trailing_trivia
                     advance_raw
                     break if brace_depth.zero?
                   end
                 else
-                  decl_text << current_token.lexeme
+                  decl_text << current_token.lexeme << current_token.trailing_trivia
                   advance_raw
                 end
               end
               break
             elsif current_token.kind == :lparen
               # Function-style initialization: int x(42) or could be function
-              decl_text << current_token.lexeme
+              decl_text << current_token.lexeme << current_token.trailing_trivia
               advance_raw
               
               # Collect everything until matching )
@@ -1719,14 +1648,14 @@ module CppAst
                   paren_depth -= 1
                 end
                 
-                decl_text << current_token.lexeme
+                decl_text << current_token.lexeme << current_token.trailing_trivia
                 advance_raw
                 
                 break if paren_depth.zero?
               end
             elsif current_token.kind == :lbrace
               # Brace initialization: int x{42}
-              decl_text << current_token.lexeme
+              decl_text << current_token.lexeme << current_token.trailing_trivia
               advance_raw
               
               # Collect everything until matching }
@@ -1740,13 +1669,13 @@ module CppAst
                   brace_depth -= 1
                 end
                 
-                decl_text << current_token.lexeme
+                decl_text << current_token.lexeme << current_token.trailing_trivia
                 advance_raw
                 
                 break if brace_depth.zero?
               end
             else
-              decl_text << current_token.lexeme
+              decl_text << current_token.lexeme << current_token.trailing_trivia
               advance_raw
             end
           end
@@ -1756,8 +1685,8 @@ module CppAst
           # Check for comma (more declarators)
           if current_token.kind == :comma
             separator = current_token.lexeme.dup
+            separator << current_token.trailing_trivia
             advance_raw
-            separator << collect_trivia_string
             declarator_separators << separator
           else
             break
@@ -1765,11 +1694,9 @@ module CppAst
         end
         
         # Consume semicolon
-        _semicolon_prefix = collect_trivia_string
+        _semicolon_prefix = current_leading_trivia
+        trailing = current_token.trailing_trivia
         expect(:semicolon)
-        
-        # Collect trailing
-        trailing = collect_trivia_string
         
         stmt = Nodes::VariableDeclaration.new(
           leading_trivia: leading_trivia,
@@ -1786,17 +1713,13 @@ module CppAst
       # Returns (UsingDeclaration, trailing) tuple
       def parse_using_declaration(leading_trivia)
         # Consume 'using'
+        using_suffix = current_token.trailing_trivia
         expect(:keyword_using)
-        
-        # Collect trivia after 'using'
-        using_suffix = collect_trivia_string
         
         # Check if it's 'using namespace'
         if current_token.kind == :keyword_namespace
+          namespace_suffix = current_token.trailing_trivia
           advance_raw  # consume 'namespace'
-          
-          # Collect trivia after 'namespace'
-          namespace_suffix = collect_trivia_string
           
           # Parse namespace name (can be nested like std::chrono)
           name = "".dup
@@ -1807,10 +1730,10 @@ module CppAst
             end
             
             name << current_token.lexeme
+            trivia_before_colon = current_token.trailing_trivia
             advance_raw
             
             # Check for ::
-            trivia_before_colon = collect_trivia_string
             if current_token.kind == :colon_colon
               name << trivia_before_colon << current_token.lexeme
               advance_raw
@@ -1822,11 +1745,9 @@ module CppAst
           end
           
           # Consume semicolon
-          _semicolon_prefix = collect_trivia_string
+          _semicolon_prefix = current_leading_trivia
+          trailing = current_token.trailing_trivia
           expect(:semicolon)
-          
-          # Collect trailing
-          trailing = collect_trivia_string
           
           stmt = Nodes::UsingDeclaration.new(
             leading_trivia: leading_trivia,
@@ -1848,10 +1769,10 @@ module CppAst
           end
           
           name << current_token.lexeme
+          trivia_before_colon = current_token.trailing_trivia
           advance_raw
           
           # Check for ::
-          trivia_before_colon = collect_trivia_string
           if current_token.kind == :colon_colon
             name << trivia_before_colon << current_token.lexeme
             advance_raw
@@ -1863,27 +1784,23 @@ module CppAst
         end
         
         # Check if it's type alias: using MyType = int;
-        after_name_extra = collect_trivia_string
+        after_name_extra = current_leading_trivia
         if current_token.kind == :equals
           equals_prefix = after_name + after_name_extra
+          equals_suffix = current_token.trailing_trivia
           advance_raw  # consume '='
-          
-          # Collect trivia after '='
-          equals_suffix = collect_trivia_string
           
           # Parse target type (collect as string until semicolon)
           alias_target = "".dup
           until current_token.kind == :semicolon || at_end?
-            alias_target << current_token.lexeme
+            alias_target << current_leading_trivia << current_token.lexeme << current_token.trailing_trivia
             advance_raw
           end
           
           # Consume semicolon
-          _semicolon_prefix = collect_trivia_string
+          _semicolon_prefix = current_leading_trivia
+          trailing = current_token.trailing_trivia
           expect(:semicolon)
-          
-          # Collect trailing
-          trailing = collect_trivia_string
           
           stmt = Nodes::UsingDeclaration.new(
             leading_trivia: leading_trivia,
@@ -1898,11 +1815,9 @@ module CppAst
           return [stmt, trailing]
         else
           # Simple using: using std::vector;
-          _semicolon_prefix = after_name + after_name_extra + collect_trivia_string
+          _semicolon_prefix = after_name + after_name_extra + current_leading_trivia
+          trailing = current_token.trailing_trivia
           expect(:semicolon)
-          
-          # Collect trailing
-          trailing = collect_trivia_string
           
           stmt = Nodes::UsingDeclaration.new(
             leading_trivia: leading_trivia,
@@ -1919,12 +1834,11 @@ module CppAst
       # Returns (TemplateDeclaration, trailing) tuple
       def parse_template_declaration(leading_trivia)
         # Consume 'template'
+        template_suffix = current_token.trailing_trivia
         expect(:keyword_template)
         
-        # Collect trivia after 'template'
-        template_suffix = collect_trivia_string
-        
         # Consume '<'
+        less_suffix = current_token.trailing_trivia
         expect(:less)
         
         # Collect template parameters as string (simplified approach)
@@ -1938,30 +1852,28 @@ module CppAst
           case current_token.kind
           when :less
             depth += 1
-            params << current_token.lexeme
+            params << current_token.lexeme << current_token.trailing_trivia
             advance_raw
           when :greater
             depth -= 1
             if depth == 0
               break
             else
-              params << current_token.lexeme
+              params << current_token.lexeme << current_token.trailing_trivia
               advance_raw
             end
           else
-            params << current_token.lexeme
+            params << current_token.lexeme << current_token.trailing_trivia
             advance_raw
           end
         end
         
         # Consume '>'
+        params_suffix = current_token.trailing_trivia
         expect(:greater)
         
-        # Collect trivia after '>'
-        params_suffix = collect_trivia_string
-        
         # Parse the templated declaration (function, class, struct)
-        inner_leading = ""
+        inner_leading = current_leading_trivia
         declaration, trailing = parse_statement(inner_leading)
         
         stmt = Nodes::TemplateDeclaration.new(
@@ -1969,6 +1881,7 @@ module CppAst
           template_params: params,
           declaration: declaration,
           template_suffix: template_suffix,
+          less_suffix: less_suffix,
           params_suffix: params_suffix
         )
         
@@ -1979,18 +1892,17 @@ module CppAst
       # Returns (EnumDeclaration, trailing) tuple
       def parse_enum_declaration(leading_trivia)
         # Consume 'enum'
+        enum_suffix = current_token.trailing_trivia
         expect(:keyword_enum)
-        
-        # Collect trivia after 'enum'
-        enum_suffix = collect_trivia_string
         
         # Check for 'class' or 'struct' keyword
         class_keyword = ""
         class_suffix = ""
         if [:keyword_class, :keyword_struct].include?(current_token.kind)
           class_keyword = current_token.lexeme
+          class_suffix = current_token.trailing_trivia
+
           advance_raw
-          class_suffix = collect_trivia_string
         end
         
         # Parse name (optional for anonymous enums)
@@ -1998,49 +1910,44 @@ module CppAst
         name_suffix = ""
         if current_token.kind == :identifier
           name = current_token.lexeme
+          name_suffix = current_token.trailing_trivia
+
           advance_raw
-          name_suffix = collect_trivia_string
         end
         
         # Check for base type: `: int`
         if current_token.kind == :colon
-          name_suffix << current_token.lexeme
+          name_suffix << current_token.lexeme << current_token.trailing_trivia
           advance_raw
           
           # Collect base type until {
           until current_token.kind == :lbrace || at_end?
-            name_suffix << current_token.lexeme
+            name_suffix << current_leading_trivia << current_token.lexeme << current_token.trailing_trivia
             advance_raw
           end
         end
         
         # Consume '{'
+        lbrace_suffix = current_token.trailing_trivia
         expect(:lbrace)
-        
-        # Collect trivia after '{'
-        lbrace_suffix = collect_trivia_string
         
         # Collect enumerators as text until '}'
         enumerators = "".dup
         until current_token.kind == :rbrace || at_end?
-          enumerators << current_token.lexeme
+          enumerators << current_leading_trivia << current_token.lexeme << current_token.trailing_trivia
           advance_raw
         end
         
         # Collect trivia before '}'
-        rbrace_suffix = collect_trivia_string
+        rbrace_suffix = current_leading_trivia
         
         # Consume '}'
+        _semicolon_prefix = current_token.trailing_trivia
         expect(:rbrace)
         
-        # Collect trivia before ';'
-        _semicolon_prefix = collect_trivia_string
-        
         # Consume ';'
+        trailing = current_token.trailing_trivia
         expect(:semicolon)
-        
-        # Collect trailing
-        trailing = collect_trivia_string
         
         stmt = Nodes::EnumDeclaration.new(
           leading_trivia: leading_trivia,
@@ -2059,4 +1966,3 @@ module CppAst
     end
   end
 end
-

@@ -6,16 +6,11 @@
 #include <memory>
 #include <span>
 
-type, const std::string& source);
-    ~Shader();
-
-    // No copy
-    const Shader&) = delete;
-    Shader& operator =(const Shader&) = delete;
+& operator=(const Shader&) = delete;
 
     // Move semantics
-    noexcept;
-    Shader& operator =(Shader&& other) noexcept;
+    Shader(Shader&& other) noexcept;
+    & operator=(Shader&& other) noexcept;
 
     GLuint handle() const noexcept { return shader_; }
     bool is_valid() const noexcept { return shader_ != 0; }
@@ -28,12 +23,11 @@ private:
 /**
  * RAII wrapper for OpenGL shader program
  */
-const ShaderProgram&) = delete;
-    ShaderProgram& operator =(const ShaderProgram&) = delete;
+& operator=(const ShaderProgram&) = delete;
 
     // Move semantics
-    noexcept;
-    ShaderProgram& operator =(ShaderProgram&& other) noexcept;
+    ShaderProgram(ShaderProgram&& other) noexcept;
+    & operator=(ShaderProgram&& other) noexcept;
 
     void attach(const Shader& shader);
     bool link();

@@ -14,15 +14,7 @@ using namespace gtkgl;
  * Modern GTK+OpenGL Demo Application
  * Architecture: DemoManager pattern with pluggable scenes
  */
-int argc, char* argv[]) {
-        gtk_init(&argc, &argv);
-        load_css();
-        setup_state();
-        setup_demos();
-        setup_ui();
-    }
-
-    [](gpointer data) -> gboolean {
+[](gpointer data) -> gboolean {
             auto* app = static_cast<DemoApp*>(data);
             app->init_default_demo();
             return FALSE;  // Remove this idle callback after one call
@@ -214,8 +206,7 @@ private:
     bool need_demo_init_ = false;
 };
 
-int main(int argc, char* argv[]) {
-    DemoApp app(argc, argv);
+app(argc, argv);
     app.run();
     return 0;
 }

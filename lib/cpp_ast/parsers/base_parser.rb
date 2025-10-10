@@ -51,16 +51,14 @@ module CppAst
         token
       end
       
-      # Collect trivia (whitespace, comments, newlines) as string
-      def collect_trivia_string
-        result = "".dup
-        
-        while current_token && Token.trivia?(current_token.kind)
-          result << current_token.lexeme
-          advance_raw
-        end
-        
-        result
+      # Get leading trivia of current token
+      def current_leading_trivia
+        current_token.leading_trivia
+      end
+      
+      # Get trailing trivia of current token
+      def current_trailing_trivia
+        current_token.trailing_trivia
       end
       
       # Expect specific token kind

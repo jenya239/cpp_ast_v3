@@ -5,8 +5,7 @@
 #include <array>
 #include <memory>
 
-default;
-    override = default;
+override = default;
 
     // Scene lifecycle
     void on_realize(GtkGLArea* area) override;
@@ -41,7 +40,7 @@ private:
         static Mat4 look_at(float eye_x, float eye_y, float eye_z,
                            float center_x, float center_y, float center_z,
                            float up_x, float up_y, float up_z);
-        operator*(const Mat4& other) const;
+        Mat4 operator*(const Mat4& other) const;
     };
 
     void create_shaders();

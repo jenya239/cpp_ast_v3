@@ -88,31 +88,26 @@ ruby test/lexer/test_token.rb
 
 ## Development Status
 
-### ✅ Phase 1: MVP (COMPLETED)
-- ✅ Lexer (identifiers, numbers, operators, whitespace, comments) - **7 tests**
-- ✅ Nodes (expressions, statements, program) - **25 tests**
-- ✅ Parsers (expression, statement, program) - **48 tests**
-- ✅ 100% roundtrip for simple programs - **20 integration tests**
+**TOTAL: 481 tests, 630 assertions, 0 failures, 0 errors** ✅
 
-**TOTAL: 104 tests, 171 assertions, 0 failures, 0 errors**
+### ✅ Supported Constructs
+- ✅ All operators (binary, unary, ternary, member access, subscript)
+- ✅ Control flow (if/else, loops, switch, break, continue)
+- ✅ Declarations (variables, functions, classes, structs, enums)
+- ✅ Templates (class/function templates, specialization)
+- ✅ Constructors, destructors, operators
+- ✅ Inheritance, namespaces, using declarations
+- ✅ Attributes, preprocessor directives
+- ✅ Lambdas, initializer lists
+- ✅ 100% roundtrip accuracy
 
-### Supported Constructs
-- ✅ Identifiers, Number literals
-- ✅ Binary expressions (+, -, *, /, =) with correct precedence
-- ✅ Assignment (right-associative)
-- ✅ Expression statements
-- ✅ Return statements
-- ✅ Multiple statements in program
-- ✅ Perfect whitespace/comment preservation
-- ✅ Line comments (`// ...`)
+### Current Architecture Status
+✅ **Roundtrip**: 100% (481/481 tests)  
+✅ **Architecture**: Clean, functional  
+⚠️ **CST compliance**: 9/10 (trivia not in tokens yet)
 
-### Phase 2: Extensions (Ready to implement)
-- [ ] More operators (comparison, logical, bitwise)
-- [ ] Unary operators (!, ++, --, -, +)
-- [ ] Parenthesized expressions
-- [ ] More statements (if/else, loops, switch)
-- [ ] Declarations (variables, functions, classes)
-- [ ] Rewriter support
+### Next Steps
+See `docs/TRIVIA_REFACTORING_PLAN.md` for Phase 2 improvements
 
 ## Contributing
 
@@ -126,7 +121,9 @@ This project follows strict TDD:
 
 MIT
 
-## Related Documentation
+## Documentation
 
-See [AI_AGENT_IMPLEMENTATION_GUIDE.md](../cpp_ast_ruby/docs/AI_AGENT_IMPLEMENTATION_GUIDE.md) for complete implementation guide.
+- [docs/CST_ARCHITECTURE_SUMMARY.md](docs/CST_ARCHITECTURE_SUMMARY.md) - Executive summary
+- [docs/TRIVIA_REFACTORING_PLAN.md](docs/TRIVIA_REFACTORING_PLAN.md) - Next phase plan
+- [docs/README.md](docs/README.md) - Full documentation index
 

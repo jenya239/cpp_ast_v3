@@ -10,10 +10,9 @@
 #include <vector>
 #include <expected>
 
-const HarfBuzzBuffer&) = delete;
-    HarfBuzzBuffer& operator =(const HarfBuzzBuffer&) = delete;
-    ) noexcept;
-    HarfBuzzBuffer& operator =(HarfBuzzBuffer&&) noexcept;
+& operator=(const HarfBuzzBuffer&) = delete;
+    HarfBuzzBuffer(HarfBuzzBuffer&&) noexcept;
+    & operator=(HarfBuzzBuffer&&) noexcept;
 
     // Установить направление и язык
     void set_direction(TextDirection direction);
@@ -35,10 +34,9 @@ private:
 };
 
 // RAII wrapper для hb_font_t
-const HarfBuzzFont&) = delete;
-    HarfBuzzFont& operator =(const HarfBuzzFont&) = delete;
-    ) noexcept;
-    HarfBuzzFont& operator =(HarfBuzzFont&&) noexcept;
+& operator=(const HarfBuzzFont&) = delete;
+    HarfBuzzFont(HarfBuzzFont&&) noexcept;
+    & operator=(HarfBuzzFont&&) noexcept;
 
     // Установить размер шрифта
     void set_scale(int x_ppem, int y_ppem);
@@ -51,7 +49,9 @@ private:
 };
 
 // Главный класс для text shaping
-default;
+class TextShaper {
+public:
+    TextShaper() = default;
 
     // Shape текст с заданным шрифтом
     std::expected<std::vector<ShapedGlyph>, ShapingError>

@@ -18,16 +18,14 @@ module CppAst
              [:asterisk, :ampersand, :less, :greater, :colon_colon].include?(current_token.kind)
             
             type << current_token.lexeme
+            trivia = current_token.trailing_trivia
             advance_raw
-            
-            # Collect trivia after this token
-            trivia = collect_trivia_string
             
             # Handle template arguments <...>
             if current_token.kind == :less
               type << trivia
               type << parse_template_arguments
-              trivia = collect_trivia_string
+              trivia = current_leading_trivia
             end
             
             # Check if we're done with type (next is identifier for variable/function name)
@@ -35,7 +33,7 @@ module CppAst
               # This might be the name - check what follows
               saved_pos = @position
               advance_raw
-              next_trivia = collect_trivia_string
+              next_trivia = current_leading_trivia
               next_kind = current_token.kind
               @position = saved_pos
               
@@ -97,10 +95,8 @@ module CppAst
           end
           
           name << current_token.lexeme
+          trivia_before_colon = current_token.trailing_trivia
           advance_raw
-          
-          # Collect trivia after identifier
-          trivia_before_colon = collect_trivia_string
           
           # Check for ::
           if current_token.kind == :colon_colon
@@ -118,4 +114,3 @@ module CppAst
     end
   end
 end
-

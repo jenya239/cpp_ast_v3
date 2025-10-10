@@ -461,19 +461,20 @@ module CppAst
     # TemplateDeclaration: `template<typename T> class Foo { ... };`
     class TemplateDeclaration < Statement
       attr_accessor :template_params, :declaration
-      attr_accessor :template_suffix, :params_suffix
+      attr_accessor :template_suffix, :less_suffix, :params_suffix
       
       def initialize(leading_trivia: "", template_params:, declaration:,
-                     template_suffix: "", params_suffix: "")
+                     template_suffix: "", less_suffix: "", params_suffix: "")
         super(leading_trivia: leading_trivia)
         @template_params = template_params
         @declaration = declaration
         @template_suffix = template_suffix
+        @less_suffix = less_suffix
         @params_suffix = params_suffix
       end
       
       def to_source
-        "#{leading_trivia}template#{template_suffix}<#{template_params}>#{params_suffix}#{declaration.to_source}"
+        "#{leading_trivia}template#{template_suffix}<#{less_suffix}#{template_params}>#{params_suffix}#{declaration.to_source}"
       end
     end
     

@@ -16,8 +16,9 @@ module CppAst
         statements = []
         statement_trailings = []
         
-        # Collect leading trivia (whitespace/comments before first statement)
-        leading = collect_trivia_string
+        # Leading trivia (whitespace/comments before first statement)
+        # Now comes from token's leading_trivia
+        leading = current_leading_trivia
         
         until at_end?
           begin
@@ -26,9 +27,8 @@ module CppAst
             statements << stmt
             statement_trailings << trailing
             
-            # Next statement starts immediately (no leading trivia)
-            # The trailing from previous statement already consumed
-            leading = ""
+            # Next statement's leading trivia comes from next token
+            leading = current_leading_trivia
           rescue ParseError => e
             # Error recovery: collect error info and skip to next statement
             @errors << { message: e.message, position: @position }
@@ -49,8 +49,8 @@ module CppAst
               advance_raw
             end
             
-            # Collect trailing
-            trailing = collect_trivia_string
+            # Trailing comes from current token
+            trailing = current_leading_trivia
             
             # Create error statement
             stmt = Nodes::ErrorStatement.new(
@@ -60,9 +60,14 @@ module CppAst
             statements << stmt
             statement_trailings << trailing
             
-            # Reset leading for next statement
-            leading = ""
+            # Next statement's leading trivia
+            leading = current_leading_trivia
           end
+        end
+        
+        # Add EOF leading_trivia to trailing of last statement
+        if !statements.empty? && at_end?
+          statement_trailings[-1] = statement_trailings[-1] + current_leading_trivia
         end
         
         # Create program node

@@ -4,12 +4,11 @@
 #include <vector>
 #include <span>
 
-const VertexArray&) = delete;
-    VertexArray& operator =(const VertexArray&) = delete;
+& operator=(const VertexArray&) = delete;
 
     // Move semantics
-    noexcept;
-    VertexArray& operator =(VertexArray&& other) noexcept;
+    VertexArray(VertexArray&& other) noexcept;
+    & operator=(VertexArray&& other) noexcept;
 
     void bind() const;
     void unbind() const;
@@ -24,12 +23,11 @@ private:
 /**
  * RAII wrapper for OpenGL Buffer Object
  */
-const Buffer&) = delete;
-    Buffer& operator =(const Buffer&) = delete;
+& operator=(const Buffer&) = delete;
 
     // Move semantics
-    noexcept;
-    Buffer& operator =(Buffer&& other) noexcept;
+    Buffer(Buffer&& other) noexcept;
+    & operator=(Buffer&& other) noexcept;
 
     void bind() const;
     void unbind() const;

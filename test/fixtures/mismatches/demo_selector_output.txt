@@ -5,8 +5,7 @@
 #include <string>
 #include <vector>
 
-const DemoSelector&) = delete;
-    DemoSelector& operator =(const DemoSelector&) = delete;
+& operator=(const DemoSelector&) = delete;
 
     // Widget access
     GtkWidget* widget() const { return scrolled_window_; }
