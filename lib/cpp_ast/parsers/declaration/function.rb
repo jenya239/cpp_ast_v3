@@ -67,7 +67,19 @@ module CppAst
         if is_func
           advance_raw
           current_leading_trivia
-          is_func = current_token.kind == :lparen
+          # Check for Class::method pattern
+          if current_token.kind == :colon_colon
+            advance_raw
+            current_leading_trivia
+            is_func = current_token.kind == :identifier
+            if is_func
+              advance_raw
+              current_leading_trivia
+              is_func = current_token.kind == :lparen
+            end
+          else
+            is_func = current_token.kind == :lparen
+          end
         end
         
         @position = saved_pos
@@ -153,6 +165,11 @@ module CppAst
           end
           current_leading_trivia
         end
+        
+        while [:asterisk, :ampersand, :ampersand_ampersand].include?(current_token.kind)
+          advance_raw
+          current_leading_trivia
+        end
       end
       
       def check_operator_overload_pattern(saved_pos)
@@ -161,8 +178,8 @@ module CppAst
           return true
         end
         
-        if [:asterisk, :ampersand].include?(current_token.kind)
-          while [:asterisk, :ampersand].include?(current_token.kind)
+        if [:asterisk, :ampersand, :ampersand_ampersand].include?(current_token.kind)
+          while [:asterisk, :ampersand, :ampersand_ampersand].include?(current_token.kind)
             advance_raw
             current_leading_trivia
           end
@@ -312,7 +329,7 @@ module CppAst
           end
         end
         
-        while [:asterisk, :ampersand].include?(current_token.kind)
+        while [:asterisk, :ampersand, :ampersand_ampersand].include?(current_token.kind)
           return_type << trivia_after << current_token.lexeme
           trivia_after = current_token.trailing_trivia
           advance_raw
