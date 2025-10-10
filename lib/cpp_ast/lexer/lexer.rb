@@ -242,8 +242,6 @@ module CppAst
     # Scan non-trivia token (like old scan_token but without trivia)
     def scan_non_trivia_token
       return nil if at_end?
-      
-      # Skip any trivia - should not happen as we collect it separately
       return nil if trivia_ahead?
       
       start_line = @line
@@ -252,143 +250,103 @@ module CppAst
       
       case char
       when /[a-zA-Z_]/
-        scan_identifier(char, start_line, start_column)
+        scan_identifier_or_keyword(char, start_line, start_column)
       when /[0-9]/
-        scan_number(char, start_line, start_column)
+        scan_literal_token(char, start_line, start_column, is_number: true)
+      when '"', "'"
+        scan_literal_token(char, start_line, start_column, is_string: true)
+      when "=", "+", "-", "*", "/", "!", "%", "~", "&", "|", "^", "<", ">", "."
+        scan_operator_token(char, start_line, start_column)
+      when ";", ",", ":", "?", "(", ")", "{", "}", "[", "]"
+        scan_punctuation_token(char, start_line, start_column)
+      else
+        raise "Unexpected character: #{char.inspect} at #{start_line}:#{start_column}"
+      end
+    end
+    
+    def scan_operator_token(char, start_line, start_column)
+      case char
       when "="
-        if peek == "="
-          advance
-          Token.new(kind: :equals_equals, lexeme: "==", line: start_line, column: start_column)
-        else
-          Token.new(kind: :equals, lexeme: "=", line: start_line, column: start_column)
-        end
-      when ";"
-        Token.new(kind: :semicolon, lexeme: ";", line: start_line, column: start_column)
+        peek == "=" ? (advance; Token.new(kind: :equals_equals, lexeme: "==", line: start_line, column: start_column)) : Token.new(kind: :equals, lexeme: "=", line: start_line, column: start_column)
       when "+"
         if peek == "+"
-          advance
-          Token.new(kind: :plus_plus, lexeme: "++", line: start_line, column: start_column)
+          advance; Token.new(kind: :plus_plus, lexeme: "++", line: start_line, column: start_column)
         elsif peek == "="
-          advance
-          Token.new(kind: :plus_equals, lexeme: "+=", line: start_line, column: start_column)
+          advance; Token.new(kind: :plus_equals, lexeme: "+=", line: start_line, column: start_column)
         else
           Token.new(kind: :plus, lexeme: "+", line: start_line, column: start_column)
         end
       when "-"
         if peek == "-"
-          advance
-          Token.new(kind: :minus_minus, lexeme: "--", line: start_line, column: start_column)
+          advance; Token.new(kind: :minus_minus, lexeme: "--", line: start_line, column: start_column)
         elsif peek == ">"
-          advance
-          Token.new(kind: :arrow, lexeme: "->", line: start_line, column: start_column)
+          advance; Token.new(kind: :arrow, lexeme: "->", line: start_line, column: start_column)
         elsif peek == "="
-          advance
-          Token.new(kind: :minus_equals, lexeme: "-=", line: start_line, column: start_column)
+          advance; Token.new(kind: :minus_equals, lexeme: "-=", line: start_line, column: start_column)
         else
           Token.new(kind: :minus, lexeme: "-", line: start_line, column: start_column)
         end
       when "*"
-        if peek == "="
-          advance
-          Token.new(kind: :asterisk_equals, lexeme: "*=", line: start_line, column: start_column)
-        else
-          Token.new(kind: :asterisk, lexeme: "*", line: start_line, column: start_column)
-        end
+        peek == "=" ? (advance; Token.new(kind: :asterisk_equals, lexeme: "*=", line: start_line, column: start_column)) : Token.new(kind: :asterisk, lexeme: "*", line: start_line, column: start_column)
       when "/"
-        if peek == "="
-          advance
-          Token.new(kind: :slash_equals, lexeme: "/=", line: start_line, column: start_column)
-        else
-          Token.new(kind: :slash, lexeme: "/", line: start_line, column: start_column)
-        end
+        peek == "=" ? (advance; Token.new(kind: :slash_equals, lexeme: "/=", line: start_line, column: start_column)) : Token.new(kind: :slash, lexeme: "/", line: start_line, column: start_column)
       when "!"
-        if peek == "="
-          advance
-          Token.new(kind: :exclamation_equals, lexeme: "!=", line: start_line, column: start_column)
-        else
-          Token.new(kind: :exclamation, lexeme: "!", line: start_line, column: start_column)
-        end
+        peek == "=" ? (advance; Token.new(kind: :exclamation_equals, lexeme: "!=", line: start_line, column: start_column)) : Token.new(kind: :exclamation, lexeme: "!", line: start_line, column: start_column)
       when "%"
-        if peek == "="
-          advance
-          Token.new(kind: :percent_equals, lexeme: "%=", line: start_line, column: start_column)
-        else
-          Token.new(kind: :percent, lexeme: "%", line: start_line, column: start_column)
-        end
+        peek == "=" ? (advance; Token.new(kind: :percent_equals, lexeme: "%=", line: start_line, column: start_column)) : Token.new(kind: :percent, lexeme: "%", line: start_line, column: start_column)
       when "~"
         Token.new(kind: :tilde, lexeme: "~", line: start_line, column: start_column)
       when "&"
-        if peek == "&"
-          advance
-          Token.new(kind: :ampersand_ampersand, lexeme: "&&", line: start_line, column: start_column)
-        else
-          Token.new(kind: :ampersand, lexeme: "&", line: start_line, column: start_column)
-        end
+        peek == "&" ? (advance; Token.new(kind: :ampersand_ampersand, lexeme: "&&", line: start_line, column: start_column)) : Token.new(kind: :ampersand, lexeme: "&", line: start_line, column: start_column)
       when "|"
-        if peek == "|"
-          advance
-          Token.new(kind: :pipe_pipe, lexeme: "||", line: start_line, column: start_column)
-        else
-          Token.new(kind: :pipe, lexeme: "|", line: start_line, column: start_column)
-        end
+        peek == "|" ? (advance; Token.new(kind: :pipe_pipe, lexeme: "||", line: start_line, column: start_column)) : Token.new(kind: :pipe, lexeme: "|", line: start_line, column: start_column)
       when "^"
         Token.new(kind: :caret, lexeme: "^", line: start_line, column: start_column)
       when "<"
         if peek == "<"
-          advance
-          Token.new(kind: :less_less, lexeme: "<<", line: start_line, column: start_column)
+          advance; Token.new(kind: :less_less, lexeme: "<<", line: start_line, column: start_column)
         elsif peek == "="
-          advance
-          Token.new(kind: :less_equals, lexeme: "<=", line: start_line, column: start_column)
+          advance; Token.new(kind: :less_equals, lexeme: "<=", line: start_line, column: start_column)
         else
           Token.new(kind: :less, lexeme: "<", line: start_line, column: start_column)
         end
       when ">"
         if peek == ">"
-          advance
-          Token.new(kind: :greater_greater, lexeme: ">>", line: start_line, column: start_column)
+          advance; Token.new(kind: :greater_greater, lexeme: ">>", line: start_line, column: start_column)
         elsif peek == "="
-          advance
-          Token.new(kind: :greater_equals, lexeme: ">=", line: start_line, column: start_column)
+          advance; Token.new(kind: :greater_equals, lexeme: ">=", line: start_line, column: start_column)
         else
           Token.new(kind: :greater, lexeme: ">", line: start_line, column: start_column)
         end
-      when ","
-        Token.new(kind: :comma, lexeme: ",", line: start_line, column: start_column)
       when "."
-        if peek&.match?(/[0-9]/)
-          scan_number(char, start_line, start_column)
-        else
-          Token.new(kind: :dot, lexeme: ".", line: start_line, column: start_column)
-        end
-      when ":"
-        if peek == ":"
-          advance
-          Token.new(kind: :colon_colon, lexeme: "::", line: start_line, column: start_column)
-        else
-          Token.new(kind: :colon, lexeme: ":", line: start_line, column: start_column)
-        end
-      when "?"
-        Token.new(kind: :question, lexeme: "?", line: start_line, column: start_column)
-      when "("
-        Token.new(kind: :lparen, lexeme: "(", line: start_line, column: start_column)
-      when ")"
-        Token.new(kind: :rparen, lexeme: ")", line: start_line, column: start_column)
-      when "{"
-        Token.new(kind: :lbrace, lexeme: "{", line: start_line, column: start_column)
-      when "}"
-        Token.new(kind: :rbrace, lexeme: "}", line: start_line, column: start_column)
-      when "["
-        Token.new(kind: :lbracket, lexeme: "[", line: start_line, column: start_column)
-      when "]"
-        Token.new(kind: :rbracket, lexeme: "]", line: start_line, column: start_column)
-      when '"'
-        scan_string_literal(start_line, start_column)
-      when "'"
-        scan_char_literal(start_line, start_column)
-      else
-        raise "Unexpected character: #{char.inspect} at #{start_line}:#{start_column}"
+        peek&.match?(/[0-9]/) ? scan_number(char, start_line, start_column) : Token.new(kind: :dot, lexeme: ".", line: start_line, column: start_column)
       end
+    end
+    
+    def scan_punctuation_token(char, start_line, start_column)
+      case char
+      when ";" then Token.new(kind: :semicolon, lexeme: ";", line: start_line, column: start_column)
+      when "," then Token.new(kind: :comma, lexeme: ",", line: start_line, column: start_column)
+      when ":"
+        peek == ":" ? (advance; Token.new(kind: :colon_colon, lexeme: "::", line: start_line, column: start_column)) : Token.new(kind: :colon, lexeme: ":", line: start_line, column: start_column)
+      when "?" then Token.new(kind: :question, lexeme: "?", line: start_line, column: start_column)
+      when "(" then Token.new(kind: :lparen, lexeme: "(", line: start_line, column: start_column)
+      when ")" then Token.new(kind: :rparen, lexeme: ")", line: start_line, column: start_column)
+      when "{" then Token.new(kind: :lbrace, lexeme: "{", line: start_line, column: start_column)
+      when "}" then Token.new(kind: :rbrace, lexeme: "}", line: start_line, column: start_column)
+      when "[" then Token.new(kind: :lbracket, lexeme: "[", line: start_line, column: start_column)
+      when "]" then Token.new(kind: :rbracket, lexeme: "]", line: start_line, column: start_column)
+      end
+    end
+    
+    def scan_literal_token(char, start_line, start_column, is_number: false, is_string: false)
+      return scan_number(char, start_line, start_column) if is_number
+      return scan_string_literal(start_line, start_column) if is_string && char == '"'
+      scan_char_literal(start_line, start_column) if is_string && char == "'"
+    end
+    
+    def scan_identifier_or_keyword(char, start_line, start_column)
+      scan_identifier(char, start_line, start_column)
     end
     
     # Helper to scan line comment lexeme only

@@ -10,53 +10,54 @@ module CppAst
       def parse_type
         type = "".dup
         
-        # Parse type (can be multiple tokens: const int*, unsigned long, std::vector<int>, etc)
         loop do
-          # Type keywords and modifiers
-          if current_token.kind.to_s.start_with?("keyword_") || 
-             current_token.kind == :identifier ||
-             [:asterisk, :ampersand, :less, :greater, :colon_colon].include?(current_token.kind)
-            
-            type << current_token.lexeme
-            trivia = current_token.trailing_trivia
-            advance_raw
-            
-            # Handle template arguments <...>
-            if current_token.kind == :less
-              type << trivia
-              type << parse_template_arguments
-              trivia = current_leading_trivia
-            end
-            
-            # Check if we're done with type (next is identifier for variable/function name)
-            if current_token.kind == :identifier
-              # This might be the name - check what follows
-              saved_pos = @position
-              advance_raw
-              next_trivia = current_leading_trivia
-              next_kind = current_token.kind
-              @position = saved_pos
-              
-              # If followed by =, ; , ( [ then this identifier is the name
-              if [:equals, :semicolon, :comma, :lparen, :lbracket].include?(next_kind)
-                type << trivia
-                break
-              end
-            end
-            
+          break unless can_continue_type_parsing?
+          
+          type << current_token.lexeme
+          trivia = current_token.trailing_trivia
+          advance_raw
+          
+          # Handle template arguments <...>
+          if current_token.kind == :less
             type << trivia
-          else
-            break
+            type << parse_template_arguments
+            trivia = current_leading_trivia
           end
+          
+          break if is_end_of_type?
+          
+          type << trivia
         end
         
-        # Extract trailing whitespace from type
+        extract_trailing_trivia(type)
+      end
+      
+      def can_continue_type_parsing?
+        is_type_keyword? || current_token.kind == :identifier || is_type_modifier?
+      end
+      
+      def is_type_keyword?
+        current_token.kind.to_s.start_with?("keyword_")
+      end
+      
+      def is_type_modifier?
+        [:asterisk, :ampersand, :less, :greater, :colon_colon].include?(current_token.kind)
+      end
+      
+      def is_end_of_type?
+        return false unless current_token.kind == :identifier
+        
+        saved_pos = @position
+        advance_raw
+        next_kind = current_token.kind
+        @position = saved_pos
+        
+        [:equals, :semicolon, :comma, :lparen, :lbracket].include?(next_kind)
+      end
+      
+      def extract_trailing_trivia(type)
         type_match = type.match(/^(.*?)(\s*)$/)
-        if type_match
-          [type_match[1], type_match[2]]
-        else
-          [type, ""]
-        end
+        type_match ? [type_match[1], type_match[2]] : [type, ""]
       end
       
       # Parse template arguments <...>, handling nested templates
