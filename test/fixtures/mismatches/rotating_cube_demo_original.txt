@@ -1,0 +1,66 @@
+#pragma once
+
+#include "demo_scene.hpp"
+#include "gl/shader.hpp"
+#include "gl/buffer.hpp"
+#include "widgets/log_view.hpp"
+#include <memory>
+#include <array>
+
+namespace gtkgl::demos {
+
+/**
+ * Rotating 3D cube with gradient lighting and perspective projection
+ */
+class RotatingCubeDemo : public DemoScene {
+public:
+    explicit RotatingCubeDemo(widgets::LogView* log_view = nullptr);
+    ~RotatingCubeDemo() override = default;
+
+    // DemoScene interface
+    void on_realize(GtkGLArea* area) override;
+    void on_unrealize(GtkGLArea* area) override;
+    void on_render(GtkGLArea* area, GdkGLContext* context) override;
+
+    std::string name() const override { return "Вращающийся куб"; }
+    std::string description() const override {
+        return "3D куб с перспективой, градиентным освещением и плавным вращением";
+    }
+    std::string category() const override { return "3D Graphics"; }
+
+    void update(float delta_time) override;
+    void reset() override;
+    void on_resize(int width, int height) override;
+
+private:
+    void create_shaders();
+    void create_geometry();
+    void update_projection();
+
+    struct Mat4 {
+        std::array<float, 16> data{};
+
+        static Mat4 identity();
+        static Mat4 perspective(float fov, float aspect, float near, float far);
+        static Mat4 rotation_xyz(float x, float y, float z);
+        static Mat4 translation(float x, float y, float z);
+        Mat4 operator*(const Mat4& other) const;
+    };
+
+    widgets::LogView* log_view_ = nullptr;
+
+    std::unique_ptr<gl::ShaderProgram> program_;
+    std::unique_ptr<gl::VertexArray> vao_;
+    std::unique_ptr<gl::Buffer> vbo_;
+    std::unique_ptr<gl::Buffer> ebo_;
+
+    float rotation_x_ = 0.0f;
+    float rotation_y_ = 0.0f;
+    float rotation_z_ = 0.0f;
+    float time_ = 0.0f;
+
+    Mat4 projection_;
+    int frame_count_ = 0;
+};
+
+} // namespace gtkgl::demos

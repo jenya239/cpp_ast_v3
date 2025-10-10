@@ -283,15 +283,15 @@ module CppAst
       end
     end
     
-    # FunctionDeclaration: `type name(params);` or `type name(params) { ... }`
+    # FunctionDeclaration: `type name(params);` or `type name(params) override { ... }`
     class FunctionDeclaration < Statement
       attr_accessor :return_type, :name, :parameters, :body
       attr_accessor :return_type_suffix, :lparen_suffix, :rparen_suffix
-      attr_accessor :param_separators
+      attr_accessor :param_separators, :modifiers_text
       
       def initialize(leading_trivia: "", return_type:, name:, parameters:, body: nil,
                      return_type_suffix: "", lparen_suffix: "", rparen_suffix: "",
-                     param_separators: [])
+                     param_separators: [], modifiers_text: "")
         super(leading_trivia: leading_trivia)
         @return_type = return_type
         @name = name
@@ -301,6 +301,7 @@ module CppAst
         @lparen_suffix = lparen_suffix
         @rparen_suffix = rparen_suffix
         @param_separators = param_separators
+        @modifiers_text = modifiers_text
       end
       
       def to_source
@@ -311,19 +312,21 @@ module CppAst
           result << param_separators[i] if i < parameters.size - 1
         end
         
-        result << "#{rparen_suffix})"
+        result << "#{rparen_suffix})#{modifiers_text}"
         result << (body ? body.to_source : ";")
         result
       end
     end
     
-    # ClassDeclaration: `class Name { ... };`
+    # ClassDeclaration: `class Name { ... };` or `class Name : public Base { ... };`
     class ClassDeclaration < Statement
       attr_accessor :name, :members, :member_trailings
       attr_accessor :class_suffix, :name_suffix, :lbrace_suffix, :rbrace_suffix
+      attr_accessor :base_classes_text
       
       def initialize(leading_trivia: "", name:, members:, member_trailings:,
-                     class_suffix: "", name_suffix: "", lbrace_suffix: "", rbrace_suffix: "")
+                     class_suffix: "", name_suffix: "", lbrace_suffix: "", rbrace_suffix: "",
+                     base_classes_text: "")
         super(leading_trivia: leading_trivia)
         @name = name
         @members = members
@@ -332,10 +335,13 @@ module CppAst
         @name_suffix = name_suffix
         @lbrace_suffix = lbrace_suffix
         @rbrace_suffix = rbrace_suffix
+        @base_classes_text = base_classes_text
       end
       
       def to_source
-        result = "#{leading_trivia}class#{class_suffix}#{name}#{name_suffix}{#{lbrace_suffix}"
+        result = "#{leading_trivia}class#{class_suffix}#{name}#{name_suffix}"
+        result << base_classes_text unless base_classes_text.empty?
+        result << "{#{lbrace_suffix}"
         
         members.zip(member_trailings).each do |member, trailing|
           result << member.to_source << trailing
@@ -346,13 +352,15 @@ module CppAst
       end
     end
     
-    # StructDeclaration: `struct Name { ... };`
+    # StructDeclaration: `struct Name { ... };` or `struct Name : public Base { ... };`
     class StructDeclaration < Statement
       attr_accessor :name, :members, :member_trailings
       attr_accessor :struct_suffix, :name_suffix, :lbrace_suffix, :rbrace_suffix
+      attr_accessor :base_classes_text
       
       def initialize(leading_trivia: "", name:, members:, member_trailings:,
-                     struct_suffix: "", name_suffix: "", lbrace_suffix: "", rbrace_suffix: "")
+                     struct_suffix: "", name_suffix: "", lbrace_suffix: "", rbrace_suffix: "",
+                     base_classes_text: "")
         super(leading_trivia: leading_trivia)
         @name = name
         @members = members
@@ -361,10 +369,13 @@ module CppAst
         @name_suffix = name_suffix
         @lbrace_suffix = lbrace_suffix
         @rbrace_suffix = rbrace_suffix
+        @base_classes_text = base_classes_text
       end
       
       def to_source
-        result = "#{leading_trivia}struct#{struct_suffix}#{name}#{name_suffix}{#{lbrace_suffix}"
+        result = "#{leading_trivia}struct#{struct_suffix}#{name}#{name_suffix}"
+        result << base_classes_text unless base_classes_text.empty?
+        result << "{#{lbrace_suffix}"
         
         members.zip(member_trailings).each do |member, trailing|
           result << member.to_source << trailing
@@ -412,6 +423,103 @@ module CppAst
         end
         
         result << ";"
+        result
+      end
+    end
+    
+    # EnumDeclaration: `enum Color { Red, Green };` or `enum class Color { Red, Green };`
+    class EnumDeclaration < Statement
+      attr_accessor :name, :enumerators
+      attr_accessor :enum_suffix, :class_keyword, :class_suffix, :name_suffix
+      attr_accessor :lbrace_suffix, :rbrace_suffix
+      
+      def initialize(leading_trivia: "", name:, enumerators:,
+                     enum_suffix: "", class_keyword: "", class_suffix: "", name_suffix: "",
+                     lbrace_suffix: "", rbrace_suffix: "")
+        super(leading_trivia: leading_trivia)
+        @name = name
+        @enumerators = enumerators
+        @enum_suffix = enum_suffix
+        @class_keyword = class_keyword
+        @class_suffix = class_suffix
+        @name_suffix = name_suffix
+        @lbrace_suffix = lbrace_suffix
+        @rbrace_suffix = rbrace_suffix
+      end
+      
+      def to_source
+        result = "#{leading_trivia}enum#{enum_suffix}"
+        result << "#{class_keyword}#{class_suffix}" unless class_keyword.empty?
+        result << "#{name}#{name_suffix}{#{lbrace_suffix}"
+        result << enumerators
+        result << "#{rbrace_suffix}};"
+        result
+      end
+    end
+    
+    # TemplateDeclaration: `template<typename T> class Foo { ... };`
+    class TemplateDeclaration < Statement
+      attr_accessor :template_params, :declaration
+      attr_accessor :template_suffix, :params_suffix
+      
+      def initialize(leading_trivia: "", template_params:, declaration:,
+                     template_suffix: "", params_suffix: "")
+        super(leading_trivia: leading_trivia)
+        @template_params = template_params
+        @declaration = declaration
+        @template_suffix = template_suffix
+        @params_suffix = params_suffix
+      end
+      
+      def to_source
+        "#{leading_trivia}template#{template_suffix}<#{template_params}>#{params_suffix}#{declaration.to_source}"
+      end
+    end
+    
+    # ErrorStatement: represents unparseable code that was recovered
+    class ErrorStatement < Statement
+      attr_accessor :error_text
+      
+      def initialize(leading_trivia: "", error_text:)
+        super(leading_trivia: leading_trivia)
+        @error_text = error_text
+      end
+      
+      def to_source
+        "#{leading_trivia}#{error_text}"
+      end
+    end
+    
+    # UsingDeclaration: `using namespace std;` or `using MyType = int;`
+    class UsingDeclaration < Statement
+      attr_accessor :kind, :name, :alias_target
+      attr_accessor :using_suffix, :namespace_suffix, :equals_prefix, :equals_suffix
+      
+      # kind: :namespace, :name, :alias
+      def initialize(leading_trivia: "", kind:, name:, alias_target: nil,
+                     using_suffix: "", namespace_suffix: "", equals_prefix: "", equals_suffix: "")
+        super(leading_trivia: leading_trivia)
+        @kind = kind
+        @name = name
+        @alias_target = alias_target
+        @using_suffix = using_suffix
+        @namespace_suffix = namespace_suffix
+        @equals_prefix = equals_prefix
+        @equals_suffix = equals_suffix
+      end
+      
+      def to_source
+        result = "#{leading_trivia}using#{using_suffix}"
+        
+        case kind
+        when :namespace
+          result << "namespace#{namespace_suffix}#{name};"
+        when :name
+          result << "#{name};"
+        when :alias
+          result << "#{name}#{equals_prefix}=#{equals_suffix}#{alias_target};"
+        end
+        
         result
       end
     end

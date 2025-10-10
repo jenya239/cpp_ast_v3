@@ -56,6 +56,7 @@ module CppAst
         # Multiplicative (precedence 12)
         asterisk: { precedence: 12, right_assoc: false },
         slash: { precedence: 12, right_assoc: false },
+        percent: { precedence: 12, right_assoc: false },
       }.freeze
       
       def operator_info(kind)

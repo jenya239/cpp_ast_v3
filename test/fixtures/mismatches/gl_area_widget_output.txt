@@ -1,0 +1,42 @@
+#pragma once
+
+#include <gtk/gtk.h>
+#include <epoxy/gl.h>
+#include <functional>
+#include <memory>
+
+const GLAreaWidget&) = delete;
+    GLAreaWidget& operator =(const GLAreaWidget&) = delete;
+
+    // Move semantics
+    noexcept;
+    GLAreaWidget& operator =(GLAreaWidget&& other) noexcept;
+
+    // Getters
+    GtkWidget* widget() const noexcept { return widget_; }
+    bool is_valid() const noexcept { return widget_ != nullptr; }
+
+    // Configuration
+    void set_size(int width, int height);
+    void set_has_depth_buffer(bool has_depth);
+    void set_has_stencil_buffer(bool has_stencil);
+    void set_auto_render(bool auto_render);
+
+    // Callbacks
+    void set_render_callback(RenderCallback callback);
+    void set_realize_callback(RealizeCallback callback);
+
+    // Manual rendering
+    void queue_render();
+
+private:
+    static gboolean on_render_static(GtkGLArea* area, GdkGLContext* context, gpointer user_data);
+    static void on_realize_static(GtkGLArea* area, gpointer user_data);
+    static void on_unrealize_static(GtkGLArea* area, gpointer user_data);
+
+    GtkWidget* widget_ = nullptr;
+    RenderCallback render_callback_;
+    RealizeCallback realize_callback_;
+};
+
+} // namespace gtkgl::widgets

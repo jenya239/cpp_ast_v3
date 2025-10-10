@@ -1,0 +1,35 @@
+#pragma once
+
+#include <cstdint>
+#include <cstddef>
+
+namespace gtkgl::text::constants {
+
+// Texture Atlas
+constexpr uint32_t DEFAULT_ATLAS_PAGE_SIZE = 2048;
+constexpr uint32_t MAX_ATLAS_PAGE_SIZE = 8192;
+constexpr uint32_t ATLAS_GLYPH_PADDING = 1;  // 1px padding to prevent filtering artifacts
+
+// Glyph Cache
+constexpr size_t DEFAULT_GLYPH_CACHE_SIZE = 1024;
+constexpr size_t MAX_GLYPH_CACHE_SIZE = 16384;
+
+// Font Size Limits
+constexpr uint16_t MIN_FONT_SIZE_PX = 1;
+constexpr uint16_t MAX_FONT_SIZE_PX = 1024;
+
+// Glyph Size Limits
+constexpr uint32_t MAX_GLYPH_WIDTH = 1024;
+constexpr uint32_t MAX_GLYPH_HEIGHT = 1024;
+
+// OpenGL
+constexpr uint32_t GL_UNPACK_ALIGNMENT_DEFAULT = 4;
+constexpr uint32_t GL_UNPACK_ALIGNMENT_FREETYPE = 1;
+
+// Shader Limits
+constexpr size_t MAX_SHADER_LOG_LENGTH = 512;
+
+// Memory
+constexpr size_t MAX_VERTEX_BUFFER_SIZE = 1024 * 1024;  // 1MB
+
+} // namespace gtkgl::text::constants

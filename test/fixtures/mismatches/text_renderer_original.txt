@@ -1,0 +1,143 @@
+#pragma once
+
+#include "text_types.hpp"
+#include "freetype_face.hpp"
+#include "text_shaper.hpp"
+#include "texture_atlas.hpp"
+#include <epoxy/gl.h>
+#include <unordered_map>
+#include <list>
+#include <memory>
+#include <string>
+#include <string_view>
+
+namespace gtkgl::text {
+
+// LRU Cache для закешированных глифов
+class GlyphCache {
+public:
+    explicit GlyphCache(size_t max_entries = 1024);
+
+    // Получить глиф из кеша
+    std::optional<CachedGlyph> get(const GlyphCacheKey& key);
+
+    // Добавить глиф в кеш
+    void put(const CachedGlyph& glyph);
+
+    // Обновить время использования
+    void touch(const GlyphCacheKey& key, uint64_t frame);
+
+    // Очистить кеш
+    void clear();
+
+    // Статистика
+    size_t size() const { return cache_.size(); }
+    size_t max_size() const { return max_entries_; }
+    uint64_t hit_count() const { return hit_count_; }
+    uint64_t miss_count() const { return miss_count_; }
+    float hit_rate() const;
+
+private:
+    void evict_if_needed();
+
+    size_t max_entries_;
+    std::unordered_map<GlyphCacheKey, CachedGlyph> cache_;
+    std::list<GlyphCacheKey> lru_list_;  // Most recently used в конце
+    uint64_t hit_count_{0};
+    uint64_t miss_count_{0};
+};
+
+// GPU Text Renderer
+class TextRenderer {
+public:
+    TextRenderer();
+    ~TextRenderer();
+
+    // Non-copyable, movable
+    TextRenderer(const TextRenderer&) = delete;
+    TextRenderer& operator=(const TextRenderer&) = delete;
+    TextRenderer(TextRenderer&&) noexcept;
+    TextRenderer& operator=(TextRenderer&&) noexcept;
+
+    // Инициализация (создание shaders, buffers)
+    bool initialize();
+
+    // Установить projection matrix (обычно orthographic)
+    void set_projection(const float* matrix_4x4);
+
+    // Нарисовать текст
+    void draw_text(FreeTypeFace& face,
+                   const std::string& text,
+                   float x, float y,
+                   float size_px,
+                   const Color& color = Color::white(),
+                   const ShapingOptions& options = {});
+
+    // Batch режим (для отрисовки много текста за один draw call)
+    void begin_batch();
+    void add_text(FreeTypeFace& face,
+                  const std::string& text,
+                  float x, float y,
+                  float size_px,
+                  const Color& color = Color::white(),
+                  const ShapingOptions& options = {});
+    void end_batch();
+
+    // Очистить все кеши
+    void clear_caches();
+
+    // Статистика
+    const GlyphCache& glyph_cache() const { return glyph_cache_; }
+    const TextureAtlasManager& atlas_manager() const { return atlas_; }
+
+private:
+    struct Vertex {
+        float pos[2];      // Position
+        float uv[2];       // UV coordinates
+        float color[4];    // RGBA
+    };
+
+    bool create_shaders();
+    bool create_buffers();
+
+    // Получить или растеризовать глиф
+    CachedGlyph get_or_rasterize_glyph(
+        FreeTypeFace& face,
+        GlyphIndex glyph_index,
+        uint16_t size_px,
+        RenderMode mode);
+
+    // Добавить shaped glyphs в batch
+    void add_shaped_glyphs(
+        FreeTypeFace& face,
+        const std::vector<ShapedGlyph>& shaped_glyphs,
+        float start_x, float start_y,
+        uint16_t size_px,
+        const Color& color);
+
+    // Отрисовать накопленные vertices
+    void flush();
+
+    // Shaders
+    GLuint shader_program_{0};
+    GLint u_projection_{-1};
+    GLint u_texture_{-1};
+
+    // Buffers
+    GLuint vao_{0};
+    GLuint vbo_{0};
+    std::vector<Vertex> vertex_buffer_;
+
+    // Pipeline components
+    TextShaper shaper_;
+    TextureAtlasManager atlas_;
+    GlyphCache glyph_cache_;
+
+    // State
+    bool initialized_{false};
+    bool in_batch_{false};
+    uint64_t current_frame_{0};
+    float projection_[16];
+};
+
+} // namespace gtkgl::text

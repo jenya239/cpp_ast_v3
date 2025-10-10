@@ -1,0 +1,45 @@
+#pragma once
+
+#include "demo_scene.hpp"
+#include <vector>
+#include <map>
+#include <functional>
+#include <memory>
+#include <optional>
+
+default;
+
+    // Factory registration
+    void register_demo(const std::string& id, FactoryFunc factory);
+
+    // Scene management
+    bool activate_demo(const std::string& id);
+    DemoScene* current_demo() const { return current_demo_.get(); }
+
+    // Query available demos
+    std::vector<std::string> demo_ids() const;
+    size_t demo_count() const { return factories_.size(); }
+
+    // Callbacks
+    void set_change_callback(ChangeCallback callback) {
+        change_callback_ = std::move(callback);
+    }
+
+    // Get demo metadata without activating
+    struct DemoInfo {
+        std::string id;
+        std::string name;
+        std::string description;
+        std::string category;
+    };
+
+    std::optional<DemoInfo> get_demo_info(const std::string& id) const;
+    std::vector<DemoInfo> all_demos() const;
+
+private:
+    std::map<std::string, FactoryFunc> factories_;
+    DemoScenePtr current_demo_;
+    ChangeCallback change_callback_;
+};
+
+} // namespace gtkgl::demos

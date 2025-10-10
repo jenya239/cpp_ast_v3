@@ -1,0 +1,114 @@
+#pragma once
+
+#include "text_types.hpp"
+#include <epoxy/gl.h>
+#include <vector>
+#include <optional>
+#include <memory>
+
+namespace gtkgl::text {
+
+// Простой Shelf bin-packing алгоритм
+// (достаточно эффективен для текстовых глифов)
+class BinPacker {
+public:
+    explicit BinPacker(uint32_t width, uint32_t height);
+
+    // Попробовать выделить прямоугольник
+    std::optional<Rect> allocate(uint32_t w, uint32_t h);
+
+    // Очистить все аллокации
+    void clear();
+
+    // Статистика
+    uint32_t width() const { return width_; }
+    uint32_t height() const { return height_; }
+    uint32_t allocated_pixels() const { return allocated_pixels_; }
+    float utilization() const;
+
+private:
+    struct Shelf {
+        uint32_t y;          // Y позиция полки
+        uint32_t height;     // Высота полки
+        uint32_t x;          // Текущая X позиция
+    };
+
+    uint32_t width_;
+    uint32_t height_;
+    std::vector<Shelf> shelves_;
+    uint32_t allocated_pixels_{0};
+};
+
+// Одна страница текстурного атласа
+class AtlasPage {
+public:
+    AtlasPage(uint32_t width, uint32_t height, AtlasFormat format);
+    ~AtlasPage();
+
+    // Non-copyable, movable
+    AtlasPage(const AtlasPage&) = delete;
+    AtlasPage& operator=(const AtlasPage&) = delete;
+    AtlasPage(AtlasPage&&) noexcept;
+    AtlasPage& operator=(AtlasPage&&) noexcept;
+
+    // Попробовать выделить место для глифа
+    std::optional<AtlasSlot> allocate(uint32_t width, uint32_t height);
+
+    // Загрузить данные в текстуру
+    bool upload(const Rect& pixel_rect, const uint8_t* data, size_t data_size);
+
+    // Геттеры
+    TextureID texture_id() const { return texture_id_; }
+    uint32_t width() const { return width_; }
+    uint32_t height() const { return height_; }
+    AtlasFormat format() const { return format_; }
+    float utilization() const { return packer_.utilization(); }
+
+private:
+    bool create_gl_texture();
+
+    uint32_t width_;
+    uint32_t height_;
+    AtlasFormat format_;
+    TextureID texture_id_{0};
+    BinPacker packer_;
+};
+
+// Менеджер атласов (управляет несколькими страницами)
+class TextureAtlasManager {
+public:
+    explicit TextureAtlasManager(uint32_t page_size = 2048);
+    ~TextureAtlasManager();
+
+    // Non-copyable, movable
+    TextureAtlasManager(const TextureAtlasManager&) = delete;
+    TextureAtlasManager& operator=(const TextureAtlasManager&) = delete;
+    TextureAtlasManager(TextureAtlasManager&&) noexcept;
+    TextureAtlasManager& operator=(TextureAtlasManager&&) noexcept;
+
+    // Выделить место для глифа
+    std::optional<AtlasSlot> allocate(AtlasFormat format,
+                                      uint32_t width,
+                                      uint32_t height,
+                                      const uint8_t* data,
+                                      size_t data_size);
+
+    // Очистить все атласы
+    void clear();
+
+    // Статистика
+    size_t page_count() const { return pages_.size(); }
+    uint64_t total_memory_bytes() const;
+    float average_utilization() const;
+
+    // Get texture ID for specific page
+    TextureID get_page_texture(size_t page_index) const;
+
+private:
+    AtlasPage* get_or_create_page(AtlasFormat format);
+
+    uint32_t page_size_;
+    std::vector<std::unique_ptr<AtlasPage>> pages_;
+};
+
+} // namespace gtkgl::text

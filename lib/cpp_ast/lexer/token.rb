@@ -4,7 +4,7 @@ module CppAst
   class Token
     attr_reader :kind, :lexeme, :line, :column
     
-    TRIVIA_KINDS = [:whitespace, :comment, :newline, :preprocessor].freeze
+    TRIVIA_KINDS = [:whitespace, :comment, :newline, :preprocessor, :attribute].freeze
     
     def initialize(kind:, lexeme:, line:, column:)
       @kind = kind

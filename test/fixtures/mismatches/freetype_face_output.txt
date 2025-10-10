@@ -1,0 +1,70 @@
+#pragma once
+
+#include "text_types.hpp"
+#include <ft2build.h>
+#include FT_FREETYPE_H
+#include FT_GLYPH_H
+#include <memory>
+#include <string>
+#include <expected>
+
+const FreeTypeLibrary&) = delete;
+    FreeTypeLibrary& operator =(const FreeTypeLibrary&) = delete;
+    ) noexcept;
+    FreeTypeLibrary& operator =(FreeTypeLibrary&&) noexcept;
+
+    FT_Library handle() const { return library_; }
+
+private:
+    FreeTypeLibrary() = default;
+    FT_Library library_ {nullptr};
+};
+
+// RAII wrapper для FT_Face
+const FreeTypeFace&) = delete;
+    FreeTypeFace& operator =(const FreeTypeFace&) = delete;
+    ) noexcept;
+    FreeTypeFace& operator =(FreeTypeFace&&) noexcept;
+
+    // Установить размер шрифта в пикселях
+    std::expected<void, FreeTypeError> set_pixel_size(uint16_t size_px);
+
+    // Получить glyph index по char code
+    GlyphIndex get_glyph_index(uint32_t char_code) const;
+
+    // Загрузить глиф (без рендеринга)
+    std::expected<void, FreeTypeError> load_glyph(GlyphIndex glyph_index);
+
+    // Растеризовать глиф в bitmap (antialiased A8)
+    std::expected<RasterizedGlyph, FreeTypeError>
+    rasterize_bitmap(GlyphIndex glyph_index, uint16_t size_px);
+
+    // Получить метрики без растеризации
+    std::expected<GlyphMetrics, FreeTypeError>
+    get_metrics(GlyphIndex glyph_index, uint16_t size_px);
+
+    // Информация о шрифте
+    std::string family_name() const;
+    std::string style_name() const;
+    bool has_glyph(uint32_t char_code) const;
+
+    FT_Face handle() const { return face_; }
+
+private:
+    FreeTypeFace() = default;
+    FT_Face face_ {nullptr};
+};
+
+// Утилиты для конвертации FreeType метрик
+inline float fixed_to_float(FT_Pos value) {
+        return static_cast<float>(value) / 64.0f;
+    }
+
+    // Извлечь метрики из FT_GlyphSlot
+    GlyphMetrics extract_metrics(FT_GlyphSlot slot);
+
+    // Валидация размера bitmap
+    bool validate_bitmap_size(const FT_Bitmap& bitmap);
+}
+
+} // namespace gtkgl::text

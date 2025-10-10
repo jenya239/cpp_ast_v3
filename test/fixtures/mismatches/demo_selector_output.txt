@@ -1,0 +1,45 @@
+#pragma once
+
+#include <gtk/gtk.h>
+#include <functional>
+#include <string>
+#include <vector>
+
+const DemoSelector&) = delete;
+    DemoSelector& operator =(const DemoSelector&) = delete;
+
+    // Widget access
+    GtkWidget* widget() const { return scrolled_window_; }
+
+    // Data management
+    void set_demos(const std::vector<DemoItem>& demos);
+    void clear();
+
+    // Selection
+    void set_selection_callback(SelectionCallback callback);
+    void select_demo(const std::string& id);
+    void highlight_active_demo(const std::string& id);
+
+    // Appearance
+    void set_size(int width, int height);
+
+private:
+    static void on_row_activated(GtkListBox* box, GtkListBoxRow* row, gpointer user_data);
+    static gboolean on_filter_func(GtkListBoxRow* row, gpointer user_data);
+    static gint on_sort_func(GtkListBoxRow* row1, GtkListBoxRow* row2, gpointer user_data);
+
+    void build_ui();
+    void add_demo_row(const DemoItem& item);
+    void update_filter();
+
+    GtkWidget* scrolled_window_ = nullptr;
+    GtkWidget* main_box_ = nullptr;
+    GtkWidget* search_entry_ = nullptr;
+    GtkWidget* list_box_ = nullptr;
+
+    SelectionCallback selection_callback_;
+    std::vector<DemoItem> demos_;
+    std::string filter_text_;
+};
+
+} // namespace gtkgl::widgets

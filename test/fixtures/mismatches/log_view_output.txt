@@ -1,0 +1,33 @@
+#pragma once
+
+#include <gtk/gtk.h>
+#include <string>
+#include <sstream>
+
+const LogView&) = delete;
+    LogView& operator =(const LogView&) = delete;
+
+    // Move semantics
+    noexcept;
+    LogView& operator =(LogView&& other) noexcept;
+
+    // Getters
+    GtkWidget* widget() const noexcept { return frame_; }
+    bool is_valid() const noexcept { return frame_ != nullptr; }
+
+    // Logging
+    void log(const std::string& message);
+    void clear();
+
+    // Configuration
+    void set_size(int width, int height);
+
+private:
+    std::string get_timestamp() const;
+
+    GtkWidget* frame_ = nullptr;
+    GtkWidget* text_view_ = nullptr;
+    GtkTextBuffer* buffer_ = nullptr;
+};
+
+} // namespace gtkgl::widgets

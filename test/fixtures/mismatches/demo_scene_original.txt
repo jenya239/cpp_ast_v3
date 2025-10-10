@@ -1,0 +1,52 @@
+#pragma once
+
+#include <gtk/gtk.h>
+#include <epoxy/gl.h>
+#include <string>
+#include <memory>
+
+namespace gtkgl::demos {
+
+/**
+ * Abstract base class for all OpenGL demo scenes
+ * Uses CRTP pattern for compile-time polymorphism where beneficial
+ */
+class DemoScene {
+public:
+    virtual ~DemoScene() = default;
+
+    // Scene lifecycle
+    virtual void on_realize(GtkGLArea* area) = 0;
+    virtual void on_unrealize(GtkGLArea* area) = 0;
+    virtual void on_render(GtkGLArea* area, GdkGLContext* context) = 0;
+
+    // Scene metadata
+    virtual std::string name() const = 0;
+    virtual std::string description() const = 0;
+    virtual std::string category() const { return "General"; }
+
+    // Animation control
+    virtual void update([[maybe_unused]] float delta_time) {}
+    virtual void reset() {}
+
+    // Viewport handling
+    virtual void on_resize(int width, int height) {
+        width_ = width;
+        height_ = height;
+    }
+
+    // State
+    bool is_initialized() const { return initialized_; }
+
+protected:
+    bool initialized_ = false;
+    int width_ = 800;
+    int height_ = 600;
+};
+
+/**
+ * Smart pointer type for demo scenes
+ */
+using DemoScenePtr = std::shared_ptr<DemoScene>;
+
+} // namespace gtkgl::demos

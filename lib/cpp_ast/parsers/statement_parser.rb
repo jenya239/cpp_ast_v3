@@ -2,7 +2,18 @@
 
 module CppAst
   module Parsers
+    # StatementParser - main statement parsing class
+    # Combines functionality from multiple modules:
+    #   - TypeParser - type parsing utilities
+    #   - ControlFlowParser - if/while/for/switch parsing (future)
+    #   - DeclarationParser - namespace/class/function parsing (future)
+    #
+    # Current size: ~1600 lines
+    # TODO: Extract methods into ControlFlowParser and DeclarationParser modules
     class StatementParser < ExpressionParser
+      include TypeParser
+      include ControlFlowParser
+      include DeclarationParser
       # Parse statement with leading_trivia
       # Returns (stmt, trailing) tuple
       def parse_statement(leading_trivia = "")
@@ -32,6 +43,12 @@ module CppAst
           parse_class_declaration(leading_trivia)
         when :keyword_struct
           parse_struct_declaration(leading_trivia)
+        when :keyword_using
+          parse_using_declaration(leading_trivia)
+        when :keyword_enum
+          parse_enum_declaration(leading_trivia)
+        when :keyword_template
+          parse_template_declaration(leading_trivia)
         else
           # Distinguish between declarations and expressions
           if looks_like_function_declaration?
@@ -584,7 +601,7 @@ module CppAst
         [stmt, trailing]
       end
       
-      # Parse namespace declaration: `namespace name { ... }` or `namespace a::b::c { ... }`
+      # Parse namespace declaration: `namespace name { ... }` or `namespace { ... }` (anonymous)
       # Returns (NamespaceDeclaration, trailing) tuple
       def parse_namespace_declaration(leading_trivia)
         # Consume 'namespace'
@@ -593,29 +610,31 @@ module CppAst
         # Collect trivia after 'namespace'
         namespace_suffix = collect_trivia_string
         
-        # Parse name (can be nested with ::)
+        # Check if anonymous namespace (no name)
         name = "".dup
-        loop do
-          unless current_token.kind == :identifier
-            raise ParseError, "Expected namespace name"
-          end
-          
-          name << current_token.lexeme
-          advance_raw
-          
-          # Check for ::
-          trivia_before_colon = collect_trivia_string
-          if current_token.kind == :colon_colon
-            name << trivia_before_colon << current_token.lexeme
-            advance_raw
-          else
-            # No more ::, this is the end of namespace name
-            break
-          end
-        end
+        name_suffix = ""
         
-        # Collect trivia after name
-        name_suffix = collect_trivia_string
+        if current_token.kind == :identifier
+          # Parse name (can be nested with ::)
+          loop do
+            name << current_token.lexeme
+            advance_raw
+            
+            # Check for ::
+            trivia_before_colon = collect_trivia_string
+            if current_token.kind == :colon_colon
+              name << trivia_before_colon << current_token.lexeme
+              advance_raw
+            else
+              # No more ::, this is the end of namespace name
+              name_suffix = trivia_before_colon
+              break
+            end
+          end
+          
+          # Collect additional trivia after name
+          name_suffix = name_suffix + collect_trivia_string
+        end
         
         # Parse body (block statement)
         body, trailing = parse_block_statement("")
@@ -645,12 +664,39 @@ module CppAst
         
         return true if type_keywords.include?(current_token.kind)
         
-        # Check pattern: identifier identifier (CustomType varName)
+        # Check pattern: identifier identifier (CustomType varName) or std::vector<int> varName
         return false unless current_token.kind == :identifier
         
         saved_pos = @position
         advance_raw
         collect_trivia_string
+        
+        # Skip :: for qualified names (std::vector)
+        while current_token.kind == :colon_colon
+          advance_raw
+          collect_trivia_string
+          if current_token.kind == :identifier
+            advance_raw
+            collect_trivia_string
+          end
+        end
+        
+        # Skip <...> for template types (vector<int>)
+        if current_token.kind == :less
+          depth = 1
+          advance_raw
+          
+          while depth > 0 && !at_end?
+            if current_token.kind == :less
+              depth += 1
+            elsif current_token.kind == :greater
+              depth -= 1
+            end
+            advance_raw
+          end
+          
+          collect_trivia_string
+        end
         
         # Check if followed by identifier (variable name) or * & (pointers/refs)
         result = [:identifier, :asterisk, :ampersand].include?(current_token.kind)
@@ -660,7 +706,7 @@ module CppAst
       end
       
       # Simple heuristic to detect function declarations
-      # Look for pattern: type name (
+      # Look for pattern: type name ( or type ~name ( or std::vector<int> name (
       def looks_like_function_declaration?
         return false unless current_token.kind == :identifier || current_token.kind.to_s.start_with?("keyword_")
         
@@ -670,6 +716,39 @@ module CppAst
         # Try to scan: type name (
         advance_raw  # skip type
         collect_trivia_string
+        
+        # Skip :: for qualified names (std::vector)
+        while current_token.kind == :colon_colon
+          advance_raw
+          collect_trivia_string
+          if current_token.kind == :identifier
+            advance_raw
+            collect_trivia_string
+          end
+        end
+        
+        # Skip <...> for template types (vector<int>)
+        if current_token.kind == :less
+          depth = 1
+          advance_raw
+          
+          while depth > 0 && !at_end?
+            if current_token.kind == :less
+              depth += 1
+            elsif current_token.kind == :greater
+              depth -= 1
+            end
+            advance_raw
+          end
+          
+          collect_trivia_string
+        end
+        
+        # Check for destructor ~
+        if current_token.kind == :tilde
+          advance_raw
+          collect_trivia_string
+        end
         
         is_func = current_token.kind == :identifier
         if is_func
@@ -687,19 +766,69 @@ module CppAst
       # Parse function declaration: `type name(params);` or `type name(params) { ... }`
       # Returns (FunctionDeclaration, trailing) tuple
       def parse_function_declaration(leading_trivia)
-        # Parse return type (identifier or keyword)
-        return_type = current_token.lexeme
+        # Parse return type (can be simple or template: int, std::vector<int>, etc)
+        return_type = "".dup
+        return_type << current_token.lexeme
         advance_raw
         
-        # Collect trivia after return type
-        return_type_suffix = collect_trivia_string
+        # Collect trivia after first part of return type
+        trivia_after = collect_trivia_string
+        
+        # Handle :: for qualified names (std::vector)
+        while current_token.kind == :colon_colon
+          return_type << trivia_after << current_token.lexeme
+          advance_raw
+          trivia_after = collect_trivia_string
+          
+          if current_token.kind == :identifier
+            return_type << trivia_after << current_token.lexeme
+            advance_raw
+            trivia_after = collect_trivia_string
+          end
+        end
+        
+        # Handle <...> for template types (vector<int>)
+        if current_token.kind == :less
+          return_type << trivia_after
+          return_type << current_token.lexeme
+          advance_raw
+          
+          depth = 1
+          while depth > 0 && !at_end?
+            if current_token.kind == :less
+              depth += 1
+            elsif current_token.kind == :greater
+              depth -= 1
+            end
+            
+            return_type << current_token.lexeme
+            advance_raw
+            
+            if depth == 0
+              break
+            end
+          end
+          
+          trivia_after = collect_trivia_string
+        end
+        
+        return_type_suffix = trivia_after
+        
+        # Check for destructor (~ClassName) or function name
+        # Destructor: ~ immediately before identifier
+        name = "".dup
+        if current_token.kind == :tilde
+          name << current_token.lexeme
+          advance_raw
+          name << collect_trivia_string
+        end
         
         # Parse function name
         unless current_token.kind == :identifier
           raise ParseError, "Expected function name"
         end
         
-        name = current_token.lexeme
+        name << current_token.lexeme
         advance_raw
         
         # Collect trivia before '('
@@ -760,6 +889,17 @@ module CppAst
         # Collect trivia after ')'
         after_rparen = collect_trivia_string
         
+        # Collect modifiers (const, override, final, noexcept, = default, etc)
+        modifiers_text = "".dup
+        until [:lbrace, :semicolon].include?(current_token.kind) || at_end?
+          modifiers_text << after_rparen unless after_rparen.empty?
+          after_rparen = ""
+          
+          modifiers_text << current_token.lexeme
+          advance_raw
+          modifiers_text << collect_trivia_string
+        end
+        
         # Check for body (block) or semicolon
         body = nil
         trailing = ""
@@ -782,13 +922,14 @@ module CppAst
           return_type_suffix: return_type_suffix,
           lparen_suffix: lparen_suffix,
           rparen_suffix: rparen_suffix,
-          param_separators: param_separators
+          param_separators: param_separators,
+          modifiers_text: modifiers_text
         )
         
         [stmt, trailing]
       end
       
-      # Parse class declaration: `class Name { ... };`
+      # Parse class declaration: `class Name { ... };` or `class Name : public Base { ... };`
       # Returns (ClassDeclaration, trailing) tuple
       def parse_class_declaration(leading_trivia)
         # Consume 'class'
@@ -807,6 +948,23 @@ module CppAst
         
         # Collect trivia after name
         name_suffix = collect_trivia_string
+        
+        # Check for inheritance: `: public Base`
+        base_classes_text = ""
+        if current_token.kind == :colon
+          # Collect everything from : to {
+          base_classes_text = name_suffix.dup
+          name_suffix = ""
+          
+          base_classes_text << current_token.lexeme  # :
+          advance_raw
+          
+          # Collect until {
+          until current_token.kind == :lbrace || at_end?
+            base_classes_text << current_token.lexeme
+            advance_raw
+          end
+        end
         
         # Consume '{'
         expect(:lbrace)
@@ -874,13 +1032,14 @@ module CppAst
           class_suffix: class_suffix,
           name_suffix: name_suffix,
           lbrace_suffix: lbrace_suffix,
-          rbrace_suffix: rbrace_suffix
+          rbrace_suffix: rbrace_suffix,
+          base_classes_text: base_classes_text
         )
         
         [stmt, trailing]
       end
       
-      # Parse struct declaration: `struct Name { ... };`
+      # Parse struct declaration: `struct Name { ... };` or `struct Name : public Base { ... };`
       # Returns (StructDeclaration, trailing) tuple  
       def parse_struct_declaration(leading_trivia)
         # Consume 'struct'
@@ -899,6 +1058,23 @@ module CppAst
         
         # Collect trivia after name
         name_suffix = collect_trivia_string
+        
+        # Check for inheritance: `: public Base`
+        base_classes_text = ""
+        if current_token.kind == :colon
+          # Collect everything from : to {
+          base_classes_text = name_suffix.dup
+          name_suffix = ""
+          
+          base_classes_text << current_token.lexeme  # :
+          advance_raw
+          
+          # Collect until {
+          until current_token.kind == :lbrace || at_end?
+            base_classes_text << current_token.lexeme
+            advance_raw
+          end
+        end
         
         # Consume '{'
         expect(:lbrace)
@@ -966,7 +1142,8 @@ module CppAst
           struct_suffix: struct_suffix,
           name_suffix: name_suffix,
           lbrace_suffix: lbrace_suffix,
-          rbrace_suffix: rbrace_suffix
+          rbrace_suffix: rbrace_suffix,
+          base_classes_text: base_classes_text
         )
         
         [stmt, trailing]
@@ -1158,6 +1335,281 @@ module CppAst
           declarators: declarators,
           declarator_separators: declarator_separators,
           type_suffix: type_suffix.empty? ? " " : type_suffix
+        )
+        
+        [stmt, trailing]
+      end
+      
+      # Parse using declaration: `using namespace std;` or `using MyType = int;`
+      # Returns (UsingDeclaration, trailing) tuple
+      def parse_using_declaration(leading_trivia)
+        # Consume 'using'
+        expect(:keyword_using)
+        
+        # Collect trivia after 'using'
+        using_suffix = collect_trivia_string
+        
+        # Check if it's 'using namespace'
+        if current_token.kind == :keyword_namespace
+          advance_raw  # consume 'namespace'
+          
+          # Collect trivia after 'namespace'
+          namespace_suffix = collect_trivia_string
+          
+          # Parse namespace name (can be nested like std::chrono)
+          name = "".dup
+          name_suffix = ""
+          loop do
+            unless current_token.kind == :identifier
+              raise ParseError, "Expected namespace name"
+            end
+            
+            name << current_token.lexeme
+            advance_raw
+            
+            # Check for ::
+            trivia_before_colon = collect_trivia_string
+            if current_token.kind == :colon_colon
+              name << trivia_before_colon << current_token.lexeme
+              advance_raw
+            else
+              # No more ::, this is the end
+              name_suffix = trivia_before_colon
+              break
+            end
+          end
+          
+          # Consume semicolon
+          _semicolon_prefix = collect_trivia_string
+          expect(:semicolon)
+          
+          # Collect trailing
+          trailing = collect_trivia_string
+          
+          stmt = Nodes::UsingDeclaration.new(
+            leading_trivia: leading_trivia,
+            kind: :namespace,
+            name: name + name_suffix,
+            using_suffix: using_suffix,
+            namespace_suffix: namespace_suffix
+          )
+          
+          return [stmt, trailing]
+        end
+        
+        # Parse name (could be simple name or qualified name like std::vector)
+        name = "".dup
+        after_name = ""
+        loop do
+          unless current_token.kind == :identifier
+            raise ParseError, "Expected identifier in using declaration"
+          end
+          
+          name << current_token.lexeme
+          advance_raw
+          
+          # Check for ::
+          trivia_before_colon = collect_trivia_string
+          if current_token.kind == :colon_colon
+            name << trivia_before_colon << current_token.lexeme
+            advance_raw
+          else
+            # No more ::, this is the end
+            after_name = trivia_before_colon
+            break
+          end
+        end
+        
+        # Check if it's type alias: using MyType = int;
+        after_name_extra = collect_trivia_string
+        if current_token.kind == :equals
+          equals_prefix = after_name + after_name_extra
+          advance_raw  # consume '='
+          
+          # Collect trivia after '='
+          equals_suffix = collect_trivia_string
+          
+          # Parse target type (collect as string until semicolon)
+          alias_target = "".dup
+          until current_token.kind == :semicolon || at_end?
+            alias_target << current_token.lexeme
+            advance_raw
+          end
+          
+          # Consume semicolon
+          _semicolon_prefix = collect_trivia_string
+          expect(:semicolon)
+          
+          # Collect trailing
+          trailing = collect_trivia_string
+          
+          stmt = Nodes::UsingDeclaration.new(
+            leading_trivia: leading_trivia,
+            kind: :alias,
+            name: name,
+            alias_target: alias_target,
+            using_suffix: using_suffix,
+            equals_prefix: equals_prefix,
+            equals_suffix: equals_suffix
+          )
+          
+          return [stmt, trailing]
+        else
+          # Simple using: using std::vector;
+          _semicolon_prefix = after_name + after_name_extra + collect_trivia_string
+          expect(:semicolon)
+          
+          # Collect trailing
+          trailing = collect_trivia_string
+          
+          stmt = Nodes::UsingDeclaration.new(
+            leading_trivia: leading_trivia,
+            kind: :name,
+            name: name,
+            using_suffix: using_suffix
+          )
+          
+          return [stmt, trailing]
+        end
+      end
+      
+      # Parse template declaration: `template<typename T> class Foo { ... };`
+      # Returns (TemplateDeclaration, trailing) tuple
+      def parse_template_declaration(leading_trivia)
+        # Consume 'template'
+        expect(:keyword_template)
+        
+        # Collect trivia after 'template'
+        template_suffix = collect_trivia_string
+        
+        # Consume '<'
+        expect(:less)
+        
+        # Collect template parameters as string (simplified approach)
+        # Count < > to handle nested templates like template<typename T, typename U<V>>
+        params = "".dup
+        depth = 1
+        
+        loop do
+          break if at_end?
+          
+          case current_token.kind
+          when :less
+            depth += 1
+            params << current_token.lexeme
+            advance_raw
+          when :greater
+            depth -= 1
+            if depth == 0
+              break
+            else
+              params << current_token.lexeme
+              advance_raw
+            end
+          else
+            params << current_token.lexeme
+            advance_raw
+          end
+        end
+        
+        # Consume '>'
+        expect(:greater)
+        
+        # Collect trivia after '>'
+        params_suffix = collect_trivia_string
+        
+        # Parse the templated declaration (function, class, struct)
+        inner_leading = ""
+        declaration, trailing = parse_statement(inner_leading)
+        
+        stmt = Nodes::TemplateDeclaration.new(
+          leading_trivia: leading_trivia,
+          template_params: params,
+          declaration: declaration,
+          template_suffix: template_suffix,
+          params_suffix: params_suffix
+        )
+        
+        [stmt, trailing]
+      end
+      
+      # Parse enum declaration: `enum Color { Red, Green };` or `enum class Color { Red, Green };`
+      # Returns (EnumDeclaration, trailing) tuple
+      def parse_enum_declaration(leading_trivia)
+        # Consume 'enum'
+        expect(:keyword_enum)
+        
+        # Collect trivia after 'enum'
+        enum_suffix = collect_trivia_string
+        
+        # Check for 'class' or 'struct' keyword
+        class_keyword = ""
+        class_suffix = ""
+        if [:keyword_class, :keyword_struct].include?(current_token.kind)
+          class_keyword = current_token.lexeme
+          advance_raw
+          class_suffix = collect_trivia_string
+        end
+        
+        # Parse name (optional for anonymous enums)
+        name = ""
+        name_suffix = ""
+        if current_token.kind == :identifier
+          name = current_token.lexeme
+          advance_raw
+          name_suffix = collect_trivia_string
+        end
+        
+        # Check for base type: `: int`
+        if current_token.kind == :colon
+          name_suffix << current_token.lexeme
+          advance_raw
+          
+          # Collect base type until {
+          until current_token.kind == :lbrace || at_end?
+            name_suffix << current_token.lexeme
+            advance_raw
+          end
+        end
+        
+        # Consume '{'
+        expect(:lbrace)
+        
+        # Collect trivia after '{'
+        lbrace_suffix = collect_trivia_string
+        
+        # Collect enumerators as text until '}'
+        enumerators = "".dup
+        until current_token.kind == :rbrace || at_end?
+          enumerators << current_token.lexeme
+          advance_raw
+        end
+        
+        # Collect trivia before '}'
+        rbrace_suffix = collect_trivia_string
+        
+        # Consume '}'
+        expect(:rbrace)
+        
+        # Collect trivia before ';'
+        _semicolon_prefix = collect_trivia_string
+        
+        # Consume ';'
+        expect(:semicolon)
+        
+        # Collect trailing
+        trailing = collect_trivia_string
+        
+        stmt = Nodes::EnumDeclaration.new(
+          leading_trivia: leading_trivia,
+          name: name,
+          enumerators: enumerators,
+          enum_suffix: enum_suffix,
+          class_keyword: class_keyword,
+          class_suffix: class_suffix,
+          name_suffix: name_suffix,
+          lbrace_suffix: lbrace_suffix,
+          rbrace_suffix: rbrace_suffix
         )
         
         [stmt, trailing]

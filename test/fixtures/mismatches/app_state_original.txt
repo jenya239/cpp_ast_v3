@@ -1,0 +1,45 @@
+#pragma once
+
+#include <string>
+#include <functional>
+#include <vector>
+#include <optional>
+
+namespace gtkgl::core {
+
+/**
+ * Centralized application state (Single Source of Truth)
+ * Implements Observable pattern for reactive updates
+ */
+class AppState {
+public:
+    using StateChangeCallback = std::function<void()>;
+
+    AppState() = default;
+
+    // Active demo management
+    void set_active_demo(const std::string& demo_id);
+    const std::string& active_demo_id() const { return active_demo_id_; }
+    bool has_active_demo() const { return !active_demo_id_.empty(); }
+
+    // Observable pattern
+    void subscribe(StateChangeCallback callback);
+    void notify_observers();
+
+    // Application-wide settings
+    void set_vsync_enabled(bool enabled) { vsync_enabled_ = enabled; notify_observers(); }
+    bool vsync_enabled() const { return vsync_enabled_; }
+
+    void set_fps_limit(int fps) { fps_limit_ = fps; notify_observers(); }
+    int fps_limit() const { return fps_limit_; }
+
+private:
+    std::string active_demo_id_;
+    std::vector<StateChangeCallback> observers_;
+
+    // Settings
+    bool vsync_enabled_ = true;
+    int fps_limit_ = 60;
+};
+
+} // namespace gtkgl::core

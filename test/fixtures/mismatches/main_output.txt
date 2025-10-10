@@ -1,0 +1,221 @@
+#include "widgets/gl_area_widget.hpp"
+#include "widgets/log_view.hpp"
+#include "widgets/demo_selector.hpp"
+#include "demos/demo_manager.hpp"
+#include "demos/animated_triangle_demo.hpp"
+#include "demos/rotating_cube_demo.hpp"
+#include "core/app_state.hpp"
+#include <gtk/gtk.h>
+#include <memory>
+
+using namespace gtkgl;
+
+/**
+ * Modern GTK+OpenGL Demo Application
+ * Architecture: DemoManager pattern with pluggable scenes
+ */
+int argc, char* argv[]) {
+        gtk_init(&argc, &argv);
+        load_css();
+        setup_state();
+        setup_demos();
+        setup_ui();
+    }
+
+    [](gpointer data) -> gboolean {
+            auto* app = static_cast<DemoApp*>(data);
+            app->init_default_demo();
+            return FALSE;  // Remove this idle callback after one call
+        }, this);
+
+        gtk_main();
+    }
+
+private:
+    void load_css() {
+        GtkCssProvider* provider = gtk_css_provider_new();
+        gtk_css_provider_load_from_path(provider, "resources/style.css", nullptr);
+        gtk_style_context_add_provider_for_screen(
+            gdk_screen_get_default(),
+            GTK_STYLE_PROVIDER(provider),
+            GTK_STYLE_PROVIDER_PRIORITY_APPLICATION
+        );
+        g_object_unref(provider);
+    }
+
+    [this]() {
+            on_state_changed();
+        });
+    }
+
+    [this]() {
+            return std::make_shared<demos::AnimatedTriangleDemo>(log_view_.get());
+        });
+
+        [this]() {
+            return std::make_shared<demos::RotatingCubeDemo>(log_view_.get());
+        });
+
+        // Set up demo change callback
+        [this](const demos::DemoScene* scene) {
+            on_demo_changed(scene);
+        });
+    }
+
+    );
+        demo_selector_->set_size(280, -1);
+
+        // Populate with available demos
+        std::vector<widgets::DemoSelector::DemoItem> demo_items;
+        const auto& info : demo_manager_.all_demos()) {
+            demo_items.push_back({
+                .id = info.id,
+                .name = info.name,
+                .description = info.description,
+                .category = info.category
+            });
+        }
+        demo_selector_->set_demos(demo_items);
+
+        // Selection callback
+        [this](const std::string& id) {
+            on_demo_selected(id);
+        });
+
+        // Center: GL Area
+        );
+        gl_area_->set_size(800, 600);
+        gl_area_->set_has_depth_buffer(true);
+        gl_area_->set_auto_render(false);
+
+        // Allow focus but don't grab it on click
+        gtk_widget_set_focus_on_click(gl_area_->widget(), FALSE);
+
+        [this](GtkGLArea* area) {
+            on_gl_realize(area);
+        });
+
+        [this](GtkGLArea* area, GdkGLContext* context) {
+            return on_gl_render(area, context);
+        });
+
+        // Handle resize - GL context is already current during resize signal
+        []([[maybe_unused]] GtkGLArea* area, gint width, gint height, gpointer data) {
+            auto* app = static_cast<DemoApp*>(data);
+            auto* demo = app->demo_manager_.current_demo()) {
+                demo->on_resize(width, height);
+            }
+        }), this);
+
+        // Right sidebar: Log View
+        );
+        log_view_->set_size(320, -1);
+
+        // Pack widgets
+        gtk_box_pack_start(GTK_BOX(main_box), demo_selector_->widget(), FALSE, FALSE, 0);
+        gtk_box_pack_start(GTK_BOX(main_box), gl_area_->widget(), TRUE, TRUE, 0);
+        gtk_box_pack_start(GTK_BOX(main_box), log_view_->widget(), FALSE, FALSE, 0);
+
+        gtk_container_add(GTK_CONTAINER(window_), main_box);
+
+        // Animation timer (60 FPS)
+        [](gpointer data) -> gboolean {
+            auto* app = static_cast<DemoApp*>(data);
+            app->on_timer_tick();
+            return TRUE;
+        }, this);
+
+        log_view_->log("✨ Приложение запущено");
+        log_view_->log("📦 GTK версия: " + std::string(gtk_check_version(3, 0, 0) ? "< 3.0" : "3.x+"));
+        log_view_->log("🎯 Демо доступно: " + std::to_string(demo_manager_.demo_count()));
+    }
+
+    void init_default_demo() {
+        // Activate first demo by default (called after show_all)
+        if (demo_manager_.demo_count() > 0) {
+            on_demo_selected("triangle");
+        }
+    }
+
+    void on_demo_selected(const std::string& id) {
+        log_view_->log("🔄 Переключение на: " + id);
+
+        // Update centralized state (this will trigger observers)
+        app_state_.set_active_demo(id);
+
+        if (demo_manager_.activate_demo(id)) {
+            // Trigger GL area re-initialization
+            if (gl_initialized_) {
+                gl_area_->queue_render();
+            }
+        }
+    }
+
+    void on_state_changed() {
+        // Reactive UI update based on state changes
+        if (demo_selector_ && app_state_.has_active_demo()) {
+            demo_selector_->highlight_active_demo(app_state_.active_demo_id());
+        }
+    }
+
+    ;
+        }
+
+        log_view_->log("📌 Активна демо-сцена: " + scene->name());
+
+        // Mark that we need to initialize on next render
+        need_demo_init_ = true;
+    }
+
+    const char*>(glGetString(GL_VERSION))));
+        const char*>(glGetString(GL_RENDERER))));
+
+        gl_initialized_ = true;
+
+        // Initialize current demo
+        auto* demo = demo_manager_.current_demo()) {
+            demo->on_realize(area);
+        }
+    }
+
+    auto* demo = demo_manager_.current_demo()) {
+                demo->on_realize(area);
+                need_demo_init_ = false;
+            }
+        }
+
+        auto* demo = demo_manager_.current_demo()) {
+            demo->on_render(area, context);
+        } else {
+            // Default clear if no demo
+            glClearColor(0.1f, 0.12f, 0.16f, 1.0f);
+            glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+        }
+
+        return TRUE;
+    }
+
+    auto* demo = demo_manager_.current_demo()) {
+            demo->update(0.016f); // ~60 FPS
+        }
+
+        // Queue render
+        gl_area_->queue_render();
+    }
+
+    GtkWidget* window_ = nullptr;
+    std::unique_ptr<widgets::GLAreaWidget> gl_area_;
+    std::unique_ptr<widgets::LogView> log_view_;
+    std::unique_ptr<widgets::DemoSelector> demo_selector_;
+
+    core::AppState app_state_;  // Single source of truth
+    demos::DemoManager demo_manager_;
+    bool gl_initialized_ = false;
+    bool need_demo_init_ = false;
+};
+
+int main(int argc, char* argv[]) {
+    DemoApp app(argc, argv);
+    app.run();
+    return 0;
+}

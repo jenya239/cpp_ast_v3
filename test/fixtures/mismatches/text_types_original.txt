@@ -1,0 +1,180 @@
+#pragma once
+
+#include <cstdint>
+#include <array>
+#include <optional>
+#include <string>
+#include <vector>
+
+namespace gtkgl::text {
+
+// Базовые типы
+using GlyphIndex = uint32_t;
+using FontFaceID = uint32_t;
+using AtlasPageID = uint32_t;
+using TextureID = uint32_t;
+
+// 2D вектор для метрик
+struct Vec2 {
+    float x{0.0f};
+    float y{0.0f};
+
+    Vec2() = default;
+    constexpr Vec2(float x_, float y_) : x(x_), y(y_) {}
+
+    Vec2 operator+(const Vec2& other) const { return {x + other.x, y + other.y}; }
+    Vec2 operator-(const Vec2& other) const { return {x - other.x, y - other.y}; }
+    Vec2 operator*(float s) const { return {x * s, y * s}; }
+    Vec2& operator+=(const Vec2& other) { x += other.x; y += other.y; return *this; }
+};
+
+// Прямоугольник (позиция + размер)
+struct Rect {
+    float x{0.0f};
+    float y{0.0f};
+    float width{0.0f};
+    float height{0.0f};
+
+    Rect() = default;
+    constexpr Rect(float x_, float y_, float w_, float h_)
+        : x(x_), y(y_), width(w_), height(h_) {}
+
+    bool contains(float px, float py) const {
+        return px >= x && px < x + width && py >= y && py < y + height;
+    }
+
+    float area() const { return width * height; }
+};
+
+// Цвет RGBA
+struct Color {
+    float r{1.0f};
+    float g{1.0f};
+    float b{1.0f};
+    float a{1.0f};
+
+    Color() = default;
+    constexpr Color(float r_, float g_, float b_, float a_ = 1.0f)
+        : r(r_), g(g_), b(b_), a(a_) {}
+
+    static constexpr Color white() { return {1.0f, 1.0f, 1.0f, 1.0f}; }
+    static constexpr Color black() { return {0.0f, 0.0f, 0.0f, 1.0f}; }
+    static constexpr Color red()   { return {1.0f, 0.0f, 0.0f, 1.0f}; }
+    static constexpr Color green() { return {0.0f, 1.0f, 0.0f, 1.0f}; }
+    static constexpr Color blue()  { return {0.0f, 0.0f, 1.0f, 1.0f}; }
+};
+
+// Метрики глифа (в пикселях)
+struct GlyphMetrics {
+    Vec2 size;          // Размер растра глифа
+    Vec2 bearing;       // Смещение от pen position (bearing_x, bearing_y)
+    Vec2 advance;       // Сдвиг pen после отрисовки глифа
+
+    // FreeType даёт:
+    // - bearing.x: горизонтальный offset от pen до левого края
+    // - bearing.y: вертикальный offset от baseline до верхнего края
+    // - advance.x: сдвиг pen по X для следующего глифа
+};
+
+// Формат текстурного атласа
+enum class AtlasFormat : uint8_t {
+    A8,      // 8-bit alpha (FreeType antialiased)
+    RGB8,    // 8-bit RGB (для MSDF)
+    RGBA8    // 8-bit RGBA (для colored glyphs/emoji)
+};
+
+// Режим рендеринга текста
+enum class RenderMode : uint8_t {
+    BITMAP,  // Обычный bitmap (для мелкого текста <16px)
+    MSDF,    // Multi-channel SDF (для крупного масштабируемого текста)
+    SDF      // Single-channel SDF (альтернатива MSDF)
+};
+
+// Слот в текстурном атласе
+struct AtlasSlot {
+    AtlasPageID page_id{0};       // ID страницы атласа
+    TextureID texture_id{0};      // OpenGL texture ID (важно!)
+    Rect pixel_rect;              // Координаты в пикселях на атласе
+    Rect uv_rect;                 // Нормализованные UV координаты [0..1]
+
+    bool is_valid() const { return texture_id != 0; }
+};
+
+// Ключ для кеша глифов
+struct GlyphCacheKey {
+    FontFaceID font_id{0};
+    GlyphIndex glyph_index{0};
+    uint16_t size_px{0};          // Размер в пикселях
+    RenderMode mode{RenderMode::BITMAP};
+
+    bool operator==(const GlyphCacheKey& other) const {
+        return font_id == other.font_id
+            && glyph_index == other.glyph_index
+            && size_px == other.size_px
+            && mode == other.mode;
+    }
+};
+
+// Закешированный глиф
+struct CachedGlyph {
+    GlyphCacheKey key;
+    GlyphMetrics metrics;
+    AtlasSlot atlas_slot;
+    uint64_t last_used_frame{0};  // Для LRU eviction
+
+    bool is_valid() const { return atlas_slot.is_valid(); }
+};
+
+// Shaped глиф (результат HarfBuzz shaping)
+struct ShapedGlyph {
+    GlyphIndex glyph_index;
+    Vec2 offset;                  // Offset from pen (из HarfBuzz)
+    Vec2 advance;                 // Advance для следующего глифа
+    uint32_t cluster;             // Cluster index (для биди/ligatures)
+};
+
+// Параметры шрифта
+struct FontStyle {
+    uint16_t size_px{16};
+    RenderMode render_mode{RenderMode::BITMAP};
+
+    // Автоматический выбор режима на основе размера
+    static RenderMode auto_mode(uint16_t size_px) {
+        return size_px >= 24 ? RenderMode::MSDF : RenderMode::BITMAP;
+    }
+};
+
+// Результат растеризации глифа
+struct RasterizedGlyph {
+    std::vector<uint8_t> bitmap;  // Данные растра
+    uint32_t width{0};
+    uint32_t height{0};
+    GlyphMetrics metrics;
+    AtlasFormat format{AtlasFormat::A8};
+};
+
+// Команда отрисовки одного глифа (для instanced rendering)
+struct DrawGlyph {
+    TextureID texture_id;         // OpenGL texture (не page_id!)
+    Rect position_rect;           // Позиция на экране (пиксели)
+    Rect uv_rect;                 // UV координаты [0..1]
+    Color color;
+    float px_range{4.0f};         // Для MSDF (distance field range)
+    RenderMode mode;
+};
+
+} // namespace gtkgl::text
+
+// Hash для GlyphCacheKey (для std::unordered_map)
+namespace std {
+    template<>
+    struct hash<gtkgl::text::GlyphCacheKey> {
+        size_t operator()(const gtkgl::text::GlyphCacheKey& k) const noexcept {
+            size_t h1 = std::hash<uint32_t>{}(k.font_id);
+            size_t h2 = std::hash<uint32_t>{}(k.glyph_index);
+            size_t h3 = std::hash<uint16_t>{}(k.size_px);
+            size_t h4 = std::hash<uint8_t>{}(static_cast<uint8_t>(k.mode));
+            return h1 ^ (h2 << 1) ^ (h3 << 2) ^ (h4 << 3);
+        }
+    };
+}

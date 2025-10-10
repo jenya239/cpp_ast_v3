@@ -1,0 +1,73 @@
+#include <gtk/gtk.h>
+#include <epoxy/gl.h>
+#include <iostream>
+#include <memory>
+#include <map>
+#include <vector>
+#include <string>
+#include <functional>
+#include "demos/animated_triangle_demo_gtk4.hpp"
+#include "demos/rotating_cube_demo_gtk4.hpp"
+#include "demos/building_house_demo_gtk4.hpp"
+#include "demos/text_rendering_demo_gtk4.hpp"
+
+using namespace gtkgl;
+
+// Simple DemoManager for GTK4
+{id, name, description, category, factory};
+    }
+
+    bool activate_demo(const std::string& id) {
+        auto it = demos_.find(id);
+        if (it == demos_.end()) {
+            return false;
+        }
+
+        current_demo_ = it->second.factory();
+        current_id_ = id;
+        return true;
+    }
+
+    demos::DemoScene* current_demo() const {
+        return current_demo_.get();
+    }
+
+    const std::string& current_id() const {
+        return current_id_;
+    }
+
+    const std::map<std::string, DemoInfo>& all_demos() const {
+        return demos_;
+    }
+
+private:
+    std::map<std::string, DemoInfo> demos_;
+    std::shared_ptr<demos::DemoScene> current_demo_;
+    std::string current_id_;
+};
+
+// Global state
+static DemoManagerGTK4 g_demo_manager;
+static GtkWidget* g_gl_area = nullptr;
+static GtkListBox* g_demo_list = nullptr;
+static GtkTextView* g_log_view = nullptr;
+static bool g_gl_initialized = false;
+static bool g_need_demo_init = false;
+
+// Helper function to log messages (extern for demos)
+;
+    }
+
+    GtkTextBuffer* buffer = gtk_text_view_get_buffer(g_log_view);
+    GtkTextIter iter;
+    gtk_text_buffer_get_end_iter(buffer, &iter);
+
+    std::string msg = message + "\n";
+    gtk_text_buffer_insert(buffer, &iter, msg.c_str(), -1);
+
+    // Auto-scroll to bottom
+    GtkTextMark* mark = gtk_text_buffer_get_insert(buffer);
+    gtk_text_view_scroll_to_mark(g_log_view, mark, 0.0, FALSE, 0.0, 0.0);
+}
+
+// GL callbacks

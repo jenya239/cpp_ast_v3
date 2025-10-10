@@ -1,0 +1,57 @@
+#pragma once
+
+#include <epoxy/gl.h>
+#include <iostream>
+#include <string>
+
+inline GLenum check_error(const char* file, int line, const char* expr) {
+    GLenum error = glGetError();
+    if (error != GL_NO_ERROR) {
+        const char* error_str = "UNKNOWN";
+        switch (error) {
+            case GL_INVALID_ENUM:      error_str = "GL_INVALID_ENUM"; break;
+            case GL_INVALID_VALUE:     error_str = "GL_INVALID_VALUE"; break;
+            case GL_INVALID_OPERATION: error_str = "GL_INVALID_OPERATION"; break;
+            case GL_OUT_OF_MEMORY:     error_str = "GL_OUT_OF_MEMORY"; break;
+            case GL_INVALID_FRAMEBUFFER_OPERATION: error_str = "GL_INVALID_FRAMEBUFFER_OPERATION"; break;
+        }
+        std::cerr << "❌ OpenGL Error: " << error_str << " (0x" << std::hex << error << std::dec << ")\n"
+                  << "   at " << file << ":" << line << "\n"
+                  << "   expr: " << expr << std::endl;
+    }
+    return error;
+}
+
+// Macro for convenient error checking
+#define GL_CHECK(expr) \
+    do { \
+        expr; \
+        ::gtkgl::text::gl_utils::check_error(__FILE__, __LINE__, #expr); \
+    } while (0)
+
+// Check for shader compilation/linking errors
+inline bool check_shader_compile_status(GLuint shader, const char* shader_type) {
+    GLint success = 0;
+    glGetShaderiv(shader, GL_COMPILE_STATUS, &success);
+    if (!success) {
+        char log[512];
+        glGetShaderInfoLog(shader, 512, nullptr, log);
+        std::cerr << "❌ " << shader_type << " shader compilation failed:\n" << log << std::endl;
+        return false;
+    }
+    return true;
+}
+
+inline bool check_program_link_status(GLuint program) {
+    GLint success = 0;
+    glGetProgramiv(program, GL_LINK_STATUS, &success);
+    if (!success) {
+        char log[512];
+        glGetProgramInfoLog(program, 512, nullptr, log);
+        std::cerr << "❌ Shader program linking failed:\n" << log << std::endl;
+        return false;
+    }
+    return true;
+}
+
+} // namespace gtkgl::text::gl_utils

@@ -187,6 +187,13 @@ module CppAst
         else
           Token.new(kind: :exclamation, lexeme: "!", line: start_line, column: start_column)
         end
+      when "%"
+        if peek == "="
+          advance
+          Token.new(kind: :percent_equals, lexeme: "%=", line: start_line, column: start_column)
+        else
+          Token.new(kind: :percent, lexeme: "%", line: start_line, column: start_column)
+        end
       when "~"
         Token.new(kind: :tilde, lexeme: "~", line: start_line, column: start_column)
       when "&"
@@ -252,7 +259,12 @@ module CppAst
       when "}"
         Token.new(kind: :rbrace, lexeme: "}", line: start_line, column: start_column)
       when "["
-        Token.new(kind: :lbracket, lexeme: "[", line: start_line, column: start_column)
+        # Check for attribute [[...]]
+        if peek == "["
+          scan_attribute(start_line, start_column)
+        else
+          Token.new(kind: :lbracket, lexeme: "[", line: start_line, column: start_column)
+        end
       when "]"
         Token.new(kind: :rbracket, lexeme: "]", line: start_line, column: start_column)
       when '"'
@@ -539,6 +551,34 @@ module CppAst
       end
       
       Token.new(kind: :preprocessor, lexeme: lexeme, line: line, column: column)
+    end
+    
+    def scan_attribute(line, column)
+      lexeme = "[[".dup
+      advance  # skip second [
+      
+      # Scan until ]]
+      depth = 1
+      loop do
+        break if at_end?
+        
+        char = current_char
+        
+        if char == "[" && peek == "["
+          depth += 1
+          lexeme << advance
+          lexeme << advance
+        elsif char == "]" && peek == "]"
+          depth -= 1
+          lexeme << advance
+          lexeme << advance
+          break if depth.zero?
+        else
+          lexeme << advance
+        end
+      end
+      
+      Token.new(kind: :attribute, lexeme: lexeme, line: line, column: column)
     end
   end
 end

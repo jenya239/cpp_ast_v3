@@ -1,0 +1,49 @@
+#pragma once
+
+#include "demos/demo_scene.hpp"
+#include "text/text_renderer.hpp"
+#include "text/freetype_face.hpp"
+#include <epoxy/gl.h>
+#include <memory>
+
+namespace gtkgl::demos {
+
+/**
+ * Text rendering demo
+ * Показывает рендеринг текста через FreeType + HarfBuzz + OpenGL
+ */
+class TextRenderingDemoGTK4 : public DemoScene {
+public:
+    TextRenderingDemoGTK4() = default;
+    ~TextRenderingDemoGTK4() override = default;
+
+    // Scene lifecycle
+    void on_realize(GtkGLArea* area) override;
+    void on_unrealize(GtkGLArea* area) override;
+    void on_render(GtkGLArea* area, GdkGLContext* context) override;
+
+    // Scene metadata
+    std::string name() const override { return "Рендеринг текста"; }
+    std::string description() const override {
+        return "OpenGL text rendering: FreeType + HarfBuzz + Texture Atlas";
+    }
+    std::string category() const override { return "Text"; }
+
+    // Animation
+    void update(float delta_time) override;
+    void reset() override;
+    void on_resize(int width, int height) override;
+
+private:
+    void update_projection();
+
+    std::unique_ptr<text::FreeTypeLibrary> ft_library_;
+    std::unique_ptr<text::FreeTypeFace> font_face_;
+    std::unique_ptr<text::TextRenderer> text_renderer_;
+
+    int viewport_width_{800};
+    int viewport_height_{600};
+    float time_{0.0f};
+};
+
+} // namespace gtkgl::demos

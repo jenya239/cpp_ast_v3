@@ -1,0 +1,75 @@
+#pragma once
+
+#include <epoxy/gl.h>
+#include <string>
+#include <optional>
+#include <memory>
+#include <span>
+
+namespace gtkgl::gl {
+
+/**
+ * RAII wrapper for OpenGL shader object
+ */
+class Shader {
+public:
+    enum class Type {
+        Vertex = GL_VERTEX_SHADER,
+        Fragment = GL_FRAGMENT_SHADER,
+        Geometry = GL_GEOMETRY_SHADER
+    };
+
+    Shader(Type type, const std::string& source);
+    ~Shader();
+
+    // No copy
+    Shader(const Shader&) = delete;
+    Shader& operator=(const Shader&) = delete;
+
+    // Move semantics
+    Shader(Shader&& other) noexcept;
+    Shader& operator=(Shader&& other) noexcept;
+
+    GLuint handle() const noexcept { return shader_; }
+    bool is_valid() const noexcept { return shader_ != 0; }
+    std::optional<std::string> compile_error() const;
+
+private:
+    GLuint shader_ = 0;
+};
+
+/**
+ * RAII wrapper for OpenGL shader program
+ */
+class ShaderProgram {
+public:
+    ShaderProgram();
+    ~ShaderProgram();
+
+    // No copy
+    ShaderProgram(const ShaderProgram&) = delete;
+    ShaderProgram& operator=(const ShaderProgram&) = delete;
+
+    // Move semantics
+    ShaderProgram(ShaderProgram&& other) noexcept;
+    ShaderProgram& operator=(ShaderProgram&& other) noexcept;
+
+    void attach(const Shader& shader);
+    bool link();
+    void use() const;
+
+    GLuint handle() const noexcept { return program_; }
+    bool is_valid() const noexcept { return program_ != 0; }
+    std::optional<std::string> link_error() const;
+
+    // Uniform setters
+    void set_uniform(const std::string& name, int value) const;
+    void set_uniform(const std::string& name, float value) const;
+    void set_uniform(const std::string& name, float x, float y, float z) const;
+    void set_uniform(const std::string& name, std::span<const float> values) const;
+
+private:
+    GLuint program_ = 0;
+};
+
+} // namespace gtkgl::gl

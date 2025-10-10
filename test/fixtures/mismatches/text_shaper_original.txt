@@ -1,0 +1,143 @@
+#pragma once
+
+#include "text_types.hpp"
+#include "freetype_face.hpp"
+#include <hb.h>
+#include <hb-ft.h>
+#include <memory>
+#include <string>
+#include <string_view>
+#include <vector>
+#include <expected>
+
+namespace gtkgl::text {
+
+// Ошибки text shaping
+enum class ShapingError {
+    BufferCreateFailed,
+    FontCreateFailed,
+    InvalidInput,
+    ShapingFailed
+};
+
+std::string to_string(ShapingError error);
+
+// Направление текста
+enum class TextDirection {
+    LTR,  // Left-to-right (латиница, кириллица)
+    RTL,  // Right-to-left (арабский, иврит)
+    TTB,  // Top-to-bottom (вертикальный)
+    BTT   // Bottom-to-top
+};
+
+// Скрипт (письменность)
+enum class Script {
+    Latin,
+    Cyrillic,
+    Arabic,
+    Hebrew,
+    Greek,
+    Common,      // Общие символы (цифры, пунктуация)
+    Unknown
+};
+
+// Параметры shaping
+struct ShapingOptions {
+    TextDirection direction{TextDirection::LTR};
+    Script script{Script::Common};
+    std::string language{"en"};  // ISO 639 язык (en, ru, ar, etc.)
+
+    // Features (ligatures, kerning, etc.)
+    bool enable_ligatures{true};
+    bool enable_kerning{true};
+};
+
+// RAII wrapper для hb_buffer_t
+class HarfBuzzBuffer {
+public:
+    static std::expected<std::unique_ptr<HarfBuzzBuffer>, ShapingError> create();
+    ~HarfBuzzBuffer();
+
+    // Non-copyable, movable
+    HarfBuzzBuffer(const HarfBuzzBuffer&) = delete;
+    HarfBuzzBuffer& operator=(const HarfBuzzBuffer&) = delete;
+    HarfBuzzBuffer(HarfBuzzBuffer&&) noexcept;
+    HarfBuzzBuffer& operator=(HarfBuzzBuffer&&) noexcept;
+
+    // Установить направление и язык
+    void set_direction(TextDirection direction);
+    void set_script(Script script);
+    void set_language(const std::string& language);
+
+    // Добавить текст в буфер
+    void add_utf8(std::string_view text);
+    void clear();
+
+    // Получить shaped glyphs
+    std::vector<ShapedGlyph> get_glyphs() const;
+
+    hb_buffer_t* handle() const { return buffer_; }
+
+private:
+    HarfBuzzBuffer() = default;
+    hb_buffer_t* buffer_{nullptr};
+};
+
+// RAII wrapper для hb_font_t
+class HarfBuzzFont {
+public:
+    static std::expected<std::unique_ptr<HarfBuzzFont>, ShapingError>
+    create_from_freetype(FreeTypeFace& ft_face);
+
+    ~HarfBuzzFont();
+
+    // Non-copyable, movable
+    HarfBuzzFont(const HarfBuzzFont&) = delete;
+    HarfBuzzFont& operator=(const HarfBuzzFont&) = delete;
+    HarfBuzzFont(HarfBuzzFont&&) noexcept;
+    HarfBuzzFont& operator=(HarfBuzzFont&&) noexcept;
+
+    // Установить размер шрифта
+    void set_scale(int x_ppem, int y_ppem);
+
+    hb_font_t* handle() const { return font_; }
+
+private:
+    HarfBuzzFont() = default;
+    hb_font_t* font_{nullptr};
+};
+
+// Главный класс для text shaping
+class TextShaper {
+public:
+    TextShaper() = default;
+
+    // Shape текст с заданным шрифтом
+    std::expected<std::vector<ShapedGlyph>, ShapingError>
+    shape(FreeTypeFace& face,
+          uint16_t size_px,
+          std::string_view text,
+          const ShapingOptions& options = {});
+
+    // Shape с предсозданным HarfBuzz font
+    std::expected<std::vector<ShapedGlyph>, ShapingError>
+    shape(HarfBuzzFont& hb_font,
+          std::string_view text,
+          const ShapingOptions& options = {});
+
+private:
+    void apply_features(hb_buffer_t* buffer, const ShapingOptions& options);
+};
+
+// Утилиты для конвертации типов
+namespace shaping_utils {
+    hb_direction_t to_hb_direction(TextDirection dir);
+    hb_script_t to_hb_script(Script script);
+    hb_language_t to_hb_language(const std::string& lang);
+
+    // Автоопределение направления и скрипта по Unicode
+    TextDirection detect_direction(std::string_view text);
+    Script detect_script(std::string_view text);
+}
+
+} // namespace gtkgl::text

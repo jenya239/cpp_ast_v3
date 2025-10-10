@@ -1,0 +1,47 @@
+#pragma once
+
+#include "demo_scene.hpp"
+#include "gl/shader.hpp"
+#include "gl/buffer.hpp"
+#include "widgets/log_view.hpp"
+#include <memory>
+
+namespace gtkgl::demos {
+
+/**
+ * Classic animated triangle demo with sine wave animation
+ */
+class AnimatedTriangleDemo : public DemoScene {
+public:
+    explicit AnimatedTriangleDemo(widgets::LogView* log_view = nullptr);
+    ~AnimatedTriangleDemo() override = default;
+
+    // DemoScene interface
+    void on_realize(GtkGLArea* area) override;
+    void on_unrealize(GtkGLArea* area) override;
+    void on_render(GtkGLArea* area, GdkGLContext* context) override;
+
+    std::string name() const override { return "Анимированный треугольник"; }
+    std::string description() const override {
+        return "Классический плавающий треугольник с синусоидальной анимацией";
+    }
+    std::string category() const override { return "Basics"; }
+
+    void update(float delta_time) override;
+    void reset() override;
+
+private:
+    void create_shaders();
+    void create_geometry();
+
+    widgets::LogView* log_view_ = nullptr;
+
+    std::unique_ptr<gl::ShaderProgram> program_;
+    std::unique_ptr<gl::VertexArray> vao_;
+    std::unique_ptr<gl::Buffer> vbo_;
+
+    float time_ = 0.0f;
+    int frame_count_ = 0;
+};
+
+} // namespace gtkgl::demos
