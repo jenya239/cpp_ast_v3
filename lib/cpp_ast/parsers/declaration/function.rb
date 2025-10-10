@@ -512,6 +512,7 @@ module CppAst
         
         if is_constructor && current_token.kind == :colon
           modifiers_text << after_rparen unless after_rparen.empty?
+          modifiers_text << current_leading_trivia  # Add leading trivia before ':'
           after_rparen = ""
           
           while ![:lbrace, :semicolon].include?(current_token.kind) && !at_end?

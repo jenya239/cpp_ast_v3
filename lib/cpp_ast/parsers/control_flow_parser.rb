@@ -56,10 +56,8 @@ module CppAst
           
           # Parse else statement
           else_stmt, then_trailing = parse_statement("")
-        else
-          # No else, restore trivia as trailing
-          then_trailing = potential_else_prefix
         end
+        # Note: if no else, then_trailing stays as-is (don't add current_leading_trivia)
         
         stmt = Nodes::IfStatement.new(
           leading_trivia: leading_trivia,
