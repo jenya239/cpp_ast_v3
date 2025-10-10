@@ -28,6 +28,32 @@ module CppAst
       end
     end
     
+    # StringLiteral
+    class StringLiteral < Expression
+      attr_accessor :value
+      
+      def initialize(value:)
+        @value = value
+      end
+      
+      def to_source
+        value
+      end
+    end
+    
+    # CharLiteral
+    class CharLiteral < Expression
+      attr_accessor :value
+      
+      def initialize(value:)
+        @value = value
+      end
+      
+      def to_source
+        value
+      end
+    end
+    
     # BinaryExpression - binary operators like +, -, *, /, =, etc
     class BinaryExpression < Expression
       attr_accessor :left, :operator, :right, :operator_prefix, :operator_suffix

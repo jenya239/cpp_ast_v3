@@ -336,7 +336,7 @@ module CppAst
         [expr, trailing]
       end
       
-      # Parse primary expression (identifier, number, parenthesized, etc)
+      # Parse primary expression (identifier, number, string, char, parenthesized, etc)
       # Returns (expr, trailing) tuple
       def parse_primary
         case current_token.kind
@@ -351,6 +351,24 @@ module CppAst
           advance_raw
           trailing = collect_trivia_string
           [Nodes::NumberLiteral.new(value: value), trailing]
+          
+        when :string
+          value = current_token.lexeme
+          advance_raw
+          trailing = collect_trivia_string
+          [Nodes::StringLiteral.new(value: value), trailing]
+          
+        when :char
+          value = current_token.lexeme
+          advance_raw
+          trailing = collect_trivia_string
+          [Nodes::CharLiteral.new(value: value), trailing]
+          
+        when :keyword_true, :keyword_false, :keyword_nullptr
+          value = current_token.lexeme
+          advance_raw
+          trailing = collect_trivia_string
+          [Nodes::Identifier.new(name: value), trailing]  # For now, treat as identifiers
           
         when :lparen
           parse_parenthesized_expression
