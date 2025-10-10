@@ -279,7 +279,10 @@ module CppAst
       end
       
       def to_source
-        "#{leading_trivia}namespace#{namespace_suffix}#{name}#{name_suffix}#{body.to_source}"
+        result = "#{leading_trivia}namespace#{namespace_suffix}"
+        result << "#{name}#{name_suffix}" unless name.empty?
+        result << body.to_source
+        result
       end
     end
     

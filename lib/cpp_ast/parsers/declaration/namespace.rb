@@ -28,9 +28,36 @@ module CppAst
           name_suffix = name_suffix + current_leading_trivia
         end
         
+        lbrace_suffix = current_token.trailing_trivia
+        expect(:lbrace)
+        
         push_context(:namespace, name: name)
-        body, trailing = parse_block_statement("")
+        
+        statements = []
+        statement_trailings = []
+        statement_leading = ""
+        
+        until current_token.kind == :rbrace || at_end?
+          statement_leading += current_leading_trivia
+          stmt, trailing = parse_statement(statement_leading)
+          statements << stmt
+          statement_trailings << trailing
+          statement_leading = ""
+        end
+        
         pop_context
+        
+        rbrace_prefix = current_leading_trivia
+        trailing = current_token.trailing_trivia
+        expect(:rbrace)
+        
+        body = Nodes::BlockStatement.new(
+          leading_trivia: "",
+          statements: statements,
+          statement_trailings: statement_trailings,
+          lbrace_suffix: lbrace_suffix,
+          rbrace_prefix: rbrace_prefix
+        )
         
         stmt = Nodes::NamespaceDeclaration.new(
           leading_trivia: leading_trivia,
