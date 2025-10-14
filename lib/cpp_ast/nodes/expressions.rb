@@ -142,7 +142,8 @@ module CppAst
         result = "#{callee.to_source}(#{lparen_suffix}"
         
         arguments.each_with_index do |arg, i|
-          result << arg.to_source
+          arg_str = arg.respond_to?(:to_source) ? arg.to_source : arg.to_s
+          result << arg_str
           
           # Add separator (comma) after each arg except the last
           if i < arguments.length - 1

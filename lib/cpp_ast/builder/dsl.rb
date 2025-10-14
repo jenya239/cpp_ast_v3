@@ -368,6 +368,117 @@ module CppAst
           statement_trailings: trailings
         )
       end
+
+      # Ownership types
+      def owned(inner_type)
+        Nodes::OwnedType.new(inner_type: inner_type)
+      end
+
+      def borrowed(inner_type)
+        Nodes::BorrowedType.new(inner_type: inner_type)
+      end
+
+      def mut_borrowed(inner_type)
+        Nodes::MutBorrowedType.new(inner_type: inner_type)
+      end
+
+      def span_of(inner_type)
+        Nodes::SpanType.new(inner_type: inner_type)
+      end
+
+      # Helper for function parameters with ownership types
+      def param(type, name)
+        type_str = type.respond_to?(:to_source) ? type.to_source : type.to_s
+        "#{type_str} #{name}"
+      end
+
+      # Dereference operator
+      def deref(expr)
+        unary("*", expr)
+      end
+
+      # Result/Option types
+      def result_of(ok_type, err_type)
+        Nodes::ExpectedType.new(ok_type: ok_type, err_type: err_type)
+      end
+
+      def option_of(inner_type)
+        Nodes::OptionalType.new(inner_type: inner_type)
+      end
+
+      # Result/Option constructors
+      def ok(value)
+        Nodes::OkValue.new(value: value)
+      end
+
+      def err(error)
+        Nodes::ErrValue.new(error: error)
+      end
+
+      def some(value)
+        Nodes::SomeValue.new(value: value)
+      end
+
+      def none
+        Nodes::NoneValue.new
+      end
+
+      # Product types (alias for struct)
+      def product_type(name, *fields)
+        field_declarations = fields.map do |field|
+          if field.is_a?(Array) && field.length == 2
+            "#{field[1]} #{field[0]};"
+          else
+            field.to_s.end_with?(';') ? field.to_s : "#{field};"
+          end
+        end
+        
+        struct_decl(name, *field_declarations)
+      end
+
+      # Helper for field definitions
+      def field_def(name, type)
+        [name, type]
+      end
+
+      # Sum types (variant-based ADT)
+      def sum_type(name, *cases)
+        case_trailings = cases.map { "\n" }
+        Nodes::SumTypeDeclaration.new(
+          name: name,
+          cases: cases,
+          case_trailings: case_trailings
+        )
+      end
+
+      # Helper for case struct definitions
+      def case_struct(name, *fields)
+        field_trailings = fields.map { "\n" }
+        Nodes::VariantCase.new(
+          name: name,
+          fields: fields,
+          field_trailings: field_trailings
+        )
+      end
+
+      # Pattern matching
+      def match_expr(value, *arms)
+        arm_separators = arms.size > 1 ? Array.new(arms.size - 1, ",\n") : []
+        Nodes::MatchExpression.new(
+          value: value,
+          arms: arms,
+          arm_separators: arm_separators
+        )
+      end
+
+      # Helper for match arms
+      def arm(case_name, bindings = [], body)
+        Nodes::MatchArm.new(
+          case_name: case_name,
+          bindings: bindings,
+          body: body
+        )
+      end
     end
   end
 end

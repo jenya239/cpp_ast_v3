@@ -167,11 +167,14 @@ module CppAst
           result << "#{rparen_suffix})#{body.to_source}"
         else
           # Classic for: for (init; cond; inc)
-          result << (init ? init.to_source : "")
+          init_str = init ? (init.respond_to?(:to_source) ? init.to_source : init.to_s) : ""
+          result << init_str
           result << ";#{init_trailing}"
-          result << (condition ? condition.to_source : "")
+          condition_str = condition ? (condition.respond_to?(:to_source) ? condition.to_source : condition.to_s) : ""
+          result << condition_str
           result << ";#{condition_trailing}"
-          result << (increment ? increment.to_source : "")
+          increment_str = increment ? (increment.respond_to?(:to_source) ? increment.to_source : increment.to_s) : ""
+          result << increment_str
           result << "#{rparen_suffix})#{body.to_source}"
         end
         
@@ -320,7 +323,8 @@ module CppAst
       end
       
       def to_source
-        result = "#{leading_trivia}#{prefix_modifiers}#{return_type}#{return_type_suffix}#{name}(#{lparen_suffix}"
+        return_type_str = return_type.respond_to?(:to_source) ? return_type.to_source : return_type.to_s
+        result = "#{leading_trivia}#{prefix_modifiers}#{return_type_str}#{return_type_suffix}#{name}(#{lparen_suffix}"
         
         parameters.each_with_index do |param, i|
           result << param
@@ -393,7 +397,8 @@ module CppAst
         result << "{#{lbrace_suffix}"
         
         members.zip(member_trailings).each do |member, trailing|
-          result << member.to_source << trailing
+          member_str = member.respond_to?(:to_source) ? member.to_source : member.to_s
+          result << member_str << trailing
         end
         
         result << "#{rbrace_suffix}};"
@@ -430,7 +435,8 @@ module CppAst
       end
       
       def to_source
-        result = "#{leading_trivia}#{type}#{type_suffix}"
+        type_str = type.respond_to?(:to_source) ? type.to_source : type.to_s
+        result = "#{leading_trivia}#{type_str}#{type_suffix}"
         
         declarators.each_with_index do |decl, i|
           result << decl
