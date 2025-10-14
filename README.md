@@ -152,6 +152,27 @@ option_of("float")               # std::optional<float>
 
 См. `docs/AURORA_DSL.md` для полной документации и `examples/04_aurora_dsl.rb` для примеров.
 
+### Анализ покрытия для OpenGL проектов
+
+**Покрытие DSL**: 77% для типичного OpenGL кода
+
+| Категория | Покрытие | Статус |
+|-----------|----------|--------|
+| Mathematical Types | 100% | ✅ Полная поддержка |
+| Error Handling | 100% | ✅ Полная поддержка |
+| Type Safety | 90% | ✅ Отличная поддержка |
+| Simple RAII | 70% | ⚠️ Частичная поддержка |
+| Template Classes | 0% | ❌ Требует расширения |
+| Modern C++ Modifiers | 0% | ❌ Требует расширения |
+
+**Рекомендации**:
+- ✅ Используйте для mathematical types (Vec2, Rect, Color)
+- ✅ Используйте для error handling (std::expected, pattern matching)
+- ⚠️ Ограниченно для RAII классов (нет = delete, noexcept)
+- ❌ Избегайте для template классов (пока нет DSL)
+
+См. `docs/DSL_ANALYSIS_FINAL.md` для детального анализа покрытия.
+
 ## Running Tests
 
 ```bash
