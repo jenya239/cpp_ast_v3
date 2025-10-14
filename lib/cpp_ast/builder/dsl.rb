@@ -272,6 +272,21 @@ module CppAst
         )
       end
       
+      # Enum Class DSL - Phase 3
+      def enum_class(name, values, underlying_type: nil)
+        Nodes::EnumDeclaration.new(
+          name: name,
+          enumerators: values.map { |v| v.is_a?(Array) ? v : [v, nil] },
+          enum_suffix: " ",
+          class_keyword: "class",
+          class_suffix: " ",
+          name_suffix: " ",
+          lbrace_suffix: "",
+          rbrace_suffix: "",
+          underlying_type: underlying_type
+        )
+      end
+      
       def using_namespace(name)
         Nodes::UsingDeclaration.new(
           kind: :namespace,
@@ -297,6 +312,29 @@ module CppAst
           using_suffix: " ",
           equals_prefix: " ",
           equals_suffix: " "
+        )
+      end
+      
+      # Template DSL - Phase 1
+      def template_class(name, template_params, *members)
+        class_node = class_decl(name, *members)
+        Nodes::TemplateDeclaration.new(
+          template_params: template_params.join(", "),
+          declaration: class_node,
+          template_suffix: " ",
+          less_suffix: "",
+          params_suffix: "\n"
+        )
+      end
+      
+      def template_method(return_type, name, template_params, params, body)
+        func_node = function_decl(return_type, name, params, body)
+        Nodes::TemplateDeclaration.new(
+          template_params: template_params.join(", "),
+          declaration: func_node,
+          template_suffix: " ",
+          less_suffix: "",
+          params_suffix: "\n"
         )
       end
       
@@ -387,9 +425,11 @@ module CppAst
       end
 
       # Helper for function parameters with ownership types
-      def param(type, name)
+      def param(type, name, default: nil)
         type_str = type.respond_to?(:to_source) ? type.to_source : type.to_s
-        "#{type_str} #{name}"
+        result = "#{type_str} #{name}"
+        result += " = #{default}" if default
+        result
       end
 
       # Dereference operator

@@ -452,11 +452,11 @@ module CppAst
     class EnumDeclaration < Statement
       attr_accessor :name, :enumerators
       attr_accessor :enum_suffix, :class_keyword, :class_suffix, :name_suffix
-      attr_accessor :lbrace_suffix, :rbrace_suffix
+      attr_accessor :lbrace_suffix, :rbrace_suffix, :underlying_type
       
       def initialize(leading_trivia: "", name:, enumerators:,
                      enum_suffix: "", class_keyword: "", class_suffix: "", name_suffix: "",
-                     lbrace_suffix: "", rbrace_suffix: "")
+                     lbrace_suffix: "", rbrace_suffix: "", underlying_type: nil)
         super(leading_trivia: leading_trivia)
         @name = name
         @enumerators = enumerators
@@ -466,13 +466,30 @@ module CppAst
         @name_suffix = name_suffix
         @lbrace_suffix = lbrace_suffix
         @rbrace_suffix = rbrace_suffix
+        @underlying_type = underlying_type
       end
       
       def to_source
         result = "#{leading_trivia}enum#{enum_suffix}"
         result << "#{class_keyword}#{class_suffix}" unless class_keyword.empty?
-        result << "#{name}#{name_suffix}{#{lbrace_suffix}"
-        result << enumerators
+        result << "#{name}#{name_suffix}"
+        result << " : #{underlying_type}" if underlying_type
+        result << "{#{lbrace_suffix}"
+        
+        # Convert enumerators array to string
+        enumerator_strings = enumerators.map do |enumerator|
+          if enumerator.is_a?(Array)
+            if enumerator[1]
+              "#{enumerator[0]} = #{enumerator[1]}"
+            else
+              enumerator[0]
+            end
+          else
+            enumerator.to_s
+          end
+        end
+        result << enumerator_strings.join(", ")
+        
         result << "#{rbrace_suffix}};"
         result
       end

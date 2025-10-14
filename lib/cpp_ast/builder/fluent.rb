@@ -130,6 +130,45 @@ module CppAst
         def with_prefix_modifiers(text)
           dup.tap { |n| n.prefix_modifiers = text }
         end
+        
+        # Modern C++ modifiers - Phase 2
+        def deleted
+          dup.tap { |n| 
+            n.rparen_suffix = " = delete"
+            n.body = nil  # deleted functions have no body
+          }
+        end
+        
+        def defaulted
+          dup.tap { |n| 
+            n.rparen_suffix = " = default"
+            n.body = nil
+          }
+        end
+        
+        def noexcept
+          dup.tap { |n| n.modifiers_text += " noexcept" }
+        end
+        
+        def explicit
+          dup.tap { |n| n.prefix_modifiers = "explicit " + n.prefix_modifiers }
+        end
+        
+        def constexpr
+          dup.tap { |n| n.prefix_modifiers = "constexpr " + n.prefix_modifiers }
+        end
+        
+        def const
+          dup.tap { |n| n.modifiers_text += " const" }
+        end
+        
+        def inline
+          dup.tap { |n| n.prefix_modifiers = "inline " + n.prefix_modifiers }
+        end
+        
+        def nodiscard
+          dup.tap { |n| n.prefix_modifiers = "[[nodiscard]] " + n.prefix_modifiers }
+        end
       end
       
       module VariableDeclaration
