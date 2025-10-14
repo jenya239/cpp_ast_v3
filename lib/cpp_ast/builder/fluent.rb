@@ -169,6 +169,23 @@ module CppAst
         def nodiscard
           dup.tap { |n| n.prefix_modifiers = "[[nodiscard]] " + n.prefix_modifiers }
         end
+        
+        def static
+          dup.tap { |n| n.prefix_modifiers = "static " + n.prefix_modifiers }
+        end
+        
+        # Inline method body for class methods
+        def inline_body(body)
+          dup.tap { |n| 
+            n.body = body
+            n.prefix_modifiers = "inline " + n.prefix_modifiers
+          }
+        end
+        
+        # Constructor initializer list
+        def with_initializer_list(initializer_list)
+          dup.tap { |n| n.initializer_list = initializer_list }
+        end
       end
       
       module VariableDeclaration
@@ -238,6 +255,10 @@ module CppAst
         
         def with_params_suffix(trivia)
           dup.tap { |n| n.params_suffix = trivia }
+        end
+        
+        def specialized
+          dup.tap { |n| n.template_params = "" }
         end
       end
     end

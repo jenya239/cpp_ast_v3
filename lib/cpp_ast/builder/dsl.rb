@@ -280,7 +280,7 @@ module CppAst
           enum_suffix: " ",
           class_keyword: "class",
           class_suffix: " ",
-          name_suffix: " ",
+          name_suffix: "",
           lbrace_suffix: "",
           rbrace_suffix: "",
           underlying_type: underlying_type
@@ -312,6 +312,14 @@ module CppAst
           using_suffix: " ",
           equals_prefix: " ",
           equals_suffix: " "
+        )
+      end
+      
+      def friend_decl(type, name = nil)
+        Nodes::FriendDeclaration.new(
+          type: type,
+          name: name,
+          friend_suffix: " "
         )
       end
       

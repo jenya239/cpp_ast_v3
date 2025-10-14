@@ -302,18 +302,20 @@ module CppAst
     
     # FunctionDeclaration: `type name(params);` or `type name(params) override { ... }`
     class FunctionDeclaration < Statement
-      attr_accessor :return_type, :name, :parameters, :body
+      attr_accessor :return_type, :name, :parameters, :body, :initializer_list
       attr_accessor :return_type_suffix, :lparen_suffix, :rparen_suffix
       attr_accessor :param_separators, :modifiers_text, :prefix_modifiers
       
       def initialize(leading_trivia: "", return_type:, name:, parameters:, body: nil,
                      return_type_suffix: "", lparen_suffix: "", rparen_suffix: "",
-                     param_separators: [], modifiers_text: "", prefix_modifiers: "")
+                     param_separators: [], modifiers_text: "", prefix_modifiers: "",
+                     initializer_list: nil)
         super(leading_trivia: leading_trivia)
         @return_type = return_type
         @name = name
         @parameters = parameters
         @body = body
+        @initializer_list = initializer_list
         @return_type_suffix = return_type_suffix
         @lparen_suffix = lparen_suffix
         @rparen_suffix = rparen_suffix
@@ -332,6 +334,12 @@ module CppAst
         end
         
         result << "#{rparen_suffix})#{modifiers_text}"
+        
+        # Add initializer list if present
+        if initializer_list
+          result << " : #{initializer_list}"
+        end
+        
         result << (body ? body.to_source : ";")
         result
       end
@@ -559,6 +567,25 @@ module CppAst
           result << "#{name}#{equals_prefix}=#{equals_suffix}#{alias_target};"
         end
         
+        result
+      end
+    end
+    
+    # FriendDeclaration: `friend class MyClass;` or `friend struct hash<Key>;`
+    class FriendDeclaration < Statement
+      attr_accessor :type, :name, :friend_suffix
+      
+      def initialize(leading_trivia: "", type:, name: nil, friend_suffix: " ")
+        super(leading_trivia: leading_trivia)
+        @type = type
+        @name = name
+        @friend_suffix = friend_suffix
+      end
+      
+      def to_source
+        result = "#{leading_trivia}friend#{friend_suffix}#{type}"
+        result << " #{name}" if name
+        result << ";"
         result
       end
     end
