@@ -326,14 +326,20 @@ module CppAst
       
       def to_source
         return_type_str = return_type.respond_to?(:to_source) ? return_type.to_source : return_type.to_s
-        result = "#{leading_trivia}#{prefix_modifiers}#{return_type_str}#{return_type_suffix}#{name}(#{lparen_suffix}"
+        suffix = return_type_str.empty? ? "" : return_type_suffix
+        result = "#{leading_trivia}#{prefix_modifiers}#{return_type_str}#{suffix}#{name}(#{lparen_suffix}"
         
-        parameters.each_with_index do |param, i|
-          result << param
-          result << param_separators[i] if i < parameters.size - 1
+        if parameters.empty?
+          result << ")#{rparen_suffix}"
+        else
+          parameters.each_with_index do |param, i|
+            result << param
+            result << param_separators[i] if i < parameters.size - 1
+          end
+          result << "#{rparen_suffix})"
         end
         
-        result << "#{rparen_suffix})#{modifiers_text}"
+        result << "#{modifiers_text}"
         
         # Add initializer list if present
         if initializer_list

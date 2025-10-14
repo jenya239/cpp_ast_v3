@@ -64,7 +64,7 @@ class ProductionFixesTest < Minitest::Test
     assert_includes cpp_code, "#include <cstdint>"
     assert_includes cpp_code, "namespace gtkgl::text"
     assert_includes cpp_code, "float x{0.0f};"
-    assert_includes cpp_code, "Vec2( = default);"
+    assert_includes cpp_code, "Vec2() = default;"
   end
 
   def test_struct_with_field_declarations
@@ -81,7 +81,7 @@ class ProductionFixesTest < Minitest::Test
     assert_includes cpp_code, "struct Vec2"
     assert_includes cpp_code, "float x{0.0f};"
     assert_includes cpp_code, "float y{0.0f};"
-    assert_includes cpp_code, "Vec2( = default);"
+    assert_includes cpp_code, "Vec2() = default;"
     assert_includes cpp_code, "constexpr"
     assert_includes cpp_code, ": x(x_), y(y_)"
   end
@@ -171,7 +171,7 @@ class ProductionFixesTest < Minitest::Test
     assert_includes cpp_code, "struct Vec2"
     assert_includes cpp_code, "float x{0.0f};"
     assert_includes cpp_code, "float y{0.0f};"
-    assert_includes cpp_code, "Vec2( = default);"
+    assert_includes cpp_code, "Vec2() = default;"
     assert_includes cpp_code, "constexpr"
     assert_includes cpp_code, ": x(x_), y(y_)"
     assert_includes cpp_code, "inline Vec2 operator+"
