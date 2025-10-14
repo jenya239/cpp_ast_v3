@@ -183,7 +183,8 @@ module CppAst
         )
       end
       
-      def namespace_decl(name, body)
+      def namespace_decl(name, *members)
+        body = members.length == 1 ? members[0] : program(*members)
         Nodes::NamespaceDeclaration.new(
           name: name,
           body: body,
@@ -485,8 +486,12 @@ module CppAst
       end
 
       # Helper for field definitions
-      def field_def(name, type)
-        [name, type]
+      def field_def(type, name, default: nil)
+        Nodes::FieldDeclaration.new(
+          type: type,
+          name: name,
+          default_value: default
+        )
       end
 
       # Sum types (variant-based ADT)
@@ -526,6 +531,19 @@ module CppAst
           bindings: bindings,
           body: body
         )
+      end
+      
+      # Include directive
+      def include_directive(path, system: true)
+        Nodes::IncludeDirective.new(
+          path: path,
+          system: system
+        )
+      end
+      
+      # Pragma directive
+      def pragma_once()
+        Nodes::PragmaDirective.new(directive: "once")
       end
     end
   end

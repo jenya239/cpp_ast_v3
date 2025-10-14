@@ -606,6 +606,58 @@ module CppAst
         }.join
       end
     end
+    
+    # FieldDeclaration: `float x;` or `float x{0.0f};`
+    class FieldDeclaration < Statement
+      attr_accessor :type, :name, :default_value
+      
+      def initialize(leading_trivia: "", type:, name:, default_value: nil)
+        super(leading_trivia: leading_trivia)
+        @type = type
+        @name = name
+        @default_value = default_value
+      end
+      
+      def to_source
+        result = "#{leading_trivia}#{type} #{name}"
+        result << "{#{default_value}}" if default_value
+        result << ";"
+        result
+      end
+    end
+    
+    # IncludeDirective: `#include <cstdint>` or `#include "my_header.hpp"`
+    class IncludeDirective < Statement
+      attr_accessor :path, :system
+      
+      def initialize(leading_trivia: "", path:, system: true)
+        super(leading_trivia: leading_trivia)
+        @path = path
+        @system = system
+      end
+      
+      def to_source
+        if system
+          "#{leading_trivia}#include <#{path}>"
+        else
+          "#{leading_trivia}#include \"#{path}\""
+        end
+      end
+    end
+    
+    # PragmaDirective: `#pragma once`
+    class PragmaDirective < Statement
+      attr_accessor :directive
+      
+      def initialize(leading_trivia: "", directive:)
+        super(leading_trivia: leading_trivia)
+        @directive = directive
+      end
+      
+      def to_source
+        "#{leading_trivia}#pragma #{directive}"
+      end
+    end
   end
 end
 
