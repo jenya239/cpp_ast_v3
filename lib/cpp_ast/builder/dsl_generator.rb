@@ -83,6 +83,34 @@ module CppAst
           generate_template_declaration(node)
         when Nodes::ErrorStatement
           generate_error_statement(node)
+        when Nodes::InlineComment
+          generate_inline_comment(node)
+        when Nodes::BlockComment
+          generate_block_comment(node)
+        when Nodes::DoxygenComment
+          generate_doxygen_comment(node)
+        when Nodes::DefineDirective
+          generate_define_directive(node)
+        when Nodes::IfdefDirective
+          generate_ifdef_directive(node)
+        when Nodes::IfndefDirective
+          generate_ifndef_directive(node)
+        when Nodes::FriendDeclaration
+          generate_friend_declaration(node)
+        when Nodes::ConceptDeclaration
+          generate_concept_declaration(node)
+        when Nodes::ModuleDeclaration
+          generate_module_declaration(node)
+        when Nodes::ImportDeclaration
+          generate_import_declaration(node)
+        when Nodes::ExportDeclaration
+          generate_export_declaration(node)
+        when Nodes::CoAwaitExpression
+          generate_co_await_expression(node)
+        when Nodes::CoYieldExpression
+          generate_co_yield_expression(node)
+        when Nodes::CoReturnStatement
+          generate_co_return_statement(node)
         else
           raise "Unsupported node type: #{node.class}"
         end
@@ -614,7 +642,7 @@ module CppAst
       end
       
       def generate_access_specifier(node)
-        result = "access_spec(#{node.keyword.inspect})"
+        result = "access_spec(#{node.access_type.inspect})"
         
         if node.leading_trivia != ""
           result += "\n#{current_indent}.with_leading(#{node.leading_trivia.inspect})"
@@ -763,6 +791,219 @@ module CppAst
         default_trailings = Array.new(node.statements.length, "\n")
         if node.statement_trailings != default_trailings
           result += "\n.with_statement_trailings(#{node.statement_trailings.inspect})"
+        end
+        
+        result
+      end
+      
+      # Comment generators - Phase 2
+      def generate_inline_comment(node)
+        result = "inline_comment(#{node.text.inspect})"
+        
+        if node.leading_trivia != ""
+          result += "\n#{current_indent}.with_leading(#{node.leading_trivia.inspect})"
+        end
+        
+        result
+      end
+      
+      def generate_block_comment(node)
+        result = "block_comment(#{node.text.inspect})"
+        
+        if node.leading_trivia != ""
+          result += "\n#{current_indent}.with_leading(#{node.leading_trivia.inspect})"
+        end
+        
+        result
+      end
+      
+      def generate_doxygen_comment(node)
+        result = "doxygen_comment(#{node.text.inspect}, style: #{node.style.inspect})"
+        
+        if node.leading_trivia != ""
+          result += "\n#{current_indent}.with_leading(#{node.leading_trivia.inspect})"
+        end
+        
+        result
+      end
+      
+      # Preprocessor generators - Phase 2
+      def generate_define_directive(node)
+        result = "define_directive(#{node.name.inspect}"
+        result += ", #{node.value.inspect}" unless node.value.empty?
+        result += ")"
+        
+        if node.leading_trivia != ""
+          result += "\n#{current_indent}.with_leading(#{node.leading_trivia.inspect})"
+        end
+        
+        result
+      end
+      
+      def generate_ifdef_directive(node)
+        body = node.body.map { |stmt| generate(stmt) }
+        result = "ifdef_directive(#{node.name.inspect}"
+        
+        if body.any?
+          result += ",\n"
+          with_indent do
+            body.each_with_index do |stmt, i|
+              result += "#{current_indent}#{stmt}"
+              result += "," unless i == body.length - 1
+              result += "\n"
+            end
+          end
+        end
+        
+        result += ")"
+        
+        if node.leading_trivia != ""
+          result += "\n#{current_indent}.with_leading(#{node.leading_trivia.inspect})"
+        end
+        
+        result
+      end
+      
+      def generate_ifndef_directive(node)
+        body = node.body.map { |stmt| generate(stmt) }
+        result = "ifndef_directive(#{node.name.inspect}"
+        
+        if body.any?
+          result += ",\n"
+          with_indent do
+            body.each_with_index do |stmt, i|
+              result += "#{current_indent}#{stmt}"
+              result += "," unless i == body.length - 1
+              result += "\n"
+            end
+          end
+        end
+        
+        result += ")"
+        
+        if node.leading_trivia != ""
+          result += "\n#{current_indent}.with_leading(#{node.leading_trivia.inspect})"
+        end
+        
+        result
+      end
+      
+      # Friend declaration generator - Phase 3
+      def generate_friend_declaration(node)
+        result = "friend_decl(#{node.type.inspect}"
+        result += ", #{node.name.inspect}" unless node.name.empty?
+        result += ")"
+        
+        if node.leading_trivia != ""
+          result += "\n#{current_indent}.with_leading(#{node.leading_trivia.inspect})"
+        end
+        
+        result
+      end
+      
+      # Concept declaration generator - Phase 4
+      def generate_concept_declaration(node)
+        result = "concept_decl(#{node.name.inspect}, #{node.template_params.inspect}, #{node.requirements.inspect})"
+        
+        if node.leading_trivia != ""
+          result += "\n#{current_indent}.with_leading(#{node.leading_trivia.inspect})"
+        end
+        
+        result
+      end
+      
+      # C++20 Modules generators - Phase 4
+      def generate_module_declaration(node)
+        body = node.body.map { |stmt| generate(stmt) }
+        result = "module_decl(#{node.name.inspect}"
+        
+        if body.any?
+          result += ",\n"
+          with_indent do
+            body.each_with_index do |stmt, i|
+              result += "#{current_indent}#{stmt}"
+              result += "," unless i == body.length - 1
+              result += "\n"
+            end
+          end
+        end
+        
+        result += ")"
+        
+        if node.leading_trivia != ""
+          result += "\n#{current_indent}.with_leading(#{node.leading_trivia.inspect})"
+        end
+        
+        result
+      end
+      
+      def generate_import_declaration(node)
+        result = "import_decl(#{node.module_name.inspect})"
+        
+        if node.leading_trivia != ""
+          result += "\n#{current_indent}.with_leading(#{node.leading_trivia.inspect})"
+        end
+        
+        result
+      end
+      
+      def generate_export_declaration(node)
+        declarations = node.declarations.map { |decl| generate(decl) }
+        result = "export_decl("
+        
+        if declarations.any?
+          result += "\n"
+          with_indent do
+            declarations.each_with_index do |decl, i|
+              result += "#{current_indent}#{decl}"
+              result += "," unless i == declarations.length - 1
+              result += "\n"
+            end
+          end
+        end
+        
+        result += ")"
+        
+        if node.leading_trivia != ""
+          result += "\n#{current_indent}.with_leading(#{node.leading_trivia.inspect})"
+        end
+        
+        result
+      end
+      
+      # C++20 Coroutines generators - Phase 4
+      def generate_co_await_expression(node)
+        expr = generate(node.expression)
+        result = "co_await(#{expr})"
+        
+        if node.leading_trivia != ""
+          result += "\n#{current_indent}.with_leading(#{node.leading_trivia.inspect})"
+        end
+        
+        result
+      end
+      
+      def generate_co_yield_expression(node)
+        expr = generate(node.expression)
+        result = "co_yield(#{expr})"
+        
+        if node.leading_trivia != ""
+          result += "\n#{current_indent}.with_leading(#{node.leading_trivia.inspect})"
+        end
+        
+        result
+      end
+      
+      def generate_co_return_statement(node)
+        if node.expression
+          expr = generate(node.expression)
+          result = "co_return(#{expr})"
+        else
+          result = "co_return()"
+        end
+        
+        if node.leading_trivia != ""
+          result += "\n#{current_indent}.with_leading(#{node.leading_trivia.inspect})"
         end
         
         result

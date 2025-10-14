@@ -294,8 +294,10 @@ module CppAst
       
       def to_source
         result = "#{leading_trivia}namespace#{namespace_suffix}"
-        result << "#{name}#{name_suffix}" unless name.empty?
+        result << " #{name}#{name_suffix}" unless name.empty?
+        result << " {"
         result << body.to_source
+        result << "}"
         result
       end
     end
@@ -346,7 +348,14 @@ module CppAst
           result << " : #{initializer_list}"
         end
         
-        result << (body ? body.to_source : ";")
+        # Only generate body if it's explicitly marked as inline
+        if body && body.respond_to?(:inline?) && body.inline?
+          result << " " << body.to_source
+        elsif body
+          result << " " << body.to_source
+        else
+          result << ";"
+        end
         result
       end
     end
@@ -376,8 +385,12 @@ module CppAst
         result << base_classes_text unless base_classes_text.empty?
         result << "{#{lbrace_suffix}"
         
-        members.zip(member_trailings).each do |member, trailing|
-          result << member.to_source << trailing
+        # Flatten members in case they are arrays (from public_section, private_section)
+        flattened_members = members.flat_map { |m| m.is_a?(Array) ? m : [m] }
+        flattened_trailings = member_trailings.flat_map { |t| t.is_a?(Array) ? t : [t] }
+        
+        flattened_members.zip(flattened_trailings).each do |member, trailing|
+          result << member.to_source << (trailing || "")
         end
         
         result << "#{rbrace_suffix}};"
@@ -410,9 +423,13 @@ module CppAst
         result << base_classes_text unless base_classes_text.empty?
         result << "{#{lbrace_suffix}"
         
-        members.zip(member_trailings).each do |member, trailing|
+        # Flatten members in case they are arrays (from field_def calls)
+        flattened_members = members.flat_map { |m| m.is_a?(Array) ? m : [m] }
+        flattened_trailings = member_trailings.flat_map { |t| t.is_a?(Array) ? t : [t] }
+        
+        flattened_members.zip(flattened_trailings).each do |member, trailing|
           member_str = member.respond_to?(:to_source) ? member.to_source : member.to_s
-          result << member_str << trailing
+          result << member_str << (trailing || "")
         end
         
         result << "#{rbrace_suffix}};"
@@ -438,19 +455,20 @@ module CppAst
     # VariableDeclaration: `int x = 42;` or `const int* ptr = nullptr;`
     class VariableDeclaration < Statement
       attr_accessor :type, :declarators, :declarator_separators
-      attr_accessor :type_suffix
+      attr_accessor :type_suffix, :prefix_modifiers
       
-      def initialize(leading_trivia: "", type:, declarators:, declarator_separators: [], type_suffix: "")
+      def initialize(leading_trivia: "", type:, declarators:, declarator_separators: [], type_suffix: "", prefix_modifiers: "")
         super(leading_trivia: leading_trivia)
         @type = type
         @declarators = declarators
         @declarator_separators = declarator_separators
         @type_suffix = type_suffix
+        @prefix_modifiers = prefix_modifiers
       end
       
       def to_source
         type_str = type.respond_to?(:to_source) ? type.to_source : type.to_s
-        result = "#{leading_trivia}#{type_str}#{type_suffix}"
+        result = "#{leading_trivia}#{prefix_modifiers}#{type_str}#{type_suffix}"
         
         declarators.each_with_index do |decl, i|
           result << decl
@@ -491,15 +509,19 @@ module CppAst
         result << "{#{lbrace_suffix}"
         
         # Convert enumerators array to string
-        enumerator_strings = enumerators.map do |enumerator|
-          if enumerator.is_a?(Array)
-            if enumerator[1]
-              "#{enumerator[0]} = #{enumerator[1]}"
+        if enumerators.is_a?(String)
+          enumerator_strings = [enumerators]
+        else
+          enumerator_strings = enumerators.map do |enumerator|
+            if enumerator.is_a?(Array)
+              if enumerator[1]
+                "#{enumerator[0]} = #{enumerator[1]}"
+              else
+                enumerator[0]
+              end
             else
-              enumerator[0]
+              enumerator.to_s
             end
-          else
-            enumerator.to_s
           end
         end
         result << enumerator_strings.join(", ")
@@ -525,7 +547,19 @@ module CppAst
       end
       
       def to_source
-        "#{leading_trivia}template#{template_suffix}<#{less_suffix}#{template_params}>#{params_suffix}#{declaration.to_source}"
+        if template_params.empty?
+          "#{leading_trivia}template#{template_suffix}<>#{params_suffix}#{declaration.to_source}"
+        else
+          "#{leading_trivia}template#{template_suffix}<#{less_suffix}#{template_params}>#{params_suffix}#{declaration.to_source}"
+        end
+      end
+      
+      def inline_body(body)
+        # Delegate to the underlying function declaration
+        if declaration.respond_to?(:inline_body)
+          declaration.inline_body(body)
+        end
+        self
       end
     end
     
@@ -662,6 +696,254 @@ module CppAst
       
       def to_source
         "#{leading_trivia}#pragma #{directive}"
+      end
+    end
+    
+    # AccessSpecifier: `public:`, `private:`, `protected:`
+    class AccessSpecifier < Statement
+      attr_accessor :access_type, :colon_suffix
+      
+      def initialize(leading_trivia: "", access_type:, colon_suffix: "")
+        super(leading_trivia: leading_trivia)
+        @access_type = access_type
+        @colon_suffix = colon_suffix
+      end
+      
+      def to_source
+        "#{leading_trivia}#{access_type}:#{colon_suffix}"
+      end
+    end
+    
+    # ConstDeclaration: `constexpr type name = value;`
+    class ConstDeclaration < Statement
+      attr_accessor :type, :name, :value
+      
+      def initialize(leading_trivia: "", type:, name:, value:)
+        super(leading_trivia: leading_trivia)
+        @type = type
+        @name = name
+        @value = value
+      end
+      
+      def to_source
+        "#{leading_trivia}constexpr #{type} #{name} = #{value};"
+      end
+    end
+    
+    # Comment nodes - Phase 2
+    class InlineComment < Statement
+      attr_accessor :text
+      
+      def initialize(leading_trivia: "", text:)
+        super(leading_trivia: leading_trivia)
+        @text = text
+      end
+      
+      def to_source
+        "#{leading_trivia}// #{text}"
+      end
+    end
+    
+    class BlockComment < Statement
+      attr_accessor :text
+      
+      def initialize(leading_trivia: "", text:)
+        super(leading_trivia: leading_trivia)
+        @text = text
+      end
+      
+      def to_source
+        "#{leading_trivia}/* #{text} */"
+      end
+    end
+    
+    class DoxygenComment < Statement
+      attr_accessor :text, :style
+      
+      def initialize(leading_trivia: "", text:, style: :inline)
+        super(leading_trivia: leading_trivia)
+        @text = text
+        @style = style
+      end
+      
+      def to_source
+        case style
+        when :inline
+          "#{leading_trivia}/// #{text}"
+        when :block
+          "#{leading_trivia}/** #{text} */"
+        else
+          "#{leading_trivia}/// #{text}"
+        end
+      end
+    end
+    
+    # Preprocessor directives - Phase 2
+    class DefineDirective < Statement
+      attr_accessor :name, :value
+      
+      def initialize(leading_trivia: "", name:, value: "")
+        super(leading_trivia: leading_trivia)
+        @name = name
+        @value = value
+      end
+      
+      def to_source
+        if value.empty?
+          "#{leading_trivia}#define #{name}"
+        else
+          "#{leading_trivia}#define #{name} #{value}"
+        end
+      end
+    end
+    
+    class IfdefDirective < Statement
+      attr_accessor :name, :body
+      
+      def initialize(leading_trivia: "", name:, body: [])
+        super(leading_trivia: leading_trivia)
+        @name = name
+        @body = body
+      end
+      
+      def to_source
+        result = "#{leading_trivia}#ifdef #{name}\n"
+        body.each do |stmt|
+          result += stmt.to_source + "\n"
+        end
+        result += "#endif"
+        result
+      end
+    end
+    
+    class IfndefDirective < Statement
+      attr_accessor :name, :body
+      
+      def initialize(leading_trivia: "", name:, body: [])
+        super(leading_trivia: leading_trivia)
+        @name = name
+        @body = body
+      end
+      
+      def to_source
+        result = "#{leading_trivia}#ifndef #{name}\n"
+        body.each do |stmt|
+          result += stmt.to_source + "\n"
+        end
+        result += "#endif"
+        result
+      end
+    end
+    
+    # C++20 Concepts - Phase 4
+    class ConceptDeclaration < Statement
+      attr_accessor :name, :template_params, :requirements
+      
+      def initialize(leading_trivia: "", name:, template_params:, requirements:)
+        super(leading_trivia: leading_trivia)
+        @name = name
+        @template_params = template_params
+        @requirements = requirements
+      end
+      
+      def to_source
+        result = "#{leading_trivia}template<#{template_params.join(', ')}>\n"
+        result += "concept #{name} = #{requirements};"
+        result
+      end
+    end
+    
+    # C++20 Modules - Phase 4
+    class ModuleDeclaration < Statement
+      attr_accessor :name, :body
+      
+      def initialize(leading_trivia: "", name:, body: [])
+        super(leading_trivia: leading_trivia)
+        @name = name
+        @body = body
+      end
+      
+      def to_source
+        result = "#{leading_trivia}export module #{name};\n"
+        body.each do |stmt|
+          result += stmt.to_source + "\n"
+        end
+        result
+      end
+    end
+    
+    class ImportDeclaration < Statement
+      attr_accessor :module_name
+      
+      def initialize(leading_trivia: "", module_name:)
+        super(leading_trivia: leading_trivia)
+        @module_name = module_name
+      end
+      
+      def to_source
+        "#{leading_trivia}import #{module_name};"
+      end
+    end
+    
+    class ExportDeclaration < Statement
+      attr_accessor :declarations
+      
+      def initialize(leading_trivia: "", declarations: [])
+        super(leading_trivia: leading_trivia)
+        @declarations = declarations
+      end
+      
+      def to_source
+        result = "#{leading_trivia}export {\n"
+        declarations.each do |decl|
+          result += "  " + decl.to_source + "\n"
+        end
+        result += "}"
+        result
+      end
+    end
+    
+    # C++20 Coroutines - Phase 4
+    class CoAwaitExpression < Statement
+      attr_accessor :expression
+      
+      def initialize(leading_trivia: "", expression:)
+        super(leading_trivia: leading_trivia)
+        @expression = expression
+      end
+      
+      def to_source
+        "#{leading_trivia}co_await #{expression.to_source}"
+      end
+    end
+    
+    class CoYieldExpression < Statement
+      attr_accessor :expression
+      
+      def initialize(leading_trivia: "", expression:)
+        super(leading_trivia: leading_trivia)
+        @expression = expression
+      end
+      
+      def to_source
+        "#{leading_trivia}co_yield #{expression.to_source}"
+      end
+    end
+    
+    class CoReturnStatement < Statement
+      attr_accessor :expression
+      
+      def initialize(leading_trivia: "", expression: nil)
+        super(leading_trivia: leading_trivia)
+        @expression = expression
+      end
+      
+      def to_source
+        if expression
+          "#{leading_trivia}co_return #{expression.to_source};"
+        else
+          "#{leading_trivia}co_return;"
+        end
       end
     end
   end

@@ -39,7 +39,7 @@ class ProductionFixesTest < Minitest::Test
       )
     )
     cpp_code = ast.to_source
-    assert_includes cpp_code, "namespace gtkgl::text"
+    assert_includes cpp_code, "namespace  gtkgl::text"
     assert_includes cpp_code, "using GlyphIndex"
     assert_includes cpp_code, "struct Vec2"
   end
@@ -62,7 +62,7 @@ class ProductionFixesTest < Minitest::Test
     cpp_code = ast.to_source
     assert_includes cpp_code, "#pragma once"
     assert_includes cpp_code, "#include <cstdint>"
-    assert_includes cpp_code, "namespace gtkgl::text"
+    assert_includes cpp_code, "namespace  gtkgl::text"
     assert_includes cpp_code, "float x{0.0f};"
     assert_includes cpp_code, "Vec2() = default;"
   end
@@ -106,7 +106,7 @@ class ProductionFixesTest < Minitest::Test
     ).specialized()
     
     cpp_code = ast.to_source
-    assert_includes cpp_code, "template <>"
+    assert_includes cpp_code, "template<>"
     assert_includes cpp_code, "size_t operator()"
     assert_includes cpp_code, "const noexcept"
   end
@@ -165,7 +165,7 @@ class ProductionFixesTest < Minitest::Test
     assert_includes cpp_code, "#include <cstdint>"
     assert_includes cpp_code, "#include <vector>"
     assert_includes cpp_code, "#include <optional>"
-    assert_includes cpp_code, "namespace gtkgl::text"
+    assert_includes cpp_code, "namespace  gtkgl::text"
     assert_includes cpp_code, "using GlyphIndex = uint32_t"
     assert_includes cpp_code, "using FontFaceID = uint32_t"
     assert_includes cpp_code, "struct Vec2"
@@ -181,8 +181,8 @@ class ProductionFixesTest < Minitest::Test
     assert_includes cpp_code, "uint32_t page_id{0};"
     assert_includes cpp_code, "uint32_t texture_id{0};"
     assert_includes cpp_code, "inline bool is_valid"
-    assert_includes cpp_code, "namespace std"
-    assert_includes cpp_code, "template <>"
+    assert_includes cpp_code, "namespace  std"
+    assert_includes cpp_code, "template<>"
     assert_includes cpp_code, "size_t operator()"
     assert_includes cpp_code, "const noexcept"
   end

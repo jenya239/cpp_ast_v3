@@ -134,7 +134,8 @@ module CppAst
         # Modern C++ modifiers - Phase 2
         def deleted
           dup.tap { |n| 
-            n.rparen_suffix = " = delete"
+            n.rparen_suffix = ""
+            n.modifiers_text = " = delete"
             n.body = nil  # deleted functions have no body
           }
         end
@@ -170,8 +171,50 @@ module CppAst
           dup.tap { |n| n.prefix_modifiers = "[[nodiscard]] " + n.prefix_modifiers }
         end
         
+        # C++11 attributes support - Phase 1
+        def attribute(name)
+          dup.tap { |n| n.prefix_modifiers = "[[#{name}]] " + n.prefix_modifiers }
+        end
+        
+        def maybe_unused
+          dup.tap { |n| n.prefix_modifiers = "[[maybe_unused]] " + n.prefix_modifiers }
+        end
+        
+        def deprecated
+          dup.tap { |n| n.prefix_modifiers = "[[deprecated]] " + n.prefix_modifiers }
+        end
+        
+        def deprecated_with_message(message)
+          dup.tap { |n| n.prefix_modifiers = "[[deprecated(\"#{message}\")]] " + n.prefix_modifiers }
+        end
+        
+        def scoped_name(class_name)
+          dup.tap { |n| n.name = "#{class_name}::#{n.name}" }
+        end
+        
         def static
           dup.tap { |n| n.prefix_modifiers = "static " + n.prefix_modifiers }
+        end
+        
+        # Virtual methods support - Phase 1
+        def virtual
+          dup.tap { |n| n.prefix_modifiers = "virtual " + n.prefix_modifiers }
+        end
+        
+        def override
+          dup.tap { |n| n.modifiers_text += " override" }
+        end
+        
+        def final
+          dup.tap { |n| n.modifiers_text += " final" }
+        end
+        
+        def pure_virtual
+          dup.tap { |n| 
+            n.prefix_modifiers = "virtual " + n.prefix_modifiers
+            n.rparen_suffix = " = 0"
+            n.body = nil  # pure virtual functions have no body
+          }
         end
         
         # Inline method body for class methods
@@ -197,6 +240,32 @@ module CppAst
         
         def with_declarator_separators(separators)
           dup.tap { |n| n.declarator_separators = separators }
+        end
+        
+        # Static and inline modifiers for variables - Phase 3
+        def static
+          dup.tap { |n| n.prefix_modifiers = "static " + n.prefix_modifiers }
+        end
+        
+        def inline
+          dup.tap { |n| n.prefix_modifiers = "inline " + n.prefix_modifiers }
+        end
+        
+        def constexpr
+          dup.tap { |n| n.prefix_modifiers = "constexpr " + n.prefix_modifiers }
+        end
+        
+        def const
+          dup.tap { |n| n.prefix_modifiers = "const " + n.prefix_modifiers }
+        end
+      end
+      
+      # C++20 Coroutines - Phase 4
+      module CoroutineFunction
+        include Statement
+        
+        def coroutine
+          dup.tap { |n| n.prefix_modifiers = "coroutine " + n.prefix_modifiers }
         end
       end
       
@@ -230,6 +299,14 @@ module CppAst
         end
       end
       
+      module ClassDeclaration
+        include Statement
+        
+        def with_base_classes(base_classes_text)
+          dup.tap { |n| n.base_classes_text = base_classes_text }
+        end
+      end
+      
       module LambdaExpression
         include Fluent
         
@@ -258,7 +335,7 @@ module CppAst
         end
         
         def specialized
-          dup.tap { |n| n.template_params = "" }
+          dup.tap { |n| n.template_params = ""; n.less_suffix = ""; n.params_suffix = " "; n.template_suffix = "" }
         end
       end
     end
@@ -289,7 +366,7 @@ CppAst::Nodes::ErrorStatement.include(CppAst::Builder::Fluent::Statement)
 # Declarations
 CppAst::Nodes::FunctionDeclaration.include(CppAst::Builder::Fluent::FunctionDeclaration)
 CppAst::Nodes::VariableDeclaration.include(CppAst::Builder::Fluent::VariableDeclaration)
-CppAst::Nodes::ClassDeclaration.include(CppAst::Builder::Fluent::Statement)
+CppAst::Nodes::ClassDeclaration.include(CppAst::Builder::Fluent::ClassDeclaration)
 CppAst::Nodes::StructDeclaration.include(CppAst::Builder::Fluent::Statement)
 CppAst::Nodes::EnumDeclaration.include(CppAst::Builder::Fluent::Statement)
 CppAst::Nodes::UsingDeclaration.include(CppAst::Builder::Fluent::Statement)
@@ -299,4 +376,28 @@ CppAst::Nodes::TemplateDeclaration.include(CppAst::Builder::Fluent::TemplateDecl
 
 # Other
 CppAst::Nodes::Program.include(CppAst::Builder::Fluent::Program)
+
+# Comments - Phase 2
+CppAst::Nodes::InlineComment.include(CppAst::Builder::Fluent::Statement)
+CppAst::Nodes::BlockComment.include(CppAst::Builder::Fluent::Statement)
+CppAst::Nodes::DoxygenComment.include(CppAst::Builder::Fluent::Statement)
+
+# Preprocessor - Phase 2
+CppAst::Nodes::DefineDirective.include(CppAst::Builder::Fluent::Statement)
+CppAst::Nodes::IfdefDirective.include(CppAst::Builder::Fluent::Statement)
+CppAst::Nodes::IfndefDirective.include(CppAst::Builder::Fluent::Statement)
+
+# C++20 Concepts - Phase 4
+CppAst::Nodes::ConceptDeclaration.include(CppAst::Builder::Fluent::Statement)
+
+# C++20 Modules - Phase 4
+CppAst::Nodes::ModuleDeclaration.include(CppAst::Builder::Fluent::Statement)
+CppAst::Nodes::ImportDeclaration.include(CppAst::Builder::Fluent::Statement)
+CppAst::Nodes::ExportDeclaration.include(CppAst::Builder::Fluent::Statement)
+
+# C++20 Coroutines - Phase 4
+CppAst::Nodes::CoAwaitExpression.include(CppAst::Builder::Fluent::Statement)
+CppAst::Nodes::CoYieldExpression.include(CppAst::Builder::Fluent::Statement)
+CppAst::Nodes::CoReturnStatement.include(CppAst::Builder::Fluent::Statement)
+CppAst::Nodes::FunctionDeclaration.include(CppAst::Builder::Fluent::CoroutineFunction)
 

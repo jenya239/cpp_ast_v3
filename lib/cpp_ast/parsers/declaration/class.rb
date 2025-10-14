@@ -47,7 +47,7 @@ module CppAst
             
             members << Nodes::AccessSpecifier.new(
               leading_trivia: member_leading,
-              keyword: keyword,
+              access_type: keyword,
               colon_suffix: colon_suffix
             )
             member_trailings << ""

@@ -69,6 +69,16 @@ module CppAst
       def to_source
         "#{left.to_source}#{operator_prefix}#{operator}#{operator_suffix}#{right.to_source}"
       end
+      
+      def <<(right)
+        Nodes::BinaryExpression.new(
+          left: self,
+          operator: "<<",
+          right: right,
+          operator_prefix: " ",
+          operator_suffix: " "
+        )
+      end
     end
     
     # UnaryExpression - unary operators like !, ++, --, -, +
@@ -154,6 +164,16 @@ module CppAst
         
         result << "#{rparen_prefix})"
         result
+      end
+      
+      def <<(right)
+        Nodes::BinaryExpression.new(
+          left: self,
+          operator: "<<",
+          right: right,
+          operator_prefix: " ",
+          operator_suffix: " "
+        )
       end
     end
     
@@ -244,6 +264,32 @@ module CppAst
         "#{condition.to_source}#{question_prefix}?#{question_suffix}" \
         "#{true_expression.to_source}#{colon_prefix}:#{colon_suffix}" \
         "#{false_expression.to_source}"
+      end
+    end
+    
+    # ArrayExpression - array declaration: type name[size]
+    class ArrayExpression < Expression
+      attr_accessor :size
+      
+      def initialize(size:)
+        @size = size
+      end
+      
+      def to_source
+        "[#{size}]"
+      end
+    end
+    
+    # BooleanLiteral - boolean literal: true, false
+    class BooleanLiteral < Expression
+      attr_accessor :value
+      
+      def initialize(value:)
+        @value = value
+      end
+      
+      def to_source
+        value ? "true" : "false"
       end
     end
   end

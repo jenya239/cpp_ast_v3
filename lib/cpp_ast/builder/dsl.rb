@@ -1,5 +1,9 @@
 # frozen_string_literal: true
 
+require_relative "../nodes/base"
+require_relative "../nodes/expressions"
+require_relative "../nodes/statements"
+
 module CppAst
   module Builder
     module DSL
@@ -34,6 +38,26 @@ module CppAst
           operator_prefix: " ",
           operator_suffix: " "
         )
+      end
+      
+      def assign(left, right)
+        binary("=", left, right)
+      end
+      
+      def stream_output(left, right)
+        binary("<<", left, right)
+      end
+      
+      def address_of(expression)
+        unary("&", expression)
+      end
+      
+      def array(size)
+        Nodes::ArrayExpression.new(size: size)
+      end
+      
+      def bool(value)
+        Nodes::BooleanLiteral.new(value: value)
       end
       
       # Unary operators (prefix)
@@ -205,6 +229,26 @@ module CppAst
         )
       end
       
+      # Class inheritance helper - Phase 1
+      def class_with_inheritance(name, base_classes, *members)
+        # Build inheritance text
+        inheritance_text = ""
+        if base_classes.any?
+          inheritance_text = " : " + base_classes.join(", ")
+        end
+        
+        member_trailings = members.map { "\n" }
+        Nodes::ClassDeclaration.new(
+          name: name,
+          members: members,
+          member_trailings: member_trailings,
+          class_suffix: " ",
+          name_suffix: " ",
+          lbrace_suffix: "\n",
+          base_classes_text: inheritance_text
+        )
+      end
+      
       def struct_decl(name, *members)
         member_trailings = members.map { "\n" }
         Nodes::StructDeclaration.new(
@@ -349,7 +393,7 @@ module CppAst
       
       def access_spec(keyword)
         Nodes::AccessSpecifier.new(
-          keyword: keyword,
+          access_type: keyword,
           colon_suffix: ""
         )
       end
@@ -493,6 +537,15 @@ module CppAst
           default_value: default
         )
       end
+      
+      # Helper for const declarations
+      def const_decl(type, name, value)
+        Nodes::ConstDeclaration.new(
+          type: type,
+          name: name,
+          value: value
+        )
+      end
 
       # Sum types (variant-based ADT)
       def sum_type(name, *cases)
@@ -544,6 +597,208 @@ module CppAst
       # Pragma directive
       def pragma_once()
         Nodes::PragmaDirective.new(directive: "once")
+      end
+      
+      # Access specifiers
+      def public_section(*members)
+        [Nodes::AccessSpecifier.new(access_type: "public")] + members.flatten
+      end
+      
+      def private_section(*members)
+        [Nodes::AccessSpecifier.new(access_type: "private")] + members.flatten
+      end
+      
+      def protected_section(*members)
+        [Nodes::AccessSpecifier.new(access_type: "protected")] + members.flatten
+      end
+      
+      # Comment DSL - Phase 2
+      def inline_comment(text)
+        Nodes::InlineComment.new(text: text)
+      end
+      
+      def block_comment(text)
+        Nodes::BlockComment.new(text: text)
+      end
+      
+      def doxygen_comment(text, style: :inline)
+        Nodes::DoxygenComment.new(text: text, style: style)
+      end
+      
+      def doc_comment(text)
+        doxygen_comment(text, style: :block)
+      end
+      
+      # Preprocessor DSL - Phase 2
+      def define_directive(name, value = "")
+        Nodes::DefineDirective.new(name: name, value: value)
+      end
+      
+      def ifdef_directive(name, *body)
+        Nodes::IfdefDirective.new(name: name, body: body)
+      end
+      
+      def ifndef_directive(name, *body)
+        Nodes::IfndefDirective.new(name: name, body: body)
+      end
+      
+      # Stream operations helper - Phase 2
+      def stream_chain(stream, *args)
+        # Start with the stream
+        result = id(stream)
+        
+        # Chain all arguments with << operator
+        args.each do |arg|
+          result = binary("<<", result, arg)
+        end
+        
+        result
+      end
+      
+      def cerr_chain(*args)
+        stream_chain("std::cerr", *args)
+      end
+      
+      def cout_chain(*args)
+        stream_chain("std::cout", *args)
+      end
+      
+      def endl
+        id("std::endl")
+      end
+      
+      # Nested types helpers - Phase 3
+      def nested_class(name, *members)
+        class_decl(name, *members)
+      end
+      
+      def nested_struct(name, *members)
+        struct_decl(name, *members)
+      end
+      
+      def nested_enum(name, *enumerators)
+        enum_decl(name, enumerators)
+      end
+      
+      def nested_enum_class(name, *enumerators)
+        enum_class(name, enumerators)
+      end
+      
+      def nested_namespace(name, *body)
+        namespace_decl(name, *body)
+      end
+      
+      # Static members helpers - Phase 3
+      def static_constexpr(type, name, value)
+        Nodes::VariableDeclaration.new(
+          type: type,
+          declarators: [name, value],
+          declarator_separators: [", "],
+          type_suffix: " ",
+          prefix_modifiers: "static constexpr "
+        )
+      end
+      
+      def static_const(type, name, value)
+        Nodes::VariableDeclaration.new(
+          type: type,
+          declarators: [name, value],
+          declarator_separators: [", "],
+          type_suffix: " ",
+          prefix_modifiers: "static const "
+        )
+      end
+      
+      def inline_var(type, name, value)
+        Nodes::VariableDeclaration.new(
+          type: type,
+          declarators: [name, value],
+          declarator_separators: [", "],
+          type_suffix: " ",
+          prefix_modifiers: "inline "
+        )
+      end
+      
+      def static_inline_var(type, name, value)
+        Nodes::VariableDeclaration.new(
+          type: type,
+          declarators: [name, value],
+          declarator_separators: [", "],
+          type_suffix: " ",
+          prefix_modifiers: "static inline "
+        )
+      end
+      
+      # Advanced templates helpers - Phase 4
+      def variadic_template_class(name, *params)
+        template_params = params.map { |p| "typename #{p}" }
+        template_params << "typename... Args"
+        template_decl(template_params, class_decl(name))
+      end
+      
+      def variadic_template_function(return_type, name, *params)
+        template_params = params.map { |p| "typename #{p}" }
+        template_params << "typename... Args"
+        template_decl(template_params, function_decl(return_type, name))
+      end
+      
+      def template_template_param(name, template_params)
+        "template<#{template_params.join(', ')}> class #{name}"
+      end
+      
+      def sfinae_requires(concept_name, *types)
+        "requires #{concept_name}<#{types.join(', ')}>"
+      end
+      
+      def concept_decl(name, template_params, requirements)
+        Nodes::ConceptDeclaration.new(
+          name: name,
+          template_params: template_params,
+          requirements: requirements
+        )
+      end
+      
+      # C++20 Modules - Phase 4
+      def module_decl(name, *body)
+        Nodes::ModuleDeclaration.new(
+          name: name,
+          body: body
+        )
+      end
+      
+      def import_decl(module_name)
+        Nodes::ImportDeclaration.new(
+          module_name: module_name
+        )
+      end
+      
+      def export_decl(*declarations)
+        Nodes::ExportDeclaration.new(
+          declarations: declarations
+        )
+      end
+      
+      # C++20 Coroutines - Phase 4
+      def coroutine_function(return_type, name, parameters = [], body = nil)
+        function_decl(return_type, name, parameters, body).coroutine()
+      end
+      
+      def co_await(expression)
+        Nodes::CoAwaitExpression.new(
+          expression: expression
+        )
+      end
+      
+      def co_yield(expression)
+        Nodes::CoYieldExpression.new(
+          expression: expression
+        )
+      end
+      
+      def co_return(expression = nil)
+        Nodes::CoReturnStatement.new(
+          expression: expression
+        )
       end
     end
   end
