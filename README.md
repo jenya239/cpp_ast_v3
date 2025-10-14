@@ -77,7 +77,7 @@ program = CppAst.parse(source)
 puts program.to_source  # => "x = 42;\n"
 ```
 
-### DSL Builder (NEW) - Bidirectional
+### DSL Builder - Bidirectional
 
 **DSL → AST → C++**
 ```ruby
@@ -119,7 +119,38 @@ ast = function_decl("int", "main", [], block(...))
   .with_leading("\n")
 ```
 
-См. `docs/DSL_BUILDER.md`, `demo_dsl.rb` и `demo_dsl_roundtrip.rb` для полного API.
+### Aurora DSL Extensions (NEW!)
+
+**Modern C++ через Ruby DSL**:
+```ruby
+# Ownership types
+owned("Vec2")        # std::unique_ptr<Vec2>
+borrowed("Vec2")     # const Vec2&
+span_of("int")       # std::span<int>
+
+# ADT (Algebraic Data Types)
+product_type("Point",
+  field_def("x", "float"),
+  field_def("y", "float")
+)
+
+sum_type("Shape",
+  case_struct("Circle", field_def("r", "float")),
+  case_struct("Rect", field_def("w", "float"), field_def("h", "float"))
+)
+
+# Pattern Matching
+match_expr(id("shape"),
+  arm("Circle", ["r"], binary("*", float(3.14), binary("*", id("r"), id("r")))),
+  arm("Rect", ["w", "h"], binary("*", id("w"), id("h")))
+)
+
+# Result/Option types
+result_of("int", "std::string")  # std::expected<int, std::string>
+option_of("float")               # std::optional<float>
+```
+
+См. `docs/AURORA_DSL.md` для полной документации и `examples/04_aurora_dsl.rb` для примеров.
 
 ## Running Tests
 
@@ -133,7 +164,7 @@ ruby test/lexer/test_token.rb
 
 ## Development Status
 
-**TOTAL: 653 tests, 863 assertions, 0 failures, 0 errors** ✅
+**TOTAL: 703 tests, 913 assertions, 0 failures, 0 errors** ✅
 
 ### ✅ Supported Constructs
 - ✅ All operators (binary, unary, ternary, member access, subscript)

@@ -4,7 +4,7 @@
 # Aurora DSL Demo - Comprehensive example using all Aurora features
 # This demonstrates the extended Ruby DSL for C++ with ownership, ADT, and pattern matching
 
-require_relative "lib/cpp_ast"
+require_relative "../lib/cpp_ast"
 
 include CppAst::Builder::DSL
 

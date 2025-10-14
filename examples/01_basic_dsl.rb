@@ -1,7 +1,7 @@
 #!/usr/bin/env ruby
 # frozen_string_literal: true
 
-require_relative "lib/cpp_ast"
+require_relative "../lib/cpp_ast"
 
 include CppAst::Builder::DSL
 

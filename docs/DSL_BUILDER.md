@@ -202,6 +202,114 @@ cpp_original == cpp_result  # => true!
 
 Тесты в `test/builder/dsl_generator_test.rb` (34 тестов, все проходят)
 
+## Aurora DSL Extensions
+
+### Ownership Types
+
+```ruby
+owned("Vec2")        # std::unique_ptr<Vec2>
+borrowed("Vec2")     # const Vec2&
+mut_borrowed("Vec2") # Vec2&
+span_of("int")       # std::span<int>
+
+# Helper для параметров
+param(owned("Resource"), "resource")
+param(borrowed("Config"), "config")
+```
+
+### Result/Option Types
+
+```ruby
+result_of("int", "std::string")  # std::expected<int, std::string>
+option_of("float")               # std::optional<float>
+
+# Конструкторы
+ok(value)      # std::expected<T, E>::value_type
+err(error)     # std::expected<T, E>::error_type
+some(value)    # std::optional<T>::value_type
+none()         # std::optional<T>::nullopt
+```
+
+### Product Types (Structs)
+
+```ruby
+product_type("Point",
+  field_def("x", "float"),
+  field_def("y", "float")
+)
+# => struct Point { float x; float y; };
+```
+
+### Sum Types (Variants)
+
+```ruby
+sum_type("Shape",
+  case_struct("Circle", field_def("r", "float")),
+  case_struct("Rect", field_def("w", "float"), field_def("h", "float"))
+)
+# => struct Circle { float r; };
+#    struct Rect { float w; float h; };
+#    using Shape = std::variant<Circle, Rect>;
+```
+
+### Pattern Matching
+
+```ruby
+match_expr(id("shape"),
+  arm("Circle", ["r"], 
+    binary("*", float(3.14), binary("*", id("r"), id("r")))
+  ),
+  arm("Rect", ["w", "h"], 
+    binary("*", id("w"), id("h"))
+  )
+)
+# => std::visit(overloaded{...}, shape)
+```
+
+### Полный пример
+
+```ruby
+# Product type
+product_type("Point",
+  field_def("x", "float"),
+  field_def("y", "float")
+)
+
+# Sum type
+sum_type("Shape",
+  case_struct("Circle", 
+    field_def("center", "Point"),
+    field_def("radius", "float")
+  ),
+  case_struct("Rect",
+    field_def("top_left", "Point"),
+    field_def("width", "float"),
+    field_def("height", "float")
+  )
+)
+
+# Функция с pattern matching
+function_decl(
+  result_of("float", "std::string"),
+  "calculate_area",
+  [param(borrowed("Shape"), "shape")],
+  block(
+    return_stmt(
+      match_expr(id("shape"),
+        arm("Circle", ["center", "radius"],
+          binary("*", float(3.14159), binary("*", id("radius"), id("radius")))
+        ),
+        arm("Rect", ["top_left", "width", "height"],
+          binary("*", id("width"), id("height"))
+        )
+      )
+    )
+  )
+)
+```
+
+См. `docs/AURORA_DSL.md` для полной документации Aurora DSL.
+
 ## Ограничения
 
 - Строковые литералы передаются "как есть" (с кавычками): `string('"hello"')`
