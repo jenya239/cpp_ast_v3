@@ -6,7 +6,7 @@ class ProductionFixesTest < Minitest::Test
   include CppAst::Builder::DSL
 
   def test_field_declaration_basic
-    ast = field_def("float", "x")
+    ast = field_def("x", "float")
     assert_equal "float x;", ast.to_source
   end
 
@@ -34,8 +34,8 @@ class ProductionFixesTest < Minitest::Test
     ast = namespace_decl("gtkgl::text",
       using_alias("GlyphIndex", "uint32_t"),
       struct_decl("Vec2", 
-        field_def("float", "x"),
-        field_def("float", "y")
+        field_def("x", "float"),
+        field_def("y", "float")
       )
     )
     cpp_code = ast.to_source

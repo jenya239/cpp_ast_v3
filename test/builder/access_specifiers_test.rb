@@ -8,7 +8,7 @@ class AccessSpecifiersTest < Minitest::Test
   def test_public_section
     ast = public_section(
       function_decl("void", "public_method", [], block()),
-      field_def("int", "public_field")
+      field_def("public_field", "int")
     )
     
     cpp_code = ast.map(&:to_source).join("\n")
@@ -19,7 +19,7 @@ class AccessSpecifiersTest < Minitest::Test
 
   def test_private_section
     ast = private_section(
-      field_def("int", "private_field"),
+      field_def("private_field", "int"),
       function_decl("void", "private_method", [], block())
     )
     
@@ -31,7 +31,7 @@ class AccessSpecifiersTest < Minitest::Test
 
   def test_protected_section
     ast = protected_section(
-      field_def("int", "protected_field"),
+      field_def("protected_field", "int"),
       function_decl("void", "protected_method", [], block())
     )
     

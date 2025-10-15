@@ -7,8 +7,8 @@ class ProductTest < Minitest::Test
 
   def test_simple_product_type
     ast = product_type("Vec2",
-      field_def("float", "x"),
-      field_def("float", "y")
+      field_def("x", "float"),
+      field_def("y", "float")
     )
     
     cpp = ast.to_source
@@ -23,9 +23,9 @@ class ProductTest < Minitest::Test
 
   def test_product_type_with_different_types
     ast = product_type("Person",
-      field_def("std::string", "name"),
-      field_def("int", "age"),
-      field_def("float", "height")
+      field_def("name", "std::string"),
+      field_def("age", "int"),
+      field_def("height", "float")
     )
     
     cpp = ast.to_source
@@ -41,9 +41,9 @@ class ProductTest < Minitest::Test
 
   def test_product_type_with_ownership_types
     ast = product_type("Container",
-      field_def("std::unique_ptr<int>", "data"),
-      field_def("size_t", "size"),
-      field_def("const std::string&", "ref")
+      field_def("data", "std::unique_ptr<int>"),
+      field_def("size", "size_t"),
+      field_def("ref", "const std::string&")
     )
     
     cpp = ast.to_source
@@ -59,8 +59,8 @@ class ProductTest < Minitest::Test
 
   def test_product_type_with_result_option_types
     ast = product_type("Result",
-      field_def("std::optional<int>", "value"),
-      field_def("std::expected<std::string, int>", "error")
+      field_def("value", "std::optional<int>"),
+      field_def("error", "std::expected<std::string, int>")
     )
     
     cpp = ast.to_source
@@ -75,9 +75,9 @@ class ProductTest < Minitest::Test
 
   def test_product_type_with_nested_types
     ast = product_type("Complex",
-      field_def("float", "real"),
-      field_def("float", "imag"),
-      field_def("std::map<std::string, std::string>", "metadata")
+      field_def("real", "float"),
+      field_def("imag", "float"),
+      field_def("metadata", "std::map<std::string, std::string>")
     )
     
     cpp = ast.to_source
@@ -110,7 +110,7 @@ class ProductTest < Minitest::Test
   def test_product_type_roundtrip
     # Test DSL → C++ → Parser → AST
     original_ast = product_type("Test",
-      field_def("int", "value")
+      field_def("value", "int")
     )
     
     cpp = original_ast.to_source
@@ -123,8 +123,8 @@ class ProductTest < Minitest::Test
   def test_product_type_in_function
     ast = program(
       product_type("Vec2",
-        field_def("float", "x"),
-        field_def("float", "y")
+        field_def("x", "float"),
+        field_def("y", "float")
       ),
       function_decl("float", "length",
         [param("const Vec2&", "v")],
