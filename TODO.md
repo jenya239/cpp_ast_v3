@@ -1,157 +1,77 @@
-# TODO - Конкретные задачи
+# TODO - CppAst v3
 
-## Высокий приоритет
+## Current Status
+- **Tests:** 890/958 passing (68 failures)
+- **Whitespace architecture:** ✅ Fixed (113 → 68 failures)
 
-### Документация
-- [ ] Обновить главный README.md с разделом Aurora DSL
-- [ ] Добавить Aurora раздел в docs/DSL_BUILDER.md
-- [ ] Создать migration guide (C++ → DSL)
-- [ ] Документировать best practices Aurora DSL
+## High Priority (Remaining Test Failures)
 
-### DSL Generator для Aurora
-- [ ] Добавить поддержку `OwnedType` в DSL Generator
-- [ ] Добавить поддержку `BorrowedType` в DSL Generator
-- [ ] Добавить поддержку `MutBorrowedType` в DSL Generator
-- [ ] Добавить поддержку `SpanType` в DSL Generator
-- [ ] Добавить поддержку `ExpectedType` в DSL Generator
-- [ ] Добавить поддержку `OptionalType` в DSL Generator
-- [ ] Добавить поддержку `SumTypeDeclaration` в DSL Generator
-- [ ] Добавить поддержку `MatchExpression` в DSL Generator
+### 1. Match Expression Indentation (13 tests)
+Add proper indentation for lambda arms in std::visit:
+```cpp
+std::visit(overloaded{
+  [&](const Circle& circle) { ... },  // Need leading indent
+  [&](const Rect& rect) { ... }
+}, shape)
+```
+**Files:** `lib/cpp_ast/nodes/match_nodes.rb`
 
-### Тестирование
-- [ ] Добавить тесты для DSL Generator с ownership типами
-- [ ] Добавить тесты для DSL Generator с Result/Option типами
-- [ ] Добавить тесты для DSL Generator с Product/Sum типами
-- [ ] Добавить тесты для DSL Generator с Pattern Matching
-- [ ] Проверить roundtrip для всех Aurora конструкций
+### 2. Aurora Field Order (3 tests)
+Fix field_def parameter order:
+- Current: `field_def(type, name)`
+- Expected: `field_def(name, type)`
 
-## Средний приоритет
+**Files:** `lib/cpp_ast/builder/dsl.rb:541`, `lib/cpp_ast/nodes/statements.rb:674`
 
-### Parser расширения
-- [ ] Добавить поддержку template в parser
-- [ ] Добавить поддержку concepts (C++20) в parser
-- [ ] Добавить поддержку modules (C++20) в parser
-- [ ] Добавить поддержку coroutines (C++20) в parser
-- [ ] Добавить поддержку structured bindings в parser
+### 3. Nested Namespace Generation (1 test)
+Add braces for nested namespaces:
+```cpp
+// Expected: namespace Outer { namespace Inner { ... } }
+// Current:  namespace Outer namespace Inner ...
+```
+**Files:** `lib/cpp_ast/nodes/statements.rb:295-300`
 
-### DSL Builder расширения
-- [ ] Добавить поддержку template в DSL Builder
-- [ ] Добавить поддержку concepts в DSL Builder
-- [ ] Добавить поддержку modules в DSL Builder
-- [ ] Добавить поддержку coroutines в DSL Builder
-- [ ] Добавить поддержку structured bindings в DSL Builder
+### 4. Error Handling (6 tests)
+Add input validation in DSL methods:
+- Check for nil parameters
+- Validate modifier combinations
+- Better error messages
 
-### Performance
-- [ ] Профилирование парсера на больших файлах
-- [ ] Оптимизация memory allocation в parser
-- [ ] Кэширование AST узлов
-- [ ] Параллельный парсинг для больших проектов
-- [ ] Benchmark suite для performance тестов
+**Files:** `lib/cpp_ast/builder/dsl.rb`
 
-### Error Handling
-- [ ] Улучшить error messages в parser
-- [ ] Добавить error recovery в parser
-- [ ] Добавить warning system
-- [ ] Улучшить error reporting в DSL Generator
+### 5. DSL Generator Edge Cases (~40 tests)
+Various DSL generator issues with:
+- Complex nested structures
+- Multiple modifiers
+- Control flow statements
 
-## Низкий приоритет
+**Files:** `lib/cpp_ast/builder/dsl_generator.rb`
 
-### LSP Server
-- [ ] Спроектировать LSP сервер архитектуру
-- [ ] Реализовать базовые LSP функции (initialize, textDocument/didOpen)
-- [ ] Добавить autocomplete для DSL
-- [ ] Добавить hover information
-- [ ] Добавить error reporting через LSP
-- [ ] Добавить go-to-definition
-- [ ] Добавить find-references
+## Medium Priority
 
-### VS Code расширение
-- [ ] Создать VS Code расширение проект
-- [ ] Интеграция с LSP сервером
-- [ ] Syntax highlighting для DSL
-- [ ] Snippets и templates
-- [ ] Debugging support
-- [ ] Configuration options
+### Documentation
+- [ ] Add examples to README.md
+- [ ] Document common patterns
+- [ ] Add troubleshooting guide
 
-### Migration Tools
-- [ ] Создать C++ → DSL migration tool
-- [ ] Создать DSL → C++ migration tool
-- [ ] Добавить batch processing
-- [ ] Добавить incremental migration
-- [ ] Интеграция с build systems
+### Testing
+- [ ] Add more edge case tests
+- [ ] Improve error messages
+- [ ] Add performance benchmarks
 
-### Экосистема
-- [ ] Создать package manager для DSL
-- [ ] Стандартная библиотека DSL
-- [ ] Community templates
-- [ ] Best practices guide
-- [ ] Tutorial series
+## Low Priority
 
-## Исследовательские задачи
+### Parser Extensions (Future)
+- [ ] C++20 concepts
+- [ ] C++20 modules
+- [ ] C++20 coroutines
+- [ ] Better template parsing
 
-### ESM модули
-- [ ] Проанализировать необходимость ESM модулей
-- [ ] Спроектировать API для ESM
-- [ ] Создать proof-of-concept
-- [ ] Оценить сложность реализации
-- [ ] Принять решение о реализации
+## Completed ✅
+- [x] Fix architectural whitespace issues (46 tests fixed)
+- [x] Clean up outdated documentation
+- [x] Create ARCHITECTURE_WHITESPACE_GUIDE.md
+- [x] Remove duplicate documentation files
 
-### Новые языковые конструкции
-- [ ] Исследовать async/await для DSL
-- [ ] Изучить macro system возможности
-- [ ] Анализ compile-time execution
-- [ ] Исследование metaprogramming возможности
-
-### Интеграция
-- [ ] Rust FFI integration исследование
-- [ ] Python bindings
-- [ ] JavaScript/TypeScript integration
-- [ ] WebAssembly support
-
-## Техническая задолженность
-
-### Рефакторинг
-- [ ] Рефакторинг parser architecture
-- [ ] Улучшение error recovery
-- [ ] Добавление incremental parsing
-- [ ] Поддержка partial AST
-
-### Тестирование
-- [ ] Property-based testing для parser
-- [ ] Fuzzing для parser
-- [ ] Memory leak detection
-- [ ] Performance regression tests
-
-### Документация
-- [ ] API documentation для всех классов
-- [ ] Architecture documentation
-- [ ] Contributing guide
-- [ ] Code style guide
-
-## Критерии завершения
-
-### Краткосрочные (1-2 недели)
-- [ ] Все задачи из "Высокий приоритет" выполнены
-- [ ] Документация обновлена
-- [ ] DSL Generator поддерживает Aurora типы
-- [ ] Все тесты проходят
-
-### Среднесрочные (1-2 месяца)
-- [ ] Parser coverage 100% для C++20
-- [ ] Performance улучшен на 50%
-- [ ] LSP сервер работает
-- [ ] VS Code расширение готово
-
-### Долгосрочные (3+ месяца)
-- [ ] Production-ready LSP сервер
-- [ ] Успешная миграция реального проекта
-- [ ] Активное community
-- [ ] Стабильная экосистема
-
-## Примечания
-
-- Задачи отсортированы по приоритету
-- Каждая задача должна быть конкретной и измеримой
-- При выполнении задачи отмечать как [x]
-- Регулярно обновлять TODO.md
-- Связывать задачи с GitHub Issues
+## Reference
+See `/home/jenya/workspaces/.cursor/plans/cpp-ast-911b689a.plan.md` for detailed analysis.
