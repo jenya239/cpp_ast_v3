@@ -295,11 +295,20 @@ module CppAst
       def to_source
         result = "#{leading_trivia}namespace#{namespace_suffix}"
         result << "#{name}#{name_suffix}" unless name.empty?
-        
+
         if body.is_a?(NamespaceDeclaration)
-          result << " {#{body.to_source}}"
-        else
+          # Nested namespace needs braces around it
+          result << " {"
           result << body.to_source
+          result << "}"
+        elsif body.is_a?(BlockStatement)
+          # Regular namespace with block body (already has {})
+          result << body.to_source
+        else
+          # Single statement or unknown body type - wrap in {}
+          result << " {"
+          result << body.to_source
+          result << "}"
         end
         result
       end

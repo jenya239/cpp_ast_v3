@@ -140,7 +140,7 @@ module CppAst
           statements: statements,
           statement_trailings: trailings,
           leading_trivia: "",  # Architecture: caller sets leading_trivia via with_leading_trivia()
-          lbrace_suffix: "",
+          lbrace_suffix: "",  # Caller sets via .with_lbrace_suffix() if needed
           rbrace_prefix: ""
         )
       end
@@ -547,7 +547,8 @@ module CppAst
       end
 
       # Helper for field definitions
-      def field_def(type, name, default: nil)
+      def field_def(name, type, default: nil)
+        # Aurora DSL convention: name comes first, then type
         Nodes::FieldDeclaration.new(
           type: type,
           name: name,
