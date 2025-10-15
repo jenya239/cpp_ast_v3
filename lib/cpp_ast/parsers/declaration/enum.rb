@@ -24,7 +24,7 @@ module CppAst
         end
         
         if current_token.kind == :colon
-          name_suffix << current_token.lexeme << current_token.trailing_trivia
+          name_suffix = name_suffix + current_token.lexeme + current_token.trailing_trivia
           advance_raw
           
           until current_token.kind == :lbrace || at_end?

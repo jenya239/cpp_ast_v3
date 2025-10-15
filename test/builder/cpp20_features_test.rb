@@ -7,7 +7,7 @@ class Cpp20FeaturesTest < Minitest::Test
   
   def test_concept_declaration
     concept = concept_decl("Drawable", ["typename T"], "requires(T t) { t.draw(); }")
-    assert_equal "template<typename T>\nconcept Drawable = requires(T t) { t.draw(); };", concept.to_source
+    assert_equal "template <typename T>\nconcept Drawable = requires(T t) { t.draw(); };", concept.to_source
   end
   
   def test_module_declaration
@@ -110,7 +110,7 @@ class Cpp20FeaturesTest < Minitest::Test
       "requires(T t) { t.serialize(); t.deserialize(); }"
     )
     
-    expected = "template<typename T>\nconcept Serializable = requires(T t) { t.serialize(); t.deserialize(); };"
+    expected = "template <typename T>\nconcept Serializable = requires(T t) { t.serialize(); t.deserialize(); };"
     assert_equal expected, concept.to_source
   end
   

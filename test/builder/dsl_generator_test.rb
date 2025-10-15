@@ -323,7 +323,7 @@ class DSLGeneratorTest < Minitest::Test
   
   def test_template_function
     cpp = <<~CPP.chomp
-      template<typename T> T max(T a, T b){
+      template <typename T> T max(T a, T b){
       return a > b ? a : b;
       }
     CPP
@@ -332,7 +332,7 @@ class DSLGeneratorTest < Minitest::Test
   
   def test_template_class
     cpp = <<~CPP.chomp
-      template<typename T> class Array {
+      template <typename T> class Array {
       T* data;
       };
     CPP

@@ -16,7 +16,7 @@ class UsingDeclarationRoundtripTest < Minitest::Test
   end
   
   def test_using_namespace_with_spaces
-    source = "using  namespace  std ;\n"
+    source = "using  namespace std ;\n"
     program = CppAst.parse(source)
     assert_equal source, program.to_source
   end

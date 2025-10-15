@@ -5,6 +5,14 @@ require_relative "../test_helper"
 class RoundtripTest < Minitest::Test
   include CppAst::Builder::DSL
   
+  def setup
+    CppAst.formatting_mode = :lossless
+  end
+  
+  def teardown
+    CppAst.formatting_mode = :pretty
+  end
+  
   def assert_roundtrip_ast(ast1)
     cpp = ast1.to_source
     ast2 = CppAst.parse(cpp)

@@ -25,7 +25,7 @@ class TemplateDslTest < Minitest::Test
     )
     
     cpp_code = ast.to_source
-    expected = "template <typename T>\nvoid data(T value ){\nprocess(value);\n}"
+    expected = "template <typename T>\nvoid data(T value) {\nprocess(value);\n}"
     
     assert_equal expected, cpp_code
   end
@@ -39,7 +39,7 @@ class TemplateDslTest < Minitest::Test
     cpp_code = ast.to_source
     assert_includes cpp_code, "template <typename T>"
     assert_includes cpp_code, "class Buffer"
-    assert_includes cpp_code, "explicit  Buffer(Type type )"
+    assert_includes cpp_code, "explicit  Buffer(Type type)"
   end
 
   def test_template_method_with_span
@@ -58,7 +58,7 @@ class TemplateDslTest < Minitest::Test
     
     cpp_code = ast.to_source
     assert_includes cpp_code, "template <typename T>"
-    assert_includes cpp_code, "void data(std::span<const T> data, Usage usage = Usage::Static )"
+    assert_includes cpp_code, "void data(std::span<const T> data, Usage usage = Usage::Static)"
     assert_includes cpp_code, "bind();"
     assert_includes cpp_code, "glBufferData"
   end

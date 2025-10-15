@@ -226,7 +226,8 @@ module CppAst
       end
       
       def to_source
-        result = "#{type.to_source}#{lbrace_prefix}{#{lbrace_suffix}"
+        type_str = type.respond_to?(:to_source) ? type.to_source : type.to_s
+        result = "#{type_str}#{lbrace_prefix}{#{lbrace_suffix}"
         
         arguments.each_with_index do |arg, i|
           result << arg.to_source

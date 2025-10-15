@@ -44,7 +44,7 @@ class GtkGlSampleTest < Minitest::Test
     source = <<~CPP
       class Buffer {
       public:
-          template<typename T>
+          template <typename T>
           void data(T value) {
               bind();
           }

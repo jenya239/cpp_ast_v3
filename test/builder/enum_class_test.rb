@@ -27,7 +27,7 @@ class EnumClassTest < Minitest::Test
     ], underlying_type: "uint8_t")
     
     cpp_code = ast.to_source
-    expected = "enum class Format  : uint8_t{A8, RGB8, RGBA8};"
+    expected = "enum class Format : uint8_t{A8, RGB8, RGBA8};"
     
     assert_equal expected, cpp_code
   end
@@ -111,7 +111,7 @@ class EnumClassTest < Minitest::Test
     cpp_code = ast.to_source
     
     # Basic validation - should contain expected elements
-    assert_includes cpp_code, "enum class Format  : uint8_t"
+    assert_includes cpp_code, "enum class Format : uint8_t"
     assert_includes cpp_code, "A8"
     assert_includes cpp_code, "RGB8"
   end

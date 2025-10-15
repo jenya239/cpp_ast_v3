@@ -79,7 +79,7 @@ class NestedTypesTest < Minitest::Test
     )
     
     expected = <<~CPP.strip
-      namespace  Outer  {namespace  Inner  {int value;}}
+      namespace Outer  {namespace Inner  {int value;}}
     CPP
     
     assert_equal expected, outer.to_source

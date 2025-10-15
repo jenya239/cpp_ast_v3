@@ -142,7 +142,7 @@ class ResultOptionTest < Minitest::Test
     
     cpp = ast.to_source
     expected = <<~CPP.strip
-      std::expected<std::unique_ptr<Vec2>, std::string> create_vector(float x, float y ){
+      std::expected<std::unique_ptr<Vec2>, std::string> create_vector(float x, float y){
       if (x < 0 || y < 0){
       return Err("negative coordinates");
       } else {

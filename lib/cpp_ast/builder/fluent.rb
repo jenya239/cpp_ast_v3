@@ -142,33 +142,58 @@ module CppAst
         
         def defaulted
           dup.tap { |n| 
-            n.rparen_suffix = " = default"
+            n.rparen_suffix = ""
             n.body = nil
+            n.default_suffix = " = default"
           }
         end
         
         def noexcept
-          dup.tap { |n| n.modifiers_text += " noexcept" }
+          dup.tap { |n|
+            # Architecture: space separator between modifiers (not before first one)
+            n.modifiers_text += " " unless n.modifiers_text.empty?
+            n.modifiers_text += "noexcept"
+          }
         end
         
         def explicit
-          dup.tap { |n| n.prefix_modifiers = "explicit " + n.prefix_modifiers }
+          dup.tap do |n|
+            n.modifier_set ||= CppAst::Nodes::ModifierSet.new
+            n.modifier_set.add(:explicit)
+          end
         end
         
         def constexpr
-          dup.tap { |n| n.prefix_modifiers = "constexpr " + n.prefix_modifiers }
+          dup.tap do |n|
+            n.modifier_set ||= CppAst::Nodes::ModifierSet.new
+            n.modifier_set.add(:constexpr)
+          end
         end
         
         def const
-          dup.tap { |n| n.modifiers_text += " const" }
+          dup.tap { |n|
+            # Architecture: space separator between modifiers (not before first one)
+            n.modifiers_text += " " unless n.modifiers_text.empty?
+            n.modifiers_text += "const"
+          }
         end
         
         def inline
-          dup.tap { |n| n.prefix_modifiers = "inline " + n.prefix_modifiers }
+          dup.tap do |n|
+            n.modifier_set ||= CppAst::Nodes::ModifierSet.new
+            n.modifier_set.add(:inline)
+          end
+        end
+        
+        def template_method(*args)
+          self  # просто возвращаем себя, это маркер для DSL
         end
         
         def nodiscard
-          dup.tap { |n| n.prefix_modifiers = "[[nodiscard]] " + n.prefix_modifiers }
+          dup.tap do |n|
+            n.modifier_set ||= CppAst::Nodes::ModifierSet.new
+            n.modifier_set.add(:nodiscard)
+          end
         end
         
         # C++11 attributes support - Phase 1
@@ -177,7 +202,10 @@ module CppAst
         end
         
         def maybe_unused
-          dup.tap { |n| n.prefix_modifiers = "[[maybe_unused]] " + n.prefix_modifiers }
+          dup.tap do |n|
+            n.modifier_set ||= CppAst::Nodes::ModifierSet.new
+            n.modifier_set.add(:maybe_unused)
+          end
         end
         
         def deprecated
@@ -193,7 +221,10 @@ module CppAst
         end
         
         def static
-          dup.tap { |n| n.prefix_modifiers = "static " + n.prefix_modifiers }
+          dup.tap do |n|
+            n.modifier_set ||= CppAst::Nodes::ModifierSet.new
+            n.modifier_set.add(:static)
+          end
         end
         
         # Virtual methods support - Phase 1
@@ -202,11 +233,19 @@ module CppAst
         end
         
         def override
-          dup.tap { |n| n.modifiers_text += " override" }
+          dup.tap { |n|
+            # Architecture: space separator between modifiers (not before first one)
+            n.modifiers_text += " " unless n.modifiers_text.empty?
+            n.modifiers_text += "override"
+          }
         end
         
         def final
-          dup.tap { |n| n.modifiers_text += " final" }
+          dup.tap { |n|
+            # Architecture: space separator between modifiers (not before first one)
+            n.modifiers_text += " " unless n.modifiers_text.empty?
+            n.modifiers_text += "final"
+          }
         end
         
         def pure_virtual
@@ -219,10 +258,17 @@ module CppAst
         
         # Inline method body for class methods
         def inline_body(body)
-          dup.tap { |n| 
+          dup.tap do |n| 
             n.body = body
-            n.prefix_modifiers = "inline " + n.prefix_modifiers
-          }
+            n.modifier_set ||= CppAst::Nodes::ModifierSet.new
+            n.modifier_set.add(:inline)
+            # Mark body as inline for proper spacing
+            body.define_singleton_method(:inline?) { true } if body
+            # Add leading space to body for inline methods
+            if body.respond_to?(:leading_trivia=)
+              body.leading_trivia = " " + (body.leading_trivia || "")
+            end
+          end
         end
         
         # Constructor initializer list
@@ -252,7 +298,10 @@ module CppAst
         end
         
         def constexpr
-          dup.tap { |n| n.prefix_modifiers = "constexpr " + n.prefix_modifiers }
+          dup.tap do |n|
+            n.modifier_set ||= CppAst::Nodes::ModifierSet.new
+            n.modifier_set.add(:constexpr)
+          end
         end
         
         def const
@@ -335,7 +384,15 @@ module CppAst
         end
         
         def specialized
-          dup.tap { |n| n.template_params = ""; n.less_suffix = ""; n.params_suffix = " "; n.template_suffix = "" }
+          dup.tap { |n| n.template_params = ""; n.less_suffix = ""; n.params_suffix = " "; n.template_suffix = FormattingContext.get(:template_suffix) }
+        end
+        
+        def const
+          dup.tap { |n| n.declaration = n.declaration.const }
+        end
+        
+        def noexcept
+          dup.tap { |n| n.declaration = n.declaration.noexcept }
         end
       end
     end
@@ -400,4 +457,5 @@ CppAst::Nodes::CoAwaitExpression.include(CppAst::Builder::Fluent::Statement)
 CppAst::Nodes::CoYieldExpression.include(CppAst::Builder::Fluent::Statement)
 CppAst::Nodes::CoReturnStatement.include(CppAst::Builder::Fluent::Statement)
 CppAst::Nodes::FunctionDeclaration.include(CppAst::Builder::Fluent::CoroutineFunction)
+
 

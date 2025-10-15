@@ -85,10 +85,12 @@ module CppAst
       
       # Function call
       def call(callee, *args)
-        separators = args.size > 1 ? Array.new(args.size - 1, ", ") : []
+        # Если передан один массив, развернуть его
+        arguments = (args.size == 1 && args.first.is_a?(Array)) ? args.first : args
+        separators = arguments.size > 1 ? Array.new(arguments.size - 1, ", ") : []
         Nodes::FunctionCallExpression.new(
           callee: callee,
-          arguments: args,
+          arguments: arguments,
           argument_separators: separators
         )
       end
@@ -137,7 +139,8 @@ module CppAst
         Nodes::BlockStatement.new(
           statements: statements,
           statement_trailings: trailings,
-          lbrace_suffix: "\n",
+          leading_trivia: "",  # Architecture: caller sets leading_trivia via with_leading_trivia()
+          lbrace_suffix: "",
           rbrace_prefix: ""
         )
       end
@@ -185,6 +188,11 @@ module CppAst
       
       # Declarations
       def var_decl(type, *declarators)
+        # Handle single declarator case: var_decl("int", "name") -> var_decl("int", "name")
+        if declarators.length == 1 && declarators[0].is_a?(String)
+          declarators = [declarators[0]]
+        end
+        
         separators = declarators.size > 1 ? Array.new(declarators.size - 1, ", ") : []
         Nodes::VariableDeclaration.new(
           type: type,
@@ -195,6 +203,9 @@ module CppAst
       end
       
       def function_decl(return_type, name, parameters = [], body = nil)
+        raise ArgumentError, "parameters cannot be nil" if parameters.nil?
+        parameters = [] if parameters.nil?
+        
         param_separators = parameters.size > 1 ? Array.new(parameters.size - 1, ", ") : []
         Nodes::FunctionDeclaration.new(
           return_type: return_type,
@@ -203,7 +214,7 @@ module CppAst
           body: body,
           return_type_suffix: " ",
           param_separators: param_separators,
-          rparen_suffix: body ? " " : ""
+          rparen_suffix: FormattingContext.get(:rparen_suffix)
         )
       end
       
@@ -219,13 +230,14 @@ module CppAst
       
       def class_decl(name, *members)
         member_trailings = members.map { "\n" }
+        lbrace_suffix = members.empty? ? "" : "\n"
         Nodes::ClassDeclaration.new(
           name: name,
           members: members,
           member_trailings: member_trailings,
           class_suffix: " ",
-          name_suffix: " ",
-          lbrace_suffix: "\n"
+          name_suffix: members.empty? ? "" : " ",
+          lbrace_suffix: lbrace_suffix
         )
       end
       
@@ -319,13 +331,14 @@ module CppAst
       
       # Enum Class DSL - Phase 3
       def enum_class(name, values, underlying_type: nil)
+        name_suffix = underlying_type ? FormattingContext.get(:name_suffix_with_underlying) : ""
         Nodes::EnumDeclaration.new(
           name: name,
           enumerators: values.map { |v| v.is_a?(Array) ? v : [v, nil] },
           enum_suffix: " ",
           class_keyword: "class",
           class_suffix: " ",
-          name_suffix: "",
+          name_suffix: name_suffix,
           lbrace_suffix: "",
           rbrace_suffix: "",
           underlying_type: underlying_type
@@ -364,7 +377,7 @@ module CppAst
         Nodes::FriendDeclaration.new(
           type: type,
           name: name,
-          friend_suffix: " "
+          friend_suffix: FormattingContext.get(:friend_suffix)
         )
       end
       
@@ -374,9 +387,9 @@ module CppAst
         Nodes::TemplateDeclaration.new(
           template_params: template_params.join(", "),
           declaration: class_node,
-          template_suffix: " ",
+          template_suffix: FormattingContext.get(:template_suffix),
           less_suffix: "",
-          params_suffix: "\n"
+          params_suffix: FormattingContext.get(:template_params_suffix)
         )
       end
       
@@ -385,9 +398,9 @@ module CppAst
         Nodes::TemplateDeclaration.new(
           template_params: template_params.join(", "),
           declaration: func_node,
-          template_suffix: " ",
+          template_suffix: FormattingContext.get(:template_suffix),
           less_suffix: "",
-          params_suffix: "\n"
+          params_suffix: FormattingContext.get(:template_params_suffix)
         )
       end
       
@@ -439,9 +452,9 @@ module CppAst
         Nodes::TemplateDeclaration.new(
           template_params: template_params,
           declaration: declaration,
-          template_suffix: " ",
+          template_suffix: FormattingContext.get(:template_suffix),
           less_suffix: "",
-          params_suffix: ""
+          params_suffix: FormattingContext.get(:template_params_suffix)
         )
       end
       
@@ -479,10 +492,12 @@ module CppAst
 
       # Helper for function parameters with ownership types
       def param(type, name, default: nil)
-        type_str = type.respond_to?(:to_source) ? type.to_source : type.to_s
-        result = "#{type_str} #{name}"
-        result += " = #{default}" if default
-        result
+        Nodes::Parameter.new(
+          type: type,
+          name: name,
+          default_value: default,
+          type_suffix: " "
+        )
       end
 
       # Dereference operator
@@ -521,6 +536,8 @@ module CppAst
         field_declarations = fields.map do |field|
           if field.is_a?(Array) && field.length == 2
             "#{field[1]} #{field[0]};"
+          elsif field.respond_to?(:to_source)
+            field.to_source
           else
             field.to_s.end_with?(';') ? field.to_s : "#{field};"
           end
@@ -544,6 +561,31 @@ module CppAst
           type: type,
           name: name,
           value: value
+        )
+      end
+      
+      # Helper for number literals
+      def number(value)
+        Nodes::NumberLiteral.new(value: value.to_s)
+      end
+      
+      # Helper for binary expressions
+      def binary_expr(left, operator, right)
+        Nodes::BinaryExpression.new(
+          left: left,
+          operator: operator,
+          right: right,
+          operator_prefix: " ",
+          operator_suffix: " "
+        )
+      end
+      
+      # Helper for brace initializer
+      def brace_initializer(*values)
+        Nodes::BraceInitializerExpression.new(
+          type: "auto",
+          arguments: values.flatten,
+          argument_separators: Array.new(values.flatten.size - 1, ", ")
         )
       end
 
@@ -695,7 +737,7 @@ module CppAst
           declarators: [name, value],
           declarator_separators: [", "],
           type_suffix: " ",
-          prefix_modifiers: "static constexpr "
+          prefix_modifiers: "constexpr static "
         )
       end
       
@@ -705,7 +747,7 @@ module CppAst
           declarators: [name, value],
           declarator_separators: [", "],
           type_suffix: " ",
-          prefix_modifiers: "static const "
+          prefix_modifiers: "const static "
         )
       end
       
@@ -725,7 +767,7 @@ module CppAst
           declarators: [name, value],
           declarator_separators: [", "],
           type_suffix: " ",
-          prefix_modifiers: "static inline "
+          prefix_modifiers: "inline static "
         )
       end
       

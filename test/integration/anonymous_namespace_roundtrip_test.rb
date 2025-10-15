@@ -53,7 +53,7 @@ class AnonymousNamespaceRoundtripTest < Minitest::Test
   
   def test_anonymous_namespace_with_spaces
     source = <<~CPP
-      namespace  {
+      namespace {
           int x;
       }
     CPP

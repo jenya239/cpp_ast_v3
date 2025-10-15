@@ -3,6 +3,14 @@
 require_relative "../test_helper"
 
 class FunctionModifiersRoundtripTest < Minitest::Test
+  def setup
+    CppAst.formatting_mode = :lossless
+  end
+  
+  def teardown
+    CppAst.formatting_mode = :pretty
+  end
+  
   def test_function_override
     source = <<~CPP
       void foo() override;

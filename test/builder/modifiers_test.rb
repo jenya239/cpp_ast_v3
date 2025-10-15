@@ -28,28 +28,28 @@ class ModifiersTest < Minitest::Test
     ast = function_decl("", "Shader", [param("Shader&&", "other")], block()).noexcept()
     
     cpp_code = ast.to_source
-    assert_includes cpp_code, "Shader(Shader&& other ) noexcept"
+    assert_includes cpp_code, "Shader(Shader&& other) noexcept"
   end
 
   def test_explicit_constructor
     ast = function_decl("", "Buffer", [param("Type", "type")], block()).explicit()
     
     cpp_code = ast.to_source
-    assert_includes cpp_code, "explicit Buffer(Type type )"
+    assert_includes cpp_code, "explicit Buffer(Type type)"
   end
 
   def test_constexpr_constructor
     ast = function_decl("", "Vec2", [param("float", "x"), param("float", "y")], block()).constexpr()
     
     cpp_code = ast.to_source
-    assert_includes cpp_code, "constexpr Vec2(float x, float y )"
+    assert_includes cpp_code, "constexpr Vec2(float x, float y)"
   end
 
   def test_const_method
     ast = function_decl("GLuint", "handle", [], block(return_stmt(id("shader_")))).const()
     
     cpp_code = ast.to_source
-    assert_includes cpp_code, "GLuint handle()  const"
+    assert_includes cpp_code, "GLuint handle() const"
   end
 
   def test_combined_modifiers
@@ -58,7 +58,7 @@ class ModifiersTest < Minitest::Test
       .noexcept()
     
     cpp_code = ast.to_source
-    assert_includes cpp_code, "GLuint handle()  const noexcept"
+    assert_includes cpp_code, "GLuint handle() const noexcept"
   end
 
   def test_explicit_constexpr_combined
@@ -67,7 +67,7 @@ class ModifiersTest < Minitest::Test
       .constexpr()
     
     cpp_code = ast.to_source
-    assert_includes cpp_code, "constexpr explicit Vec2(float x, float y )"
+    assert_includes cpp_code, "constexpr explicit Vec2(float x, float y)"
   end
 
   def test_inline_method
@@ -91,7 +91,7 @@ class ModifiersTest < Minitest::Test
       .noexcept()
     
     cpp_code = ast.to_source
-    assert_includes cpp_code, "inline GLuint handle()  const noexcept"
+    assert_includes cpp_code, "inline GLuint handle() const noexcept"
   end
 
   def test_roundtrip_deleted_function
@@ -126,14 +126,14 @@ class ModifiersTest < Minitest::Test
     ast = function_decl("void", "on_render", [], block()).override()
     
     cpp_code = ast.to_source
-    assert_includes cpp_code, "void on_render()  override"
+    assert_includes cpp_code, "void on_render() override"
   end
   
   def test_final_method
     ast = function_decl("void", "on_render", [], block()).final()
     
     cpp_code = ast.to_source
-    assert_includes cpp_code, "void on_render()  final"
+    assert_includes cpp_code, "void on_render() final"
   end
   
   def test_pure_virtual_method
@@ -147,7 +147,7 @@ class ModifiersTest < Minitest::Test
     ast = function_decl("void", "on_render", [], block()).virtual().override()
     
     cpp_code = ast.to_source
-    assert_includes cpp_code, "virtual void on_render()  override"
+    assert_includes cpp_code, "virtual void on_render() override"
   end
   
   def test_virtual_destructor

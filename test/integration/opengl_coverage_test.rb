@@ -184,8 +184,8 @@ class OpenGLCoverageTest < Minitest::Test
       using_alias("TextureID", "uint32_t"),
       
       struct_decl("Vec2",
-        field_def("x", "float", default: "0.0f"),
-        field_def("y", "float", default: "0.0f"),
+        field_def("float", "x", default: "0.0f"),
+        field_def("float", "y", default: "0.0f"),
         function_decl("", "Vec2", [], block())
           .defaulted(),
         function_decl("", "Vec2", [param("float", "x_"), param("float", "y_")], block())
@@ -201,10 +201,10 @@ class OpenGLCoverageTest < Minitest::Test
       ),
       
       struct_decl("Rect",
-        field_def("x", "float", default: "0.0f"),
-        field_def("y", "float", default: "0.0f"),
-        field_def("width", "float", default: "0.0f"),
-        field_def("height", "float", default: "0.0f"),
+        field_def("float", "x", default: "0.0f"),
+        field_def("float", "y", default: "0.0f"),
+        field_def("float", "width", default: "0.0f"),
+        field_def("float", "height", default: "0.0f"),
         function_decl("", "Rect", [], block())
           .defaulted(),
         function_decl("", "Rect", [param("float", "x_"), param("float", "y_"), param("float", "w_"), param("float", "h_")], block())
@@ -217,10 +217,10 @@ class OpenGLCoverageTest < Minitest::Test
       ),
       
       struct_decl("Color",
-        field_def("r", "float", default: "1.0f"),
-        field_def("g", "float", default: "1.0f"),
-        field_def("b", "float", default: "1.0f"),
-        field_def("a", "float", default: "1.0f"),
+        field_def("float", "r", default: "1.0f"),
+        field_def("float", "g", default: "1.0f"),
+        field_def("float", "b", default: "1.0f"),
+        field_def("float", "a", default: "1.0f"),
         function_decl("", "Color", [], block())
           .defaulted(),
         function_decl("", "Color", [param("float", "r_"), param("float", "g_"), param("float", "b_"), param("float", "a_")], block())

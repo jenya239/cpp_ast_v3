@@ -4,9 +4,10 @@ module CppAst
   module Builder
     # Генератор Ruby DSL кода из AST
     class DSLGenerator
-      def initialize(indent: "  ")
+      def initialize(indent: "  ", mode: :pretty)
         @indent = indent
         @level = 0
+        @mode = mode
       end
       
       def generate(node)
@@ -642,7 +643,7 @@ module CppAst
       end
       
       def generate_access_specifier(node)
-        result = "access_spec(#{node.access_type.inspect})"
+        result = "access_spec(#{node.keyword.inspect})"
         
         if node.leading_trivia != ""
           result += "\n#{current_indent}.with_leading(#{node.leading_trivia.inspect})"

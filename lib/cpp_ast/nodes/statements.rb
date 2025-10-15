@@ -294,10 +294,13 @@ module CppAst
       
       def to_source
         result = "#{leading_trivia}namespace#{namespace_suffix}"
-        result << " #{name}#{name_suffix}" unless name.empty?
-        result << " {"
-        result << body.to_source
-        result << "}"
+        result << "#{name}#{name_suffix}" unless name.empty?
+        
+        if body.is_a?(NamespaceDeclaration)
+          result << " {#{body.to_source}}"
+        else
+          result << body.to_source
+        end
         result
       end
     end
@@ -306,12 +309,13 @@ module CppAst
     class FunctionDeclaration < Statement
       attr_accessor :return_type, :name, :parameters, :body, :initializer_list
       attr_accessor :return_type_suffix, :lparen_suffix, :rparen_suffix
-      attr_accessor :param_separators, :modifiers_text, :prefix_modifiers
+      attr_accessor :param_separators, :modifiers_text, :prefix_modifiers, :modifier_set
+      attr_accessor :default_suffix
       
       def initialize(leading_trivia: "", return_type:, name:, parameters:, body: nil,
                      return_type_suffix: "", lparen_suffix: "", rparen_suffix: "",
                      param_separators: [], modifiers_text: "", prefix_modifiers: "",
-                     initializer_list: nil)
+                     initializer_list: nil, default_suffix: "")
         super(leading_trivia: leading_trivia)
         @return_type = return_type
         @name = name
@@ -324,35 +328,52 @@ module CppAst
         @param_separators = param_separators
         @modifiers_text = modifiers_text
         @prefix_modifiers = prefix_modifiers
+        @default_suffix = default_suffix
       end
       
       def to_source
         return_type_str = return_type.respond_to?(:to_source) ? return_type.to_source : return_type.to_s
         suffix = return_type_str.empty? ? "" : return_type_suffix
-        result = "#{leading_trivia}#{prefix_modifiers}#{return_type_str}#{suffix}#{name}(#{lparen_suffix}"
+        prefix = @modifier_set ? @modifier_set.to_s : prefix_modifiers
+        result = "#{leading_trivia}#{prefix}#{return_type_str}#{suffix}#{name}(#{lparen_suffix}"
         
         if parameters.empty?
-          result << ")#{rparen_suffix}"
+          result << ")"
         else
           parameters.each_with_index do |param, i|
-            result << param
+            param_str = param.respond_to?(:to_source) ? param.to_source : param.to_s
+            result << param_str
             result << param_separators[i] if i < parameters.size - 1
           end
-          result << "#{rparen_suffix})"
+          result << ")"
         end
         
-        result << "#{modifiers_text}"
-        
+        # Architecture: rparen_suffix contains space, only add it if followed by content
+        has_content_after_rparen = !modifiers_text.empty? || body || initializer_list ||
+                                    (@default_suffix && !@default_suffix.empty?)
+        if has_content_after_rparen && rparen_suffix && !rparen_suffix.empty?
+          result << rparen_suffix
+        end
+
+        # Architecture: space is already in rparen_suffix, don't add it here
+        result << modifiers_text unless modifiers_text.empty?
+
         # Add initializer list if present
         if initializer_list
           result << " : #{initializer_list}"
         end
-        
+
+        # Add default suffix if present
+        if @default_suffix && !@default_suffix.empty?
+          result << @default_suffix
+        end
+
         # Only generate body if it's explicitly marked as inline
         if body && body.respond_to?(:inline?) && body.inline?
-          result << " " << body.to_source
+          result << body.to_source
         elsif body
-          result << " " << body.to_source
+          # Architecture: space before { is in body.leading_trivia, don't add it here
+          result << body.to_source
         else
           result << ";"
         end
@@ -441,9 +462,9 @@ module CppAst
     class AccessSpecifier < Statement
       attr_accessor :keyword, :colon_suffix
       
-      def initialize(leading_trivia: "", keyword:, colon_suffix: "")
+      def initialize(leading_trivia: "", keyword: nil, access_type: nil, colon_suffix: "")
         super(leading_trivia: leading_trivia)
-        @keyword = keyword
+        @keyword = keyword || access_type
         @colon_suffix = colon_suffix
       end
       
@@ -699,20 +720,6 @@ module CppAst
       end
     end
     
-    # AccessSpecifier: `public:`, `private:`, `protected:`
-    class AccessSpecifier < Statement
-      attr_accessor :access_type, :colon_suffix
-      
-      def initialize(leading_trivia: "", access_type:, colon_suffix: "")
-        super(leading_trivia: leading_trivia)
-        @access_type = access_type
-        @colon_suffix = colon_suffix
-      end
-      
-      def to_source
-        "#{leading_trivia}#{access_type}:#{colon_suffix}"
-      end
-    end
     
     # ConstDeclaration: `constexpr type name = value;`
     class ConstDeclaration < Statement

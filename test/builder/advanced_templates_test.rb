@@ -23,7 +23,7 @@ class AdvancedTemplatesTest < Minitest::Test
   
   def test_template_template_param
     param = template_template_param("Container", ["typename T"])
-    assert_equal "template<typename T> class Container", param
+    assert_equal "template <typename T> class Container", param
   end
   
   def test_sfinae_requires
@@ -33,7 +33,7 @@ class AdvancedTemplatesTest < Minitest::Test
   
   def test_concept_declaration
     concept = concept_decl("Drawable", ["typename T"], "requires(T t) { t.draw(); }")
-    assert_equal "template<typename T>\nconcept Drawable = requires(T t) { t.draw(); };", concept.to_source
+    assert_equal "template <typename T>\nconcept Drawable = requires(T t) { t.draw(); };", concept.to_source
   end
   
   def test_complex_concept
@@ -42,7 +42,7 @@ class AdvancedTemplatesTest < Minitest::Test
       "requires(T t) { t.serialize(); t.deserialize(); }"
     )
     
-    expected = "template<typename T>\nconcept Serializable = requires(T t) { t.serialize(); t.deserialize(); };"
+    expected = "template <typename T>\nconcept Serializable = requires(T t) { t.serialize(); t.deserialize(); };"
     assert_equal expected, concept.to_source
   end
   
@@ -52,7 +52,7 @@ class AdvancedTemplatesTest < Minitest::Test
       "requires(T t, U u) { t < u; t > u; t == u; }"
     )
     
-    expected = "template<typename T, typename U>\nconcept Comparable = requires(T t, U u) { t < u; t > u; t == u; };"
+    expected = "template <typename T, typename U>\nconcept Comparable = requires(T t, U u) { t < u; t > u; t == u; };"
     assert_equal expected, concept.to_source
   end
   
