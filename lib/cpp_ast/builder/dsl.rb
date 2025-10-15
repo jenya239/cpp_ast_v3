@@ -140,7 +140,7 @@ module CppAst
           statements: statements,
           statement_trailings: trailings,
           leading_trivia: "",  # Architecture: caller sets leading_trivia via with_leading_trivia()
-          lbrace_suffix: "",  # Caller sets via .with_lbrace_suffix() if needed
+          lbrace_suffix: "\n",  # Default: newline after { (standard C++ formatting)
           rbrace_prefix: ""
         )
       end

@@ -85,7 +85,7 @@ class MatchTest < Minitest::Test
     
     cpp = ast.to_source
     expected = <<~CPP.strip
-      float area(const Shape& shape ){
+      float area(const Shape& shape ) {
       return std::visit(overloaded{
         [&](const Circle& circle) { auto [r] = circle; return 3.14159 * r * r; },
         [&](const Rect& rect) { auto [w, h] = rect; return w * h; }

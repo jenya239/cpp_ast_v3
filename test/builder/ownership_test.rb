@@ -37,7 +37,7 @@ class OwnershipTest < Minitest::Test
     
     cpp = ast.to_source
     expected = <<~CPP.strip
-      void process(const Vec2& v ){
+      void process(const Vec2& v ) {
       v.method();
       }
     CPP
@@ -62,7 +62,7 @@ class OwnershipTest < Minitest::Test
     
     cpp = ast.to_source
     expected = <<~CPP.strip
-      void process_all(std::unique_ptr<Vec2> owned_vec, const Vec2& borrowed_vec, Vec2& mut_vec, std::span<int> numbers ){
+      void process_all(std::unique_ptr<Vec2> owned_vec, const Vec2& borrowed_vec, Vec2& mut_vec, std::span<int> numbers ) {
       owned_vec.method();
       borrowed_vec.method();
       mut_vec.method();
@@ -98,7 +98,7 @@ class OwnershipTest < Minitest::Test
     )
     
     cpp = original_ast.to_source
-    expected = "void test(const int& x ){\nreturn x;\n}"
+    expected = "void test(const int& x ) {\nreturn x;\n}"
     assert_equal expected, cpp
   end
 
@@ -119,8 +119,8 @@ class OwnershipTest < Minitest::Test
     
     cpp = ast.to_source
     expected = <<~CPP.strip
-      void process_vectors(std::span<std::unique_ptr<Vec2>> vectors ){
-      for (auto it = vectors.begin(); it != vectors.end(); it++){
+      void process_vectors(std::span<std::unique_ptr<Vec2>> vectors ) {
+      for (auto it = vectors.begin(); it != vectors.end(); it++) {
       (*it).method();
       }
       }
