@@ -81,6 +81,36 @@ module Aurora
         super(kind: :record, name: name, fields: fields, origin: origin)
       end
     end
+
+    # Enum type
+    class EnumType < Type
+      attr_reader :variants
+
+      def initialize(name:, variants:, origin: nil)
+        super(kind: :enum, name: name, origin: origin)
+        @variants = variants  # Array of String
+      end
+    end
+
+    # Sum type (variant/tagged union)
+    class SumType < Type
+      attr_reader :variants
+
+      def initialize(name:, variants:, origin: nil)
+        super(kind: :sum, name: name, origin: origin)
+        @variants = variants  # Array of {name: String, fields: Array of {name:, type:}}
+      end
+    end
+
+    # Array type
+    class ArrayType < Type
+      attr_reader :element_type
+
+      def initialize(element_type:, origin: nil)
+        super(kind: :array, name: "array", origin: origin)
+        @element_type = element_type
+      end
+    end
     
     # Expressions (with sugar)
     class Expr < Node
@@ -105,13 +135,23 @@ module Aurora
     
     class FloatLit < Expr
       attr_reader :value
-      
+
       def initialize(value:, origin: nil)
         super(kind: :float_lit, data: value, origin: origin)
         @value = value
       end
     end
-    
+
+    # String literal
+    class StringLit < Expr
+      attr_reader :value
+
+      def initialize(value:, origin: nil)
+        super(kind: :string_lit, data: value, origin: origin)
+        @value = value
+      end
+    end
+
     # Variable reference
     class VarRef < Expr
       attr_reader :name
@@ -125,7 +165,7 @@ module Aurora
     # Binary operation
     class BinaryOp < Expr
       attr_reader :op, :left, :right
-      
+
       def initialize(op:, left:, right:, origin: nil)
         super(kind: :binary, data: {op: op, left: left, right: right}, origin: origin)
         @op = op
@@ -133,7 +173,18 @@ module Aurora
         @right = right
       end
     end
-    
+
+    # Unary operation
+    class UnaryOp < Expr
+      attr_reader :op, :operand
+
+      def initialize(op:, operand:, origin: nil)
+        super(kind: :unary, data: {op: op, operand: operand}, origin: origin)
+        @op = op
+        @operand = operand
+      end
+    end
+
     # Function call
     class Call < Expr
       attr_reader :callee, :args
@@ -179,37 +230,194 @@ module Aurora
       end
     end
     
+    # If expression
+    class IfExpr < Expr
+      attr_reader :condition, :then_branch, :else_branch
+
+      def initialize(condition:, then_branch:, else_branch:, origin: nil)
+        super(kind: :if, data: {condition: condition, then_branch: then_branch, else_branch: else_branch}, origin: origin)
+        @condition = condition
+        @then_branch = then_branch
+        @else_branch = else_branch
+      end
+    end
+
+    # Match expression
+    class MatchExpr < Expr
+      attr_reader :scrutinee, :arms
+
+      def initialize(scrutinee:, arms:, origin: nil)
+        super(kind: :match, data: {scrutinee: scrutinee, arms: arms}, origin: origin)
+        @scrutinee = scrutinee  # Expression to match against
+        @arms = arms  # Array of {pattern:, guard:, body:}
+      end
+    end
+
+    # Pattern for match arms
+    class Pattern < Node
+      attr_reader :kind, :data
+
+      def initialize(kind:, data:, origin: nil)
+        super(origin: origin)
+        @kind = kind  # :wildcard, :literal, :constructor, :var
+        @data = data
+      end
+    end
+
     # Statements
     class Stmt < Node
     end
-    
+
     # Block of statements
     class Block < Stmt
       attr_reader :stmts
-      
+
       def initialize(stmts:, origin: nil)
         super(origin: origin)
         @stmts = stmts
       end
     end
-    
+
     # Return statement
     class Return < Stmt
       attr_reader :expr
-      
+
       def initialize(expr:, origin: nil)
         super(origin: origin)
         @expr = expr
       end
     end
-    
+
     # Expression statement
     class ExprStmt < Stmt
       attr_reader :expr
-      
+
       def initialize(expr:, origin: nil)
         super(origin: origin)
         @expr = expr
+      end
+    end
+
+    # Lambda expression
+    class Lambda < Expr
+      attr_reader :params, :body, :return_type
+
+      def initialize(params:, body:, return_type: nil, origin: nil)
+        super(kind: :lambda, data: {params: params, body: body}, origin: origin)
+        @params = params      # Array of LambdaParam or String (inferred)
+        @body = body          # Expr
+        @return_type = return_type  # Optional Type
+      end
+    end
+
+    # Lambda parameter (can be name-only or typed)
+    class LambdaParam < Node
+      attr_reader :name, :type
+
+      def initialize(name:, type: nil, origin: nil)
+        super(origin: origin)
+        @name = name
+        @type = type  # nil for inference
+      end
+    end
+
+    # For loop expression
+    class ForLoop < Expr
+      attr_reader :var_name, :iterable, :body
+
+      def initialize(var_name:, iterable:, body:, origin: nil)
+        super(kind: :for_loop, data: {var: var_name, iter: iterable, body: body}, origin: origin)
+        @var_name = var_name   # String
+        @iterable = iterable   # Expr (array, range, etc.)
+        @body = body           # Expr or Block
+      end
+    end
+
+    # Range expression (for ranges like 0..10)
+    class RangeExpr < Expr
+      attr_reader :start, :end_expr, :inclusive
+
+      def initialize(start:, end_expr:, inclusive: true, origin: nil)
+        super(kind: :range, data: {start: start, end: end_expr}, origin: origin)
+        @start = start         # Expr
+        @end_expr = end_expr   # Expr (renamed to avoid conflict with Ruby's 'end')
+        @inclusive = inclusive # true for .., false for ..<
+      end
+    end
+
+    # List comprehension
+    class ListComprehension < Expr
+      attr_reader :output_expr, :generators, :filters
+
+      def initialize(output_expr:, generators:, filters: [], origin: nil)
+        super(kind: :list_comp, data: {}, origin: origin)
+        @output_expr = output_expr  # Expr - what to collect
+        @generators = generators    # Array of Generator
+        @filters = filters          # Array of Expr (conditions)
+      end
+    end
+
+    # Generator (part of comprehension)
+    class Generator < Node
+      attr_reader :var_name, :iterable
+
+      def initialize(var_name:, iterable:, origin: nil)
+        super(origin: origin)
+        @var_name = var_name
+        @iterable = iterable
+      end
+    end
+
+    # Array literal
+    class ArrayLiteral < Expr
+      attr_reader :elements
+
+      def initialize(elements:, origin: nil)
+        super(kind: :array_lit, data: elements, origin: origin)
+        @elements = elements  # Array of Expr
+      end
+    end
+
+    # Pipe operation
+    class PipeOp < Expr
+      attr_reader :left, :right
+
+      def initialize(left:, right:, origin: nil)
+        super(kind: :pipe, data: {left: left, right: right}, origin: origin)
+        @left = left    # Expr - value being piped
+        @right = right  # Expr - usually Call, receives left as first arg
+      end
+    end
+
+    # Function type
+    class FunctionType < Type
+      attr_reader :param_types, :ret_type
+
+      def initialize(param_types:, ret_type:, origin: nil)
+        super(kind: :func, name: "function", origin: origin)
+        @param_types = param_types  # Array of Type
+        @ret_type = ret_type
+      end
+    end
+
+    # Tuple type (for multi-parameter function types)
+    class TupleType < Type
+      attr_reader :types
+
+      def initialize(types:, origin: nil)
+        super(kind: :tuple, name: "tuple", origin: origin)
+        @types = types  # Array of Type
+      end
+    end
+
+    # Generic type (e.g., Result<T, E>, Option<T>)
+    class GenericType < Type
+      attr_reader :base_type, :type_params
+
+      def initialize(base_type:, type_params:, origin: nil)
+        super(kind: :generic, name: base_type.name, origin: origin)
+        @base_type = base_type    # Type (e.g., Result, Option)
+        @type_params = type_params # Array of Type
       end
     end
   end

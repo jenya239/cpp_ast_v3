@@ -58,13 +58,16 @@ module Aurora
     # Modules
     class Module < Node
       attr_reader :name, :items
-      
+
       def initialize(name:, items:, origin: nil)
         super(origin: origin)
         @name = name
         @items = items  # Array of declarations
       end
     end
+
+    # Alias for compatibility
+    Program = Module
     
     # Function declaration
     class Func < Node
@@ -172,14 +175,26 @@ module Aurora
     # Record literal
     class RecordExpr < Expr
       attr_reader :type_name, :fields
-      
+
       def initialize(type_name:, fields:, type:, origin: nil)
         super(kind: :record, data: {type_name: type_name, fields: fields}, type: type, origin: origin)
         @type_name = type_name
         @fields = fields  # Hash of {field_name => value}
       end
     end
-    
+
+    # If expression
+    class IfExpr < Expr
+      attr_reader :condition, :then_branch, :else_branch
+
+      def initialize(condition:, then_branch:, else_branch:, type:, origin: nil)
+        super(kind: :if, data: {condition: condition, then_branch: then_branch, else_branch: else_branch}, type: type, origin: origin)
+        @condition = condition
+        @then_branch = then_branch
+        @else_branch = else_branch
+      end
+    end
+
     # Statements
     class Stmt < Node
     end
@@ -207,11 +222,70 @@ module Aurora
     # Type declaration
     class TypeDecl < Node
       attr_reader :name, :type
-      
+
       def initialize(name:, type:, origin: nil)
         super(origin: origin)
         @name = name
         @type = type
+      end
+    end
+
+    # Lambda expression (anonymous function)
+    class LambdaExpr < Expr
+      attr_reader :captures, :params, :body, :function_type
+
+      def initialize(captures:, params:, body:, function_type:, origin: nil)
+        super(kind: :lambda, data: {params: params, body: body}, type: function_type, origin: origin)
+        @captures = captures      # Array of {name: String, type: Type, mode: :value/:ref}
+        @params = params          # Array of Param (fully typed)
+        @body = body              # Expr
+        @function_type = function_type  # FunctionType
+      end
+    end
+
+    # For loop (imperative)
+    class ForLoopExpr < Expr
+      attr_reader :var_name, :var_type, :iterable, :body
+
+      def initialize(var_name:, var_type:, iterable:, body:, origin: nil)
+        super(kind: :for_loop, data: {}, type: Type.new(kind: :prim, name: "void"), origin: origin)
+        @var_name = var_name
+        @var_type = var_type   # Inferred element type
+        @iterable = iterable
+        @body = body
+      end
+    end
+
+    # List comprehension desugars to loop + push
+    class ListCompExpr < Expr
+      attr_reader :element_type, :generators, :filters, :output_expr
+
+      def initialize(element_type:, generators:, filters:, output_expr:, type:, origin: nil)
+        super(kind: :list_comp, data: {}, type: type, origin: origin)
+        @element_type = element_type
+        @generators = generators
+        @filters = filters
+        @output_expr = output_expr
+      end
+    end
+
+    # Array literal
+    class ArrayLiteralExpr < Expr
+      attr_reader :elements
+
+      def initialize(elements:, type:, origin: nil)
+        super(kind: :array_lit, data: elements, type: type, origin: origin)
+        @elements = elements  # Array of Expr
+      end
+    end
+
+    # Array type
+    class ArrayType < Type
+      attr_reader :element_type
+
+      def initialize(element_type:, origin: nil)
+        super(kind: :array, name: "array", origin: origin)
+        @element_type = element_type
       end
     end
   end

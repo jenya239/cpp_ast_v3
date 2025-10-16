@@ -115,6 +115,12 @@ module Aurora
           type = @type_table[expr.type_name]
           fields = expr.fields.transform_values { |value| transform_expression(value) }
           CoreIR::Builder.record(expr.type_name, fields, type)
+        when AST::IfExpr
+          condition = transform_expression(expr.condition)
+          then_branch = transform_expression(expr.then_branch)
+          else_branch = expr.else_branch ? transform_expression(expr.else_branch) : nil
+          type = then_branch.type  # Type inference: result type is from then branch
+          CoreIR::Builder.if_expr(condition, then_branch, else_branch, type)
         else
           raise "Unknown expression: #{expr.class}"
         end
@@ -151,8 +157,21 @@ module Aurora
       
       def infer_call_type(callee, args)
         # Simple inference - in real implementation would check function signatures
-        if callee.name == "sqrt"
-          CoreIR::Builder.primitive_type("f32")
+        case callee
+        when CoreIR::VarExpr
+          # Simple function call like sqrt(x)
+          if callee.name == "sqrt"
+            CoreIR::Builder.primitive_type("f32")
+          else
+            CoreIR::Builder.primitive_type("i32")
+          end
+        when CoreIR::MemberExpr
+          # Method call like (expr).sqrt()
+          if callee.member == "sqrt"
+            CoreIR::Builder.primitive_type("f32")
+          else
+            CoreIR::Builder.primitive_type("i32")
+          end
         else
           CoreIR::Builder.primitive_type("i32")
         end

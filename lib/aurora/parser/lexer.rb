@@ -19,8 +19,8 @@ module Aurora
     
     class Lexer
       KEYWORDS = %w[
-        fn type let return if else while for
-        i32 f32 bool void
+        fn type let return if then else while for in do match
+        i32 f32 bool void str module export import enum
       ].freeze
       
       OPERATORS = %w[
@@ -39,8 +39,9 @@ module Aurora
       def tokenize
         while @pos < @source.length
           skip_whitespace
+          skip_comments
           next if @pos >= @source.length
-          
+
           char = @source[@pos]
           
           case char
@@ -50,10 +51,7 @@ module Aurora
             tokenize_number
           when '"'
             tokenize_string
-          when '='
-            add_token(:EQUAL, char)
-            advance
-          when /[+\-*\/%<>!&|.]/
+          when /[=+\-*\/%<>!&|.]/
             tokenize_operator
           when '('
             add_token(:LPAREN, char)
@@ -102,6 +100,17 @@ module Aurora
             @column += 1
           end
           @pos += 1
+        end
+      end
+
+      def skip_comments
+        # Skip single-line comments //
+        if @pos < @source.length - 1 && @source[@pos] == '/' && @source[@pos + 1] == '/'
+          # Skip until end of line
+          while @pos < @source.length && @source[@pos] != "\n"
+            @pos += 1
+            @column += 1
+          end
         end
       end
       
@@ -164,7 +173,7 @@ module Aurora
       
       def tokenize_operator
         char = @source[@pos]
-        
+
         # Handle arrow operator ->
         if char == '-' && @pos + 1 < @source.length && @source[@pos + 1] == '>'
           @pos += 2
@@ -172,12 +181,28 @@ module Aurora
           add_token(:ARROW, "->")
           return
         end
-        
+
+        # Handle fat arrow operator =>
+        if char == '=' && @pos + 1 < @source.length && @source[@pos + 1] == '>'
+          @pos += 2
+          @column += 2
+          add_token(:FAT_ARROW, "=>")
+          return
+        end
+
+        # Handle pipe operator |>
+        if char == '|' && @pos + 1 < @source.length && @source[@pos + 1] == '>'
+          @pos += 2
+          @column += 2
+          add_token(:PIPE, "|>")
+          return
+        end
+
         # Handle multi-character operators
         if @pos + 1 < @source.length
           next_char = @source[@pos + 1]
           two_char = char + next_char
-          
+
           if %w[== != <= >= && ||].include?(two_char)
             @pos += 2
             @column += 2
@@ -185,7 +210,15 @@ module Aurora
             return
           end
         end
-        
+
+        # Special handling for single =
+        if char == '='
+          @pos += 1
+          @column += 1
+          add_token(:EQUAL, char)
+          return
+        end
+
         @pos += 1
         @column += 1
         add_token(:OPERATOR, char)

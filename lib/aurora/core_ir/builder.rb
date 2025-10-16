@@ -53,7 +53,11 @@ module Aurora
       def self.record(type_name, fields, type, origin: nil)
         RecordExpr.new(type_name: type_name, fields: fields, type: type, origin: origin)
       end
-      
+
+      def self.if_expr(condition, then_branch, else_branch, type, origin: nil)
+        IfExpr.new(condition: condition, then_branch: then_branch, else_branch: else_branch, type: type, origin: origin)
+      end
+
       def self.block(stmts, origin: nil)
         Block.new(stmts: stmts, origin: origin)
       end

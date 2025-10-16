@@ -116,6 +116,8 @@ module Aurora
           lower_let(expr)
         when CoreIR::RecordExpr
           lower_record(expr)
+        when CoreIR::IfExpr
+          lower_if(expr)
         else
           raise "Unknown expression: #{expr.class}"
         end
@@ -154,21 +156,24 @@ module Aurora
       def lower_call(call)
         callee = lower_expression(call.callee)
         args = call.args.map { |arg| lower_expression(arg) }
-        
+
+        # Calculate separators - need n-1 separators for n arguments, minimum 0
+        num_separators = [args.size - 1, 0].max
+
         CppAst::Nodes::FunctionCallExpression.new(
           callee: callee,
           arguments: args,
-          argument_separators: Array.new(args.size - 1, ", ")
+          argument_separators: Array.new(num_separators, ", ")
         )
       end
       
       def lower_member(member)
         object = lower_expression(member.object)
-        
+
         CppAst::Nodes::MemberAccessExpression.new(
           object: object,
           operator: ".",
-          member_name: member.member
+          member: CppAst::Nodes::Identifier.new(name: member.member)
         )
       end
       
@@ -189,17 +194,34 @@ module Aurora
         # This is simplified - real implementation would handle this properly
         type_name = record.type_name
         fields = record.fields
-        
+
         # Create constructor call with field values
         args = fields.values.map { |value| lower_expression(value) }
-        
+
         CppAst::Nodes::FunctionCallExpression.new(
           callee: CppAst::Nodes::Identifier.new(name: type_name),
           arguments: args,
           argument_separators: Array.new(args.size - 1, ", ")
         )
       end
-      
+
+      def lower_if(if_expr)
+        condition = lower_expression(if_expr.condition)
+        then_branch = lower_expression(if_expr.then_branch)
+        else_branch = if_expr.else_branch ? lower_expression(if_expr.else_branch) : CppAst::Nodes::NumberLiteral.new(value: "0")
+
+        # Generate ternary operator for if expressions
+        CppAst::Nodes::TernaryExpression.new(
+          condition: condition,
+          true_expression: then_branch,
+          false_expression: else_branch,
+          question_prefix: " ",
+          colon_prefix: " ",
+          question_suffix: " ",
+          colon_suffix: " "
+        )
+      end
+
       def map_type(type)
         case type
         when CoreIR::Type
