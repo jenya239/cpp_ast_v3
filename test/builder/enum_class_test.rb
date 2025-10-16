@@ -14,7 +14,7 @@ class EnumClassTest < Minitest::Test
     ])
     
     cpp_code = ast.to_source
-    expected = "enum class Type {Vertex = GL_VERTEX_SHADER, Fragment = GL_FRAGMENT_SHADER, Geometry = GL_GEOMETRY_SHADER};"
+    expected = "enum class Type{Vertex = GL_VERTEX_SHADER, Fragment = GL_FRAGMENT_SHADER, Geometry = GL_GEOMETRY_SHADER};"
     
     assert_equal expected, cpp_code
   end
@@ -40,7 +40,7 @@ class EnumClassTest < Minitest::Test
     ], underlying_type: "GLenum")
     
     cpp_code = ast.to_source
-    expected = "enum class Usage  : GLenum{Static = GL_STATIC_DRAW, Dynamic = GL_DYNAMIC_DRAW, Stream = GL_STREAM_DRAW};"
+    expected = "enum class Usage : GLenum{Static = GL_STATIC_DRAW, Dynamic = GL_DYNAMIC_DRAW, Stream = GL_STREAM_DRAW};"
     
     assert_equal expected, cpp_code
   end
@@ -53,7 +53,7 @@ class EnumClassTest < Minitest::Test
     ])
     
     cpp_code = ast.to_source
-    expected = "enum class Color {Red, Green, Blue};"
+    expected = "enum class Color{Red, Green, Blue};"
     
     assert_equal expected, cpp_code
   end
@@ -67,7 +67,7 @@ class EnumClassTest < Minitest::Test
     ])
     
     cpp_code = ast.to_source
-    expected = "enum class State {Idle, Running = STATE_RUNNING, Paused, Stopped = STATE_STOPPED};"
+    expected = "enum class State{Idle, Running = STATE_RUNNING, Paused, Stopped = STATE_STOPPED};"
     
     assert_equal expected, cpp_code
   end
@@ -111,7 +111,7 @@ class EnumClassTest < Minitest::Test
     cpp_code = ast.to_source
     
     # Basic validation - should contain expected elements
-    assert_includes cpp_code, "enum class Format : uint8_t"
+    assert_includes cpp_code, "enum class Format : uint8_t{"
     assert_includes cpp_code, "A8"
     assert_includes cpp_code, "RGB8"
   end

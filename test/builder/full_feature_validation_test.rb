@@ -28,7 +28,7 @@ class FullFeatureValidationTest < Minitest::Test
       .constexpr()
     
     cpp_code2 = ast2.to_source
-    assert_includes cpp_code2, "constexpr static inline Color white"
+    assert_includes cpp_code2, "static constexpr inline Color white"
     assert_includes cpp_code2, "return r = 1.0"
   end
 
@@ -233,7 +233,7 @@ class FullFeatureValidationTest < Minitest::Test
     assert_includes cpp_code, "noexcept"
     assert_includes cpp_code, "inline ShaderID handle"
     assert_includes cpp_code, "inline bool is_valid"
-    assert_includes cpp_code, "constexpr static inline OpenGLShader create_vertex"
+    assert_includes cpp_code, "static constexpr inline OpenGLShader create_vertex"
     assert_includes cpp_code, "[[nodiscard]] std::optional<std::string> compile_error"
   end
 

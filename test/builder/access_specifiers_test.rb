@@ -49,7 +49,7 @@ class AccessSpecifiersTest < Minitest::Test
     )
     
     private_members = private_section(
-      field_def("int", "private_field", default: "0"),
+      field_def("private_field", "int", default: "0"),
       function_decl("void", "private_method", [], block())
     )
     
@@ -85,7 +85,7 @@ class AccessSpecifiersTest < Minitest::Test
     )
     
     private_members = private_section(
-      field_def("int", "handle_", default: "0")
+      field_def("handle_", "int", default: "0")
     )
     
     ast = class_decl("RAIIClass", *public_members, *private_members)

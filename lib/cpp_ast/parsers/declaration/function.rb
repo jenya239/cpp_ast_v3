@@ -27,7 +27,7 @@ module CppAst
             modifiers_text = modifiers_text[1..-1]
           end
         end
-        
+
         body, trailing = if current_token.kind == :lbrace
           parse_block_statement(after_rparen)
         else

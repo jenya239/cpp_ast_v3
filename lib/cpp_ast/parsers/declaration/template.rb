@@ -6,16 +6,16 @@ module CppAst
       def parse_template_declaration(leading_trivia)
         template_suffix = current_token.trailing_trivia
         expect(:keyword_template)
-        
+
         less_suffix = current_token.trailing_trivia
         expect(:less)
-        
+
         params = "".dup
         depth = 1
-        
+
         loop do
           break if at_end?
-          
+
           case current_token.kind
           when :less
             depth += 1
@@ -34,7 +34,7 @@ module CppAst
             advance_raw
           end
         end
-        
+
         params_suffix = current_token.trailing_trivia
         expect(:greater)
         

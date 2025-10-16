@@ -141,7 +141,7 @@ module CppAst
         end
         
         def defaulted
-          dup.tap { |n| 
+          dup.tap { |n|
             n.rparen_suffix = ""
             n.body = nil
             n.default_suffix = " = default"

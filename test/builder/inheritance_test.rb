@@ -63,7 +63,7 @@ class InheritanceTest < Minitest::Test
     
     cpp_code = ast.to_source
     assert_includes cpp_code, "class ConcreteDerived  : public AbstractBase"
-    assert_includes cpp_code, "void pure_virtual_method()  override"
-    assert_includes cpp_code, "~ConcreteDerived()  override"
+    assert_includes cpp_code, "void pure_virtual_method() override"
+    assert_includes cpp_code, "~ConcreteDerived() override"
   end
 end

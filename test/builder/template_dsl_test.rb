@@ -13,7 +13,7 @@ class TemplateDslTest < Minitest::Test
     )
     
     cpp_code = ast.to_source
-    expected = "template <typename T>\nclass Buffer {\npublic:\nvoid data(T value ){\n}\n};"
+    expected = "template <typename T>\nclass Buffer {\npublic:\nvoid data(T value) {\n}\n};"
     
     assert_equal expected, cpp_code
   end
@@ -39,7 +39,7 @@ class TemplateDslTest < Minitest::Test
     cpp_code = ast.to_source
     assert_includes cpp_code, "template <typename T>"
     assert_includes cpp_code, "class Buffer"
-    assert_includes cpp_code, "explicit  Buffer(Type type)"
+    assert_includes cpp_code, "explicit Buffer(Type type)"
   end
 
   def test_template_method_with_span

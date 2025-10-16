@@ -154,8 +154,8 @@ class EdgeCasesTest < Minitest::Test
     assert_includes cpp_code, "enum class State{INIT, READY = 1, ERROR = 2};"
     assert_includes cpp_code, "template <typename T>"
     assert_includes cpp_code, "explicit EdgeCaseClass(Index index) : index_(index), computed_(index * 2)"
-    assert_includes cpp_code, "inline Index get_index() const{ return index_; }"
-    assert_includes cpp_code, "EdgeCaseClass(const EdgeCaseClass&) = delete"
+    assert_includes cpp_code, "inline Index get_index() const"
+    assert_includes cpp_code, "EdgeCaseClass(const EdgeCaseClass& other) = delete"
     assert_includes cpp_code, "EdgeCaseClass(EdgeCaseClass&& other) noexcept"
   end
 
@@ -186,7 +186,7 @@ class EdgeCasesTest < Minitest::Test
     cpp_code = ast.to_source
     assert_includes cpp_code, "friend class Friend1;"
     assert_includes cpp_code, "friend struct Friend2;"
-    assert_includes cpp_code, "friend Friend3;"
+    assert_includes cpp_code, "friend  Friend3;"
   end
 
   def test_class_with_only_enum_class

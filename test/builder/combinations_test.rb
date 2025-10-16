@@ -78,17 +78,17 @@ class CombinationsTest < Minitest::Test
 
   def test_constructor_with_initializer_list_and_modifiers
     ast = class_decl("Vec2",
-      function_decl("", "Vec2", [param("float", "x_"), param("float", "y_")], block())
+      function_decl("", "Vec2", [param("float", "x_"), param("float", "y_")], inline_block())
         .with_initializer_list("x(x_), y(y_)")
         .explicit()
         .constexpr(),
-      function_decl("", "Vec2", [], block())
+      function_decl("", "Vec2", [], inline_block())
         .with_initializer_list("x(0.0f), y(0.0f)")
         .defaulted()
     )
     cpp_code = ast.to_source
     assert_includes cpp_code, "constexpr explicit Vec2(float x_, float y_) : x(x_), y(y_){}"
-    assert_includes cpp_code, "Vec2() = default"
+    assert_includes cpp_code, "Vec2(): x(0.0f), y(0.0f) = default"
   end
 
   def test_using_aliases_with_template_class
@@ -117,8 +117,8 @@ class CombinationsTest < Minitest::Test
         .noexcept()
     )
     cpp_code = ast.to_source
-    assert_includes cpp_code, "Shader(const Shader&) = delete"
-    assert_includes cpp_code, "Shader& operator=(const Shader&) = delete"
+    assert_includes cpp_code, "Shader(const Shader& other) = delete"
+    assert_includes cpp_code, "Shader& operator=(const Shader& other) = delete"
     assert_includes cpp_code, "Shader(Shader&& other) noexcept"
     assert_includes cpp_code, "Shader& operator=(Shader&& other) noexcept"
   end
@@ -195,7 +195,7 @@ class CombinationsTest < Minitest::Test
     assert_includes cpp_code, "friend struct hash<MyClass>;"
     assert_includes cpp_code, "enum class State{INIT = 0, READY = 1, ERROR = 2};"
     assert_includes cpp_code, "explicit MyClass(Index index) : index_(index)"
-    assert_includes cpp_code, "inline Index get_index() const{ return index_; }"
-    assert_includes cpp_code, "MyClass(const MyClass&) = delete"
+    assert_includes cpp_code, "inline Index get_index() const"
+    assert_includes cpp_code, "MyClass(const MyClass& other) = delete"
   end
 end

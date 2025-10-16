@@ -76,7 +76,7 @@ class OpenGLCoverageTest < Minitest::Test
     # Check key features are present
     assert_includes cpp_code, "namespace gtkgl::gl"
     assert_includes cpp_code, "enum class Type"
-    assert_includes cpp_code, "Shader(const Shader&) = delete"
+    assert_includes cpp_code, "Shader(const Shader& other) = delete"
     assert_includes cpp_code, "Shader(Shader&& other) noexcept"
     assert_includes cpp_code, "inline GLuint handle() const noexcept"
     assert_includes cpp_code, "inline bool is_valid() const noexcept"

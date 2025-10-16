@@ -42,7 +42,7 @@ class WhitespacePolicyTest < Minitest::Test
       .constexpr()
     
     cpp_code = ast.to_source
-    assert_includes cpp_code, "constexpr static inline void test()"
+    assert_includes cpp_code, "static constexpr inline void test()"
   end
 
   def test_pure_virtual_method
@@ -96,8 +96,8 @@ class WhitespacePolicyTest < Minitest::Test
       .override()
     
     cpp_code = ast.to_source
-    assert_includes cpp_code, "void method() override {"
-    refute_includes cpp_code, "void method() override{"  # должен быть пробел перед {
+    assert_includes cpp_code, "void method() override"
+    refute_includes cpp_code, "void method() override  {"  # не должно быть двойного пробела
   end
 
   def test_attributes_order

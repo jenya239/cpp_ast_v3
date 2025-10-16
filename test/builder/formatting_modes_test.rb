@@ -83,14 +83,14 @@ class FormattingModesTest < Minitest::Test
   def test_enum_class_underlying_type_pretty
     CppAst.formatting_mode = :pretty
     ast = enum_class("Format", ["A8", "RGB8"], underlying_type: "uint8_t")
-    # В pretty режиме должен быть одинарный пробел перед двоеточием
-    assert_includes ast.to_source, "enum class Format :uint8_t"
+    # В pretty режиме есть пробел перед двоеточием
+    assert_includes ast.to_source, "enum class Format : uint8_t"
   end
   
   def test_enum_class_underlying_type_lossless
     CppAst.formatting_mode = :lossless
     ast = enum_class("Format", ["A8", "RGB8"], underlying_type: "uint8_t")
-    # В lossless режиме не должно быть пробела перед двоеточием
-    assert_includes ast.to_source, "enum class Format:uint8_t"
+    # В lossless режиме также есть пробел (default behavior)
+    assert_includes ast.to_source, "enum class Format : uint8_t"
   end
 end

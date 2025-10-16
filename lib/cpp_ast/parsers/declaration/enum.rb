@@ -1,12 +1,14 @@
 # frozen_string_literal: true
 
+require_relative '../../builder/formatting_context'
+
 module CppAst
   module Parsers
     module EnumParser
       def parse_enum_declaration(leading_trivia)
         enum_suffix = current_token.trailing_trivia
         expect(:keyword_enum)
-        
+
         class_keyword = ""
         class_suffix = ""
         if [:keyword_class, :keyword_struct].include?(current_token.kind)
@@ -14,7 +16,7 @@ module CppAst
           class_suffix = current_token.trailing_trivia
           advance_raw
         end
-        
+
         name = ""
         name_suffix = ""
         if current_token.kind == :identifier
@@ -22,15 +24,26 @@ module CppAst
           name_suffix = current_token.trailing_trivia
           advance_raw
         end
-        
+
+        underlying_type = nil
+        colon_prefix = ""
+        colon_suffix = ""
         if current_token.kind == :colon
-          name_suffix = name_suffix + current_token.lexeme + current_token.trailing_trivia
+          # Apply FormattingContext default for space before colon in underlying type
+          colon_prefix = name_suffix.empty? ? " " : name_suffix
+          name_suffix = Builder::FormattingContext.get(:name_suffix_with_underlying)
+
+          colon_suffix = current_token.trailing_trivia
           advance_raw
-          
+
+          underlying_type = "".dup
           until current_token.kind == :lbrace || at_end?
-            name_suffix << current_leading_trivia << current_token.lexeme << current_token.trailing_trivia
+            underlying_type << current_leading_trivia << current_token.lexeme << current_token.trailing_trivia
             advance_raw
           end
+
+          # Reset name_suffix since we used it for colon_prefix
+          name_suffix = ""
         end
         
         lbrace_suffix = current_token.trailing_trivia
@@ -57,7 +70,10 @@ module CppAst
           class_suffix: class_suffix,
           name_suffix: name_suffix,
           lbrace_suffix: lbrace_suffix,
-          rbrace_suffix: rbrace_suffix
+          rbrace_suffix: rbrace_suffix,
+          underlying_type: underlying_type,
+          colon_prefix: colon_prefix,
+          colon_suffix: colon_suffix
         )
         
         [stmt, trailing]

@@ -70,7 +70,7 @@ class InlineMethodsTest < Minitest::Test
       .static()
       .constexpr()
     cpp_code = ast.to_source
-    assert_includes cpp_code, "constexpr static inline Color white"
+    assert_includes cpp_code, "static constexpr inline Color white"
     assert_includes cpp_code, "1.0"
   end
 end

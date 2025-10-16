@@ -10,7 +10,7 @@ module CppAst
           template_params_suffix: "\n",
           rparen_suffix: " ",  # Architecture: space after ) before modifiers
           lbrace_prefix: " ",
-          name_suffix_with_underlying: "",
+          name_suffix_with_underlying: "",  # Empty because colon_prefix has the space
           friend_suffix: " "
         },
         lossless: {

@@ -158,13 +158,13 @@ module CppAst
       
       def to_source
         result = "#{leading_trivia}for#{for_suffix}(#{lparen_suffix}"
-        
+
         # Range-based for: for (decl : range)
         if init_trailing.start_with?(":")
           result << (init ? init.to_source : "")
           result << init_trailing
           result << (condition ? condition.to_source : "")
-          result << "#{rparen_suffix})#{body.to_source}"
+          result << ")#{rparen_suffix}#{body.to_source}"
         else
           # Classic for: for (init; cond; inc)
           init_str = init ? (init.respond_to?(:to_source) ? init.to_source : init.to_s) : ""
@@ -175,9 +175,9 @@ module CppAst
           result << ";#{condition_trailing}"
           increment_str = increment ? (increment.respond_to?(:to_source) ? increment.to_source : increment.to_s) : ""
           result << increment_str
-          result << "#{rparen_suffix})#{body.to_source}"
+          result << ")#{rparen_suffix}#{body.to_source}"
         end
-        
+
         result
       end
     end
@@ -345,7 +345,7 @@ module CppAst
         suffix = return_type_str.empty? ? "" : return_type_suffix
         prefix = @modifier_set ? @modifier_set.to_s : prefix_modifiers
         result = "#{leading_trivia}#{prefix}#{return_type_str}#{suffix}#{name}(#{lparen_suffix}"
-        
+
         if parameters.empty?
           result << ")"
         else
@@ -357,10 +357,11 @@ module CppAst
           result << ")"
         end
         
-        # Architecture: rparen_suffix contains space, only add it if followed by content
+        # Architecture: rparen_suffix contains space or code (e.g., " = 0"), add if there's content or if it contains code
         has_content_after_rparen = !modifiers_text.empty? || body || initializer_list ||
                                     (@default_suffix && !@default_suffix.empty?)
-        if has_content_after_rparen && rparen_suffix && !rparen_suffix.empty?
+        has_code_in_suffix = rparen_suffix && rparen_suffix.include?("=")
+        if (has_content_after_rparen || has_code_in_suffix) && rparen_suffix && !rparen_suffix.empty?
           result << rparen_suffix
         end
 
@@ -369,7 +370,7 @@ module CppAst
 
         # Add initializer list if present
         if initializer_list
-          result << " : #{initializer_list}"
+          result << ": #{initializer_list}"
         end
 
         # Add default suffix if present
@@ -515,10 +516,12 @@ module CppAst
       attr_accessor :name, :enumerators
       attr_accessor :enum_suffix, :class_keyword, :class_suffix, :name_suffix
       attr_accessor :lbrace_suffix, :rbrace_suffix, :underlying_type
-      
+      attr_accessor :colon_prefix, :colon_suffix
+
       def initialize(leading_trivia: "", name:, enumerators:,
                      enum_suffix: "", class_keyword: "", class_suffix: "", name_suffix: "",
-                     lbrace_suffix: "", rbrace_suffix: "", underlying_type: nil)
+                     lbrace_suffix: "", rbrace_suffix: "", underlying_type: nil,
+                     colon_prefix: " ", colon_suffix: "")
         super(leading_trivia: leading_trivia)
         @name = name
         @enumerators = enumerators
@@ -529,13 +532,15 @@ module CppAst
         @lbrace_suffix = lbrace_suffix
         @rbrace_suffix = rbrace_suffix
         @underlying_type = underlying_type
+        @colon_prefix = colon_prefix
+        @colon_suffix = colon_suffix
       end
-      
+
       def to_source
         result = "#{leading_trivia}enum#{enum_suffix}"
         result << "#{class_keyword}#{class_suffix}" unless class_keyword.empty?
         result << "#{name}#{name_suffix}"
-        result << " : #{underlying_type}" if underlying_type
+        result << "#{colon_prefix}:#{colon_suffix}#{underlying_type}" if underlying_type
         result << "{#{lbrace_suffix}"
         
         # Convert enumerators array to string
@@ -863,7 +868,7 @@ module CppAst
       end
       
       def to_source
-        result = "#{leading_trivia}template<#{template_params.join(', ')}>\n"
+        result = "#{leading_trivia}template <#{template_params.join(', ')}>\n"
         result += "concept #{name} = #{requirements};"
         result
       end

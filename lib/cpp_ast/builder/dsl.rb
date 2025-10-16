@@ -144,26 +144,39 @@ module CppAst
           rbrace_prefix: ""
         )
       end
-      
+
+      def inline_block(*statements)
+        trailings = statements.map { "" }
+        Nodes::BlockStatement.new(
+          statements: statements,
+          statement_trailings: trailings,
+          leading_trivia: "",
+          lbrace_suffix: "",  # Inline: no newline after {
+          rbrace_prefix: ""
+        ).tap { |b| b.instance_variable_set(:@inline, true) }
+      end
+
       def if_stmt(condition, then_statement, else_statement = nil)
         Nodes::IfStatement.new(
           condition: condition,
           then_statement: then_statement,
           else_statement: else_statement,
           if_suffix: " ",
+          condition_rparen_suffix: "",
           else_prefix: " ",
           else_suffix: " "
         )
       end
-      
+
       def while_stmt(condition, body)
         Nodes::WhileStatement.new(
           condition: condition,
           body: body,
-          while_suffix: " "
+          while_suffix: " ",
+          condition_rparen_suffix: ""
         )
       end
-      
+
       def for_stmt(init, condition, increment, body)
         Nodes::ForStatement.new(
           init: init,
@@ -174,7 +187,7 @@ module CppAst
           lparen_suffix: "",
           init_trailing: " ",
           condition_trailing: " ",
-          rparen_suffix: ""
+          rparen_suffix: " "  # Space before body
         )
       end
       
@@ -341,7 +354,8 @@ module CppAst
           name_suffix: name_suffix,
           lbrace_suffix: "",
           rbrace_suffix: "",
-          underlying_type: underlying_type
+          underlying_type: underlying_type,
+          colon_suffix: underlying_type ? " " : ""
         )
       end
       
@@ -786,7 +800,7 @@ module CppAst
       end
       
       def template_template_param(name, template_params)
-        "template<#{template_params.join(', ')}> class #{name}"
+        "template <#{template_params.join(', ')}> class #{name}"
       end
       
       def sfinae_requires(concept_name, *types)

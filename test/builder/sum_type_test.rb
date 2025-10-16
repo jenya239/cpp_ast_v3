@@ -183,7 +183,7 @@ class SumTypeTest < Minitest::Test
 
       };
       using Shape = std::variant<Circle, Rect>;
-      float area(const Shape& shape ) {
+      float area(const Shape& shape) {
       return 0.0;
       }
     CPP

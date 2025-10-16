@@ -109,7 +109,7 @@ class NestedTypesTest < Minitest::Test
       class Outer {
       class Inner {
       int value;
-      void method()  {
+      void method() {
       std::cout << Inner method called << std::endl;
       }
       };

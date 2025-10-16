@@ -11,7 +11,7 @@ module CppAst
     # Methods:
     #   - parse_if_statement
     #   - parse_while_statement
-    #   - parse_for_statement  
+    #   - parse_for_statement
     #   - parse_do_while_statement
     #   - parse_switch_statement
     #   - parse_case_clause
@@ -25,21 +25,21 @@ module CppAst
         # Consume 'if'
         if_suffix = current_token.trailing_trivia
         expect(:keyword_if)
-        
+
         # Consume '('
         lparen_suffix = current_token.trailing_trivia
         expect(:lparen)
-        
+
         # Parse condition
         condition, cond_trailing = parse_expression
-        
+
         # Collect trivia before ')'
-        rparen_prefix = cond_trailing + current_leading_trivia
-        
+        rparen_prefix = cond_trailing
+
         # Consume ')'
         then_leading = current_token.trailing_trivia
         expect(:rparen)
-        
+
         # Parse then statement
         then_stmt, then_trailing = parse_statement(then_leading)
         
@@ -80,21 +80,21 @@ module CppAst
         # Consume 'while'
         while_suffix = current_token.trailing_trivia
         expect(:keyword_while)
-        
+
         # Consume '('
         lparen_suffix = current_token.trailing_trivia
         expect(:lparen)
-        
+
         # Parse condition
         condition, cond_trailing = parse_expression
-        
+
         # Collect trivia before ')'
-        rparen_prefix = cond_trailing + current_leading_trivia
-        
+        rparen_prefix = cond_trailing
+
         # Consume ')'
         body_leading = current_token.trailing_trivia
         expect(:rparen)
-        
+
         # Parse body
         body, trailing = parse_statement(body_leading)
         
@@ -133,10 +133,10 @@ module CppAst
         
         # Parse condition
         condition, cond_trailing = parse_expression
-        
+
         # Collect trivia before ')'
-        rparen_prefix = cond_trailing + current_leading_trivia
-        
+        rparen_prefix = cond_trailing
+
         # Consume ')'
         _semicolon_prefix = current_token.trailing_trivia
         expect(:rparen)
@@ -230,7 +230,7 @@ module CppAst
         # Consume ')'
         body_leading = current_token.trailing_trivia
         expect(:rparen)
-        
+
         # Parse body
         body, trailing = parse_statement(body_leading)
         
@@ -258,40 +258,40 @@ module CppAst
         unless current_token.kind == :semicolon
           init, init_trailing = parse_expression
         end
-        
+
         # Collect trivia before first ';'
         _semi1_prefix = init_trailing + current_leading_trivia
-        
+
         # Consume first ';'
         after_semi1 = current_token.trailing_trivia
         expect(:semicolon)
-        
+
         # Parse condition (can be empty)
         condition = nil
         condition_trailing = ""
         unless current_token.kind == :semicolon
           condition, condition_trailing = parse_expression
         end
-        
+
         # Collect trivia before second ';'
         _semi2_prefix = condition_trailing + current_leading_trivia
-        
+
         # Consume second ';'
         after_semi2 = current_token.trailing_trivia
         expect(:semicolon)
-        
+
         # Parse increment (can be empty)
         increment = nil
         rparen_prefix = ""
         unless current_token.kind == :rparen
           increment, inc_trailing = parse_expression
-          rparen_prefix = inc_trailing + current_leading_trivia
+          rparen_prefix = inc_trailing
         end
-        
+
         # Consume ')'
         body_leading = current_token.trailing_trivia
         expect(:rparen)
-        
+
         # Parse body
         body, trailing = parse_statement(body_leading)
         

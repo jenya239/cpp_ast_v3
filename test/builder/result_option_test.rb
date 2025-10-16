@@ -54,8 +54,8 @@ class ResultOptionTest < Minitest::Test
     
     cpp = ast.to_source
     expected = <<~CPP.strip
-      std::expected<int, std::string> divide(int a, int b ) {
-      if (b == 0) {
+      std::expected<int, std::string> divide(int a, int b) {
+      if (b == 0){
       return Err("division by zero");
       } else {
       return Ok(a / b);
@@ -78,8 +78,8 @@ class ResultOptionTest < Minitest::Test
     
     cpp = ast.to_source
     expected = <<~CPP.strip
-      std::optional<int> safe_divide(int a, int b ) {
-      if (b == 0) {
+      std::optional<int> safe_divide(int a, int b) {
+      if (b == 0){
       return None;
       } else {
       return Some(a / b);
@@ -118,8 +118,8 @@ class ResultOptionTest < Minitest::Test
     
     cpp = ast.to_source
     expected = <<~CPP.strip
-      std::optional<std::expected<int, std::string>> complex_function(int x ) {
-      if (x > 0) {
+      std::optional<std::expected<int, std::string>> complex_function(int x) {
+      if (x > 0){
       return Some(Ok(x));
       } else {
       return Some(Err("negative value"));
@@ -143,7 +143,7 @@ class ResultOptionTest < Minitest::Test
     cpp = ast.to_source
     expected = <<~CPP.strip
       std::expected<std::unique_ptr<Vec2>, std::string> create_vector(float x, float y) {
-      if (x < 0 || y < 0) {
+      if (x < 0 || y < 0){
       return Err("negative coordinates");
       } else {
       return Ok(Vec2(x, y));
@@ -161,7 +161,7 @@ class ResultOptionTest < Minitest::Test
     )
     
     cpp = original_ast.to_source
-    expected = "std::expected<int, str> test( ) {\nreturn Ok(42);\n}"
+    expected = "std::expected<int, str> test() {\nreturn Ok(42);\n}"
     assert_equal expected, cpp
   end
 end

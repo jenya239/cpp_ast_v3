@@ -82,19 +82,19 @@ class AuroraFullTest < Minitest::Test
 
       };
       using Shape = std::variant<Circle, Rect>;
-      std::expected<float, std::string> calculate_area(const Shape& shape ) {
+      std::expected<float, std::string> calculate_area(const Shape& shape) {
       return std::visit(overloaded{
         [&](const Circle& circle) { auto [center, radius] = circle; return 3.14159 * radius * radius; },
         [&](const Rect& rect) { auto [top_left, width, height] = rect; return width * height; }
       }, shape);
       }
-      std::optional<Point> find_center(const Shape& shape ) {
+      std::optional<Point> find_center(const Shape& shape) {
       return std::visit(overloaded{
         [&](const Circle& circle) { auto [center] = circle; return Some(center); },
         [&](const Rect& rect) { auto [top_left, width, height] = rect; return Some(Point(top_left.x + width / 2.0, top_left.y + height / 2.0)); }
       }, shape);
       }
-      void process_shapes(std::span<std::unique_ptr<Shape>> shapes ) {
+      void process_shapes(std::span<std::unique_ptr<Shape>> shapes) {
       for (auto it = shapes.begin(); it != shapes.end(); it++) {
       process_shape(*it);
       }
@@ -137,7 +137,7 @@ class AuroraFullTest < Minitest::Test
 
       };
       using Response = std::variant<Success, Error>;
-      int handle_response(const Response& response ) {
+      int handle_response(const Response& response) {
       return std::visit(overloaded{
         [&](const Success& success) { auto [data] = success; return std::visit(overloaded{
         [&](const Some& some) { return value; },

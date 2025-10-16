@@ -4,8 +4,8 @@ module CppAst
   module Nodes
     class ModifierSet
       PRIORITY = {
-        constexpr: 1,
-        static: 2,
+        static: 1,
+        constexpr: 2,
         explicit: 3,
         inline: 4,
         virtual: 5,

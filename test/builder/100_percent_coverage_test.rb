@@ -31,7 +31,7 @@ class Coverage100PercentTest < Minitest::Test
       .static()
       .constexpr()
     cpp_code = ast.to_source
-    assert_includes cpp_code, "constexpr static inline Color white"
+    assert_includes cpp_code, "static constexpr inline Color white"
   end
 
   def test_initializer_lists_support

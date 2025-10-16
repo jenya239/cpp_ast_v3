@@ -11,7 +11,7 @@ class ProductionFixesTest < Minitest::Test
   end
 
   def test_field_declaration_with_default
-    ast = field_def("float", "x", default: "0.0f")
+    ast = field_def("x", "float", default: "0.0f")
     assert_equal "float x{0.0f};", ast.to_source
   end
 
@@ -52,8 +52,8 @@ class ProductionFixesTest < Minitest::Test
       namespace_decl("gtkgl::text",
         using_alias("GlyphIndex", "uint32_t"),
         struct_decl("Vec2",
-          field_def("float", "x", default: "0.0f"),
-          field_def("float", "y", default: "0.0f"),
+          field_def("x", "float", default: "0.0f"),
+          field_def("y", "float", default: "0.0f"),
           function_decl("", "Vec2", [], block()).defaulted()
         )
       )
@@ -69,8 +69,8 @@ class ProductionFixesTest < Minitest::Test
 
   def test_struct_with_field_declarations
     ast = struct_decl("Vec2",
-      field_def("float", "x", default: "0.0f"),
-      field_def("float", "y", default: "0.0f"),
+      field_def("x", "float", default: "0.0f"),
+      field_def("y", "float", default: "0.0f"),
       function_decl("", "Vec2", [], block()).defaulted(),
       function_decl("", "Vec2", [param("float", "x_"), param("float", "y_")], block())
         .with_initializer_list("x(x_), y(y_)")
@@ -123,8 +123,8 @@ class ProductionFixesTest < Minitest::Test
         using_alias("FontFaceID", "uint32_t"),
         
         struct_decl("Vec2",
-          field_def("float", "x", default: "0.0f"),
-          field_def("float", "y", default: "0.0f"),
+          field_def("x", "float", default: "0.0f"),
+          field_def("y", "float", default: "0.0f"),
           function_decl("", "Vec2", [], block()).defaulted(),
           function_decl("", "Vec2", [param("float", "x_"), param("float", "y_")], block())
             .with_initializer_list("x(x_), y(y_)")
@@ -141,8 +141,8 @@ class ProductionFixesTest < Minitest::Test
         ], underlying_type: "uint8_t"),
         
         struct_decl("AtlasSlot",
-          field_def("uint32_t", "page_id", default: "0"),
-          field_def("uint32_t", "texture_id", default: "0"),
+          field_def("page_id", "uint32_t", default: "0"),
+          field_def("texture_id", "uint32_t", default: "0"),
           function_decl("bool", "is_valid", [], block())
             .inline_body(block(return_stmt(binary("!=", id("texture_id"), int(0)))))
             .const()

@@ -147,7 +147,7 @@ class ProductTest < Minitest::Test
       float x;
       float y;
       };
-      float length(const Vec2& v ) {
+      float length(const Vec2& v) {
       return sqrt(v.x * v.x + v.y * v.y);
       }
     CPP
