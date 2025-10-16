@@ -22,6 +22,7 @@ require_relative "cpp_ast/builder/formatting_context"
 require_relative "cpp_ast/builder/dsl"
 require_relative "cpp_ast/builder/fluent"
 require_relative "cpp_ast/builder/dsl_generator"
+require_relative "cpp_ast/builder/dsl_v2_simple"
 
 module CppAst
   class ParseError < StandardError; end

@@ -5,7 +5,7 @@ module CppAst
     module FunctionParser
       def parse_function_declaration(leading_trivia)
         prefix_modifiers = parse_function_prefix_modifiers
-        is_constructor, constructor_class_name = detect_constructor_pattern
+        is_constructor, _constructor_class_name = detect_constructor_pattern
 
         return_type, trivia_after = if is_constructor
           ["", ""]

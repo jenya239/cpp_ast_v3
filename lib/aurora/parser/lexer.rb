@@ -163,7 +163,6 @@ module Aurora
       end
       
       def tokenize_operator
-        start = @pos
         char = @source[@pos]
         
         # Handle arrow operator ->

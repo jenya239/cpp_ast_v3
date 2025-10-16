@@ -39,7 +39,7 @@ module CppAst
       def parse_variable_type
         type = "".dup
         template_depth = 0
-        last_trivia = ""
+        _last_trivia = ""
         
         loop do
           break unless current_token.kind.to_s.start_with?("keyword_") || 
@@ -56,10 +56,10 @@ module CppAst
           type << current_token.lexeme
           trivia = current_token.trailing_trivia
           advance_raw
-          
+
           # Always preserve spaces after keywords and identifiers in type
           type << trivia
-          last_trivia = trivia
+          _last_trivia = trivia
           
           next if was_colon_colon && (current_token.kind == :identifier || 
                                       current_token.kind.to_s.start_with?("keyword_"))

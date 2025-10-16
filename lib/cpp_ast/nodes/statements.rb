@@ -226,6 +226,11 @@ module CppAst
         @colon_suffix = colon_suffix
       end
       
+      # Alias for backward compatibility
+      def body
+        statements.first
+      end
+      
       def to_source
         result = "#{leading_trivia}case#{case_suffix}#{value.to_source}:#{colon_suffix}"
         statements.zip(statement_trailings).each do |stmt, trailing|
@@ -245,6 +250,11 @@ module CppAst
         @statements = statements
         @statement_trailings = statement_trailings
         @colon_suffix = colon_suffix
+      end
+      
+      # Alias for backward compatibility
+      def body
+        statements.first
       end
       
       def to_source
@@ -284,12 +294,14 @@ module CppAst
       attr_accessor :namespace_suffix, :name_suffix
       
       def initialize(leading_trivia: "", name:, body:,
-                     namespace_suffix: "", name_suffix: "")
+                     namespace_suffix: "", name_suffix: "", lbrace_suffix: "", rbrace_suffix: "")
         super(leading_trivia: leading_trivia)
         @name = name
         @body = body
         @namespace_suffix = namespace_suffix
         @name_suffix = name_suffix
+        @lbrace_suffix = lbrace_suffix
+        @rbrace_suffix = rbrace_suffix
       end
       
       def to_source
@@ -399,7 +411,7 @@ module CppAst
       
       def initialize(leading_trivia: "", name:, members:, member_trailings:,
                      class_suffix: "", name_suffix: "", lbrace_suffix: "", rbrace_suffix: "",
-                     base_classes_text: "")
+                     base_classes_text: "", final: false, abstract: false)
         super(leading_trivia: leading_trivia)
         @name = name
         @members = members
@@ -409,6 +421,8 @@ module CppAst
         @lbrace_suffix = lbrace_suffix
         @rbrace_suffix = rbrace_suffix
         @base_classes_text = base_classes_text
+        @final = final
+        @abstract = abstract
       end
       
       def to_source
@@ -521,7 +535,7 @@ module CppAst
       def initialize(leading_trivia: "", name:, enumerators:,
                      enum_suffix: "", class_keyword: "", class_suffix: "", name_suffix: "",
                      lbrace_suffix: "", rbrace_suffix: "", underlying_type: nil,
-                     colon_prefix: " ", colon_suffix: "")
+                     colon_prefix: " ", colon_suffix: "", class_enum: false, scoped: false)
         super(leading_trivia: leading_trivia)
         @name = name
         @enumerators = enumerators
@@ -534,6 +548,8 @@ module CppAst
         @underlying_type = underlying_type
         @colon_prefix = colon_prefix
         @colon_suffix = colon_suffix
+        @class_enum = class_enum
+        @scoped = scoped
       end
 
       def to_source
@@ -643,6 +659,20 @@ module CppAst
         end
         
         result
+      end
+    end
+    
+    # UsingNamespaceDirective: `using namespace std;`
+    class UsingNamespaceDirective < Statement
+      attr_accessor :namespace
+      
+      def initialize(leading_trivia: "", namespace:)
+        super(leading_trivia: leading_trivia)
+        @namespace = namespace
+      end
+      
+      def to_source
+        "#{leading_trivia}using namespace #{namespace};"
       end
     end
     
@@ -965,6 +995,99 @@ module CppAst
         else
           "#{leading_trivia}co_return;"
         end
+      end
+    end
+    
+    # CatchClause: `catch (Type& var) { ... }`
+    class CatchClause < Statement
+      attr_accessor :type, :variable, :body
+      
+      def initialize(leading_trivia: "", type:, variable:, body:)
+        super(leading_trivia: leading_trivia)
+        @type = type
+        @variable = variable
+        @body = body
+      end
+      
+      def to_source
+        "#{leading_trivia}catch (#{type.to_source} #{variable.to_source}) #{body.to_source}"
+      end
+    end
+    
+    # ElseClause: `else body`
+    class ElseClause < Statement
+      attr_accessor :body
+      
+      def initialize(leading_trivia: "", body: nil)
+        super(leading_trivia: leading_trivia)
+        @body = body
+      end
+      
+      def to_source
+        if body
+          "#{leading_trivia}else #{body.to_source}"
+        else
+          "#{leading_trivia}else"
+        end
+      end
+    end
+    
+    # ThrowStatement: `throw exception;`
+    class ThrowStatement < Statement
+      attr_accessor :expression
+      
+      def initialize(leading_trivia: "", expression:)
+        super(leading_trivia: leading_trivia)
+        @expression = expression
+      end
+      
+      def to_source
+        "#{leading_trivia}throw #{expression.to_source};"
+      end
+    end
+    
+    # TryStatement: `try { ... } catch (...) { ... }`
+    class TryStatement < Statement
+      attr_accessor :try_block, :catch_clauses
+      
+      def initialize(leading_trivia: "", try_block:, catch_clauses: [])
+        super(leading_trivia: leading_trivia)
+        @try_block = try_block
+        @catch_clauses = catch_clauses
+      end
+      
+      # Alias for backward compatibility
+      def body
+        try_block
+      end
+      
+      def to_source
+        result = "#{leading_trivia}try #{try_block.to_source}"
+        catch_clauses.each do |clause|
+          result += " #{clause.to_source}"
+        end
+        result
+      end
+    end
+    
+    # RangeForStatement: `for (auto& item : container) { ... }`
+    class RangeForStatement < Statement
+      attr_accessor :variable, :container, :body
+      
+      def initialize(leading_trivia: "", variable:, container:, body:)
+        super(leading_trivia: leading_trivia)
+        @variable = variable
+        @container = container
+        @body = body
+      end
+      
+      # Alias for backward compatibility
+      def range
+        container
+      end
+      
+      def to_source
+        "#{leading_trivia}for (#{variable.to_source} : #{container.to_source}) #{body.to_source}"
       end
     end
   end

@@ -176,9 +176,9 @@ module Aurora
         # For let expressions, we need to create a block with variable declaration
         # and then the body. This is a simplification - in real implementation
         # we'd need to handle this more carefully.
-        value = lower_expression(let.value)
+        _value = lower_expression(let.value)
         body = lower_expression(let.body)
-        
+
         # Create a block that declares the variable and returns the body
         # This is a simplified approach - real implementation would be more complex
         body

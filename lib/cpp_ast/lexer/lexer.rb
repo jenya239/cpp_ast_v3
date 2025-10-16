@@ -143,8 +143,6 @@ module CppAst
     end
     
     def scan_trivia_token
-      start_line = @line
-      start_column = @column
       char = current_char
       
       case char

@@ -189,6 +189,11 @@ module CppAst
         @operator_suffix = operator_suffix
       end
       
+      # Alias for backward compatibility
+      def member_name
+        member
+      end
+      
       def to_source
         "#{object.to_source}#{operator_prefix}#{operator}#{operator_suffix}#{member.to_source}"
       end
@@ -291,6 +296,98 @@ module CppAst
       
       def to_source
         value ? "true" : "false"
+      end
+    end
+    
+    # AssignmentExpression
+    class AssignmentExpression < Expression
+      attr_accessor :left, :operator, :right
+      
+      def initialize(left:, operator: "=", right:)
+        @left = left
+        @operator = operator
+        @right = right
+      end
+      
+      def to_source
+        "#{left.to_source} #{operator} #{right.to_source}"
+      end
+    end
+    
+    # ArrayAccessExpression
+    class ArrayAccessExpression < Expression
+      attr_accessor :array, :index
+      
+      def initialize(array:, index:)
+        @array = array
+        @index = index
+      end
+      
+      def to_source
+        "#{array.to_source}[#{index.to_source}]"
+      end
+    end
+    
+    # CastExpression
+    class CastExpression < Expression
+      attr_accessor :type, :expression
+      
+      def initialize(type:, expression:)
+        @type = type
+        @expression = expression
+      end
+      
+      def to_source
+        "(#{type.to_source})#{expression.to_source}"
+      end
+    end
+    
+    # NewExpression
+    class NewExpression < Expression
+      attr_accessor :type, :arguments
+      
+      def initialize(type:, arguments: [])
+        @type = type
+        @arguments = arguments
+      end
+      
+      def to_source
+        if arguments.empty?
+          "new #{type.to_source}"
+        else
+          "new #{type.to_source}(#{arguments.map(&:to_source).join(', ')})"
+        end
+      end
+    end
+    
+    # DeleteExpression
+    class DeleteExpression < Expression
+      attr_accessor :expression
+      
+      def initialize(expression:)
+        @expression = expression
+      end
+      
+      def to_source
+        "delete #{expression.to_source}"
+      end
+    end
+    
+    # SizeofExpression
+    class SizeofExpression < Expression
+      attr_accessor :expression
+      
+      def initialize(expression:)
+        @expression = expression
+      end
+      
+      # Alias for backward compatibility
+      def type
+        expression
+      end
+      
+      def to_source
+        "sizeof(#{expression.to_source})"
       end
     end
   end
