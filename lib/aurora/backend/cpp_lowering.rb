@@ -44,7 +44,7 @@ module Aurora
         name = func.name
         parameters = func.params.map { |param| "#{map_type(param.type)} #{param.name}" }
         body = lower_expression(func.body)
-        
+
         # Create function body as block
         block_body = CppAst::Nodes::BlockStatement.new(
           statements: [CppAst::Nodes::ReturnStatement.new(expression: body)],
@@ -52,8 +52,8 @@ module Aurora
           lbrace_suffix: "",
           rbrace_prefix: ""
         )
-        
-        CppAst::Nodes::FunctionDeclaration.new(
+
+        func_decl = CppAst::Nodes::FunctionDeclaration.new(
           return_type: return_type,
           name: name,
           parameters: parameters,
@@ -65,18 +65,65 @@ module Aurora
           modifiers_text: "",
           prefix_modifiers: ""
         )
+
+        # If function has type parameters, wrap with template declaration
+        if func.type_params.any?
+          generate_template_function(func.type_params, func_decl)
+        else
+          func_decl
+        end
+      end
+
+      def generate_template_function(type_params, func_decl)
+        # Generate: template<typename T, typename E> func_decl
+        template_params_str = type_params.map { |tp| "typename #{tp}" }.join(", ")
+
+        CppAst::Nodes::TemplateDeclaration.new(
+          template_params: template_params_str,
+          declaration: func_decl,
+          template_suffix: "",
+          less_suffix: "",
+          params_suffix: "\n"
+        )
       end
       
       def lower_type_decl(type_decl)
-        case type_decl.type
-        when CoreIR::RecordType
-          lower_record_type(type_decl.name, type_decl.type)
-        when CoreIR::SumType
-          lower_sum_type(type_decl.name, type_decl.type)
+        result = case type_decl.type
+                 when CoreIR::RecordType
+                   lower_record_type(type_decl.name, type_decl.type)
+                 when CoreIR::SumType
+                   lower_sum_type(type_decl.name, type_decl.type, type_decl.type_params)
+                 else
+                   # For primitive types, we don't need to generate anything
+                   CppAst::Nodes::Comment.new(text: "// Type alias: #{type_decl.name}")
+                 end
+
+        # If type has type parameters and result is a Program, wrap each statement with template
+        if type_decl.type_params.any? && result.is_a?(CppAst::Nodes::Program)
+          wrap_statements_with_template(type_decl.type_params, result)
         else
-          # For primitive types, we don't need to generate anything
-          CppAst::Nodes::Comment.new(text: "// Type alias: #{type_decl.name}")
+          result
         end
+      end
+
+      def wrap_statements_with_template(type_params, program)
+        # Wrap each statement (struct declarations, using) with template
+        template_params_str = type_params.map { |tp| "typename #{tp}" }.join(", ")
+
+        wrapped_statements = program.statements.map do |stmt|
+          CppAst::Nodes::TemplateDeclaration.new(
+            template_params: template_params_str,
+            declaration: stmt,
+            template_suffix: "",
+            less_suffix: "",
+            params_suffix: "\n"
+          )
+        end
+
+        CppAst::Nodes::Program.new(
+          statements: wrapped_statements,
+          statement_trailings: Array.new(wrapped_statements.size, "")
+        )
       end
       
       def lower_record_type(name, record_type)
@@ -104,7 +151,7 @@ module Aurora
         )
       end
 
-      def lower_sum_type(name, sum_type)
+      def lower_sum_type(name, sum_type, type_params = [])
         # Generate structs for each variant
         variant_structs = sum_type.variants.map do |variant|
           if variant[:fields].empty?
@@ -348,7 +395,15 @@ module Aurora
       def map_type(type)
         case type
         when CoreIR::Type
-          @type_map[type.name] || type.name
+          # Check if it's a known primitive type, otherwise treat as type parameter
+          mapped = @type_map[type.name]
+          if mapped
+            mapped
+          elsif type.name =~ /^[A-Z][a-zA-Z0-9]*$/  # Uppercase name - likely type parameter
+            type.name  # Keep as-is (e.g., "T", "E", "Result")
+          else
+            @type_map[type.name] || type.name
+          end
         when CoreIR::RecordType
           type.name
         when CoreIR::SumType

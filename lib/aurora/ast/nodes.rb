@@ -23,25 +23,27 @@ module Aurora
     
     # Type declarations
     class TypeDecl < Node
-      attr_reader :name, :type
-      
-      def initialize(name:, type:, origin: nil)
+      attr_reader :name, :type, :type_params
+
+      def initialize(name:, type:, type_params: [], origin: nil)
         super(origin: origin)
         @name = name
         @type = type
+        @type_params = type_params  # Array of String (type parameter names)
       end
     end
     
     # Function declarations
     class FuncDecl < Node
-      attr_reader :name, :params, :ret_type, :body
-      
-      def initialize(name:, params:, ret_type:, body:, origin: nil)
+      attr_reader :name, :params, :ret_type, :body, :type_params
+
+      def initialize(name:, params:, ret_type:, body:, type_params: [], origin: nil)
         super(origin: origin)
         @name = name
         @params = params
         @ret_type = ret_type
         @body = body
+        @type_params = type_params  # Array of String (type parameter names)
       end
     end
     

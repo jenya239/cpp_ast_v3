@@ -45,22 +45,31 @@ module Aurora
       def parse_function
         consume(:FN)
         name = consume(:IDENTIFIER).value
-        
+
+        # Parse optional type parameters: fn identity<T>(x: T) -> T
+        type_params = []
+        if current.type == :OPERATOR && current.value == "<"
+          consume(:OPERATOR)  # <
+          type_params = parse_type_params
+          expect_operator(">")
+        end
+
         consume(:LPAREN)
         params = parse_params
         consume(:RPAREN)
-        
+
         consume(:ARROW)
         ret_type = parse_type
-        
+
         consume(:EQUAL)
         body = parse_expression
-        
+
         AST::FuncDecl.new(
           name: name,
           params: params,
           ret_type: ret_type,
-          body: body
+          body: body,
+          type_params: type_params
         )
       end
       
@@ -87,6 +96,15 @@ module Aurora
       def parse_type_decl
         consume(:TYPE)
         name = consume(:IDENTIFIER).value
+
+        # Parse optional type parameters: type Option<T> = ...
+        type_params = []
+        if current.type == :OPERATOR && current.value == "<"
+          consume(:OPERATOR)  # <
+          type_params = parse_type_params
+          expect_operator(">")
+        end
+
         consume(:EQUAL)
 
         type = case current.type
@@ -108,7 +126,26 @@ module Aurora
                  parse_type
                end
 
-        AST::TypeDecl.new(name: name, type: type)
+        AST::TypeDecl.new(name: name, type: type, type_params: type_params)
+      end
+
+      def parse_type_params
+        # Parse comma-separated list of type parameters: T, E, R
+        params = []
+        loop do
+          params << consume(:IDENTIFIER).value
+          break unless current.type == :COMMA
+          consume(:COMMA)
+        end
+        params
+      end
+
+      def expect_operator(op)
+        if current.type == :OPERATOR && current.value == op
+          consume(:OPERATOR)
+        else
+          raise "Expected operator '#{op}', got #{current.type}(#{current.value})"
+        end
       end
 
       def parse_type_or_sum

@@ -47,20 +47,21 @@ module Aurora
       
       def transform_type_decl(decl)
         type = transform_type(decl.type)
-        CoreIR::TypeDecl.new(name: decl.name, type: type)
+        CoreIR::TypeDecl.new(name: decl.name, type: type, type_params: decl.type_params)
       end
       
       def transform_function(func)
         params = func.params.map { |param| transform_param(param) }
         ret_type = transform_type(func.ret_type)
         body = transform_expression(func.body)
-        
+
         CoreIR::Func.new(
           name: func.name,
           params: params,
           ret_type: ret_type,
           body: body,
-          effects: infer_effects(body)
+          effects: infer_effects(body),
+          type_params: func.type_params
         )
       end
       
@@ -72,7 +73,18 @@ module Aurora
       def transform_type(type)
         case type
         when AST::PrimType
+          # Check if this is a type parameter (uppercase single letter like T, E, R)
+          # or starts with uppercase (could be a type parameter)
+          # For now, treat all PrimTypes the same - will be resolved by C++ compiler
           CoreIR::Builder.primitive_type(type.name)
+        when AST::GenericType
+          # Generic type like Option<T> or Result<T, E>
+          # In C++, this becomes: Option<T> (template instantiation)
+          # For CoreIR, we represent as a special generic type
+          base_name = type.base_type.name
+          type_arg_names = type.type_params.map { |tp| transform_type(tp).name }.join(", ")
+          # Create a synthetic name for the instantiated generic type
+          CoreIR::Builder.primitive_type("#{base_name}<#{type_arg_names}>")
         when AST::RecordType
           fields = type.fields.map { |field| {name: field[:name], type: transform_type(field[:type])} }
           CoreIR::Builder.record_type(type.name, fields)

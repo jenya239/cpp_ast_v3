@@ -81,15 +81,16 @@ module Aurora
     
     # Function declaration
     class Func < Node
-      attr_reader :name, :params, :ret_type, :body, :effects
-      
-      def initialize(name:, params:, ret_type:, body:, effects: [], origin: nil)
+      attr_reader :name, :params, :ret_type, :body, :effects, :type_params
+
+      def initialize(name:, params:, ret_type:, body:, effects: [], type_params: [], origin: nil)
         super(origin: origin)
         @name = name
         @params = params  # Array of Param
         @ret_type = ret_type
         @body = body
         @effects = effects  # Array of :noexcept, :constexpr, etc.
+        @type_params = type_params  # Array of String (type parameter names)
       end
     end
     
@@ -242,12 +243,13 @@ module Aurora
     
     # Type declaration
     class TypeDecl < Node
-      attr_reader :name, :type
+      attr_reader :name, :type, :type_params
 
-      def initialize(name:, type:, origin: nil)
+      def initialize(name:, type:, type_params: [], origin: nil)
         super(origin: origin)
         @name = name
         @type = type
+        @type_params = type_params  # Array of String (type parameter names)
       end
     end
 
