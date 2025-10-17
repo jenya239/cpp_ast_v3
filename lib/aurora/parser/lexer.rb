@@ -20,7 +20,7 @@ module Aurora
     class Lexer
       KEYWORDS = %w[
         fn type let return if then else while for in do match
-        i32 f32 bool void str module export import enum
+        i32 f32 bool void str module export import enum from as
       ].freeze
       
       OPERATORS = %w[

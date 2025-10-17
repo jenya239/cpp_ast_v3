@@ -35,38 +35,42 @@ module Aurora
 
     # Import declaration
     class ImportDecl < Node
-      attr_reader :path, :items
+      attr_reader :path, :items, :import_all, :alias
 
-      def initialize(path:, items: nil, origin: nil)
+      def initialize(path:, items: nil, import_all: false, alias_name: nil, origin: nil)
         super(origin: origin)
-        @path = path    # String (e.g., "Math::Vector")
-        @items = items  # nil (import all) or Array of String (selective import)
+        @path = path           # String (e.g., "Math", "Math::Vector")
+        @items = items         # Array of String (selective import) or nil
+        @import_all = import_all  # Boolean - import * as ...
+        @alias = alias_name    # String or nil - alias for import * as X
       end
     end
     
     # Type declarations
     class TypeDecl < Node
-      attr_reader :name, :type, :type_params
+      attr_reader :name, :type, :type_params, :exported
 
-      def initialize(name:, type:, type_params: [], origin: nil)
+      def initialize(name:, type:, type_params: [], exported: false, origin: nil)
         super(origin: origin)
         @name = name
         @type = type
         @type_params = type_params  # Array of String (type parameter names)
+        @exported = exported        # Boolean - is this exported?
       end
     end
-    
+
     # Function declarations
     class FuncDecl < Node
-      attr_reader :name, :params, :ret_type, :body, :type_params
+      attr_reader :name, :params, :ret_type, :body, :type_params, :exported
 
-      def initialize(name:, params:, ret_type:, body:, type_params: [], origin: nil)
+      def initialize(name:, params:, ret_type:, body:, type_params: [], exported: false, origin: nil)
         super(origin: origin)
         @name = name
         @params = params
         @ret_type = ret_type
         @body = body
         @type_params = type_params  # Array of String (type parameter names)
+        @exported = exported        # Boolean - is this exported?
       end
     end
     

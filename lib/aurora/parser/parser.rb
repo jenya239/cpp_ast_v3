@@ -40,6 +40,21 @@ module Aurora
         # Parse declarations
         while !eof?
           case current.type
+          when :EXPORT
+            # Parse exported declaration
+            consume(:EXPORT)
+            case current.type
+            when :FN
+              func = parse_function
+              func.instance_variable_set(:@exported, true)
+              declarations << func
+            when :TYPE
+              type_decl = parse_type_decl
+              type_decl.instance_variable_set(:@exported, true)
+              declarations << type_decl
+            else
+              raise "Expected FN or TYPE after export, got #{current.type}"
+            end
           when :FN
             declarations << parse_function
           when :TYPE
@@ -64,13 +79,19 @@ module Aurora
 
       def parse_import_decl
         consume(:IMPORT)
-        path = parse_module_path
 
-        # Check for selective imports: import Math::{sqrt, pow}
+        # Three syntaxes:
+        # 1. import { add, subtract } from Math
+        # 2. import * as Math from Math
+        # 3. import Math (backward compat)
+
         items = nil
-        if current.type == :COLON
-          consume(:COLON)
-          consume(:COLON)
+        import_all = false
+        alias_name = nil
+        path = nil
+
+        if current.type == :LBRACE
+          # Syntax 1: import { add, subtract } from Math
           consume(:LBRACE)
           items = []
           loop do
@@ -79,9 +100,41 @@ module Aurora
             consume(:COMMA)
           end
           consume(:RBRACE)
+          consume(:FROM)
+          path = parse_module_path
+        elsif current.type == :OPERATOR && current.value == "*"
+          # Syntax 2: import * as Math from Math
+          consume(:OPERATOR)  # *
+          consume(:AS)
+          alias_name = consume(:IDENTIFIER).value
+          consume(:FROM)
+          path = parse_module_path
+          import_all = true
+        else
+          # Syntax 3 (backward compat): import Math or import Math::{...}
+          path = parse_module_path
+
+          # Check for old-style selective imports: import Math::{sqrt, pow}
+          if current.type == :COLON
+            consume(:COLON)
+            consume(:COLON)
+            consume(:LBRACE)
+            items = []
+            loop do
+              items << consume(:IDENTIFIER).value
+              break if current.type != :COMMA
+              consume(:COMMA)
+            end
+            consume(:RBRACE)
+          end
         end
 
-        AST::ImportDecl.new(path: path, items: items)
+        AST::ImportDecl.new(
+          path: path,
+          items: items,
+          import_all: import_all,
+          alias_name: alias_name
+        )
       end
 
       def parse_module_path
