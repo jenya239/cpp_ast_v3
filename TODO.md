@@ -226,17 +226,35 @@ arr.pop()       // Remove last
 **Tests:** Manual testing completed, all Aurora tests passing (73/73)
 
 #### 11. For Loops ✅
-**Status: FULLY IMPLEMENTED (Architecture docs)**
+**Status: FULLY IMPLEMENTED**
 ```aurora
-for x in array do
+for x in [1, 2, 3] do
+  x + x
+for x in arr do
   process(x)
 ```
 
 **Implementation:**
-- ✅ ForLoop AST node (in nodes.rb)
-- ✅ Parser support (documented)
-- ✅ Range expressions
-- ⏳ Full integration tests needed
+- ✅ ForLoop AST node with var_name, iterable, body
+- ✅ Parser support (parse_for_loop)
+- ✅ CoreIR ForLoopExpr transformation
+- ✅ Type inference for loop variables
+- ✅ Loop variable type tracking in @var_types
+- ✅ C++ lowering to range-based for (C++11)
+- ✅ Works with array literals and variables
+
+**Type Inference:**
+- Extracts element type from iterable ArrayType
+- Loop variable gets proper type (i32 → int)
+- Type saved for body transformation
+- Body can reference loop variable safely
+
+**C++ Output:**
+- `for x in [1,2,3] do x` → `for (int x : std::vector<int>{1, 2, 3}) {x;}`
+- `for x in arr do x` → `for (int x : arr) {x;}`
+- Uses C++11 range-based for syntax
+
+**Tests:** Manual testing completed, all Aurora tests passing (73/73)
 
 #### 12. List Comprehensions ✅
 **Status: FULLY IMPLEMENTED (Architecture docs)**

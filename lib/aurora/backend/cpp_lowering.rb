@@ -5,6 +5,13 @@ require_relative "../core_ir/nodes"
 
 module Aurora
   module Backend
+    # Simple variable representation for range-based for loops
+    ForLoopVariable = Struct.new(:type_str, :name) do
+      def to_source
+        "#{type_str} #{name}"
+      end
+    end
+
     class CppLowering
       def initialize
         @type_map = {
@@ -239,6 +246,8 @@ module Aurora
           lower_array_literal(expr)
         when CoreIR::IndexExpr
           lower_index(expr)
+        when CoreIR::ForLoopExpr
+          lower_for_loop(expr)
         else
           raise "Unknown expression: #{expr.class}"
         end
@@ -422,6 +431,35 @@ module Aurora
         CppAst::Nodes::ArraySubscriptExpression.new(
           array: array,
           index: index
+        )
+      end
+
+      def lower_for_loop(for_loop)
+        # Generate C++ range-based for: for (type var : container) { body }
+
+        # Lower the container/iterable
+        container = lower_expression(for_loop.iterable)
+
+        # Create variable representation for range-for
+        var_type_str = map_type(for_loop.var_type)
+        variable = ForLoopVariable.new(var_type_str, for_loop.var_name)
+
+        # Lower the body - wrap in BlockStatement if needed
+        body_expr = lower_expression(for_loop.body)
+
+        # Wrap body in block statement
+        # Note: For now, for loop body is an expression, so we create a statement from it
+        body_stmt = CppAst::Nodes::ExpressionStatement.new(expression: body_expr)
+        compound_body = CppAst::Nodes::BlockStatement.new(
+          statements: [body_stmt],
+          statement_trailings: [";"]
+        )
+
+        # Create range-based for statement
+        CppAst::Nodes::RangeForStatement.new(
+          variable: variable,
+          container: container,
+          body: compound_body
         )
       end
 

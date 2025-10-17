@@ -179,6 +179,8 @@ module Aurora
           transform_array_literal(expr)
         when AST::IndexAccess
           transform_index_access(expr)
+        when AST::ForLoop
+          transform_for_loop(expr)
         else
           raise "Unknown expression: #{expr.class}"
         end
@@ -283,6 +285,35 @@ module Aurora
           params: params,
           body: body,
           function_type: function_type
+        )
+      end
+
+      def transform_for_loop(for_loop)
+        # Transform for loop: for x in iterable do body
+        iterable = transform_expression(for_loop.iterable)
+
+        # Infer element type from iterable type
+        var_type = if iterable.type.is_a?(CoreIR::ArrayType)
+                     iterable.type.element_type
+                   else
+                     # Default fallback
+                     CoreIR::Builder.primitive_type("i32")
+                   end
+
+        # Save loop variable type for body transformation
+        @var_types[for_loop.var_name] = var_type
+
+        # Transform body
+        body = transform_expression(for_loop.body)
+
+        # Cleanup
+        @var_types.delete(for_loop.var_name)
+
+        CoreIR::ForLoopExpr.new(
+          var_name: for_loop.var_name,
+          var_type: var_type,
+          iterable: iterable,
+          body: body
         )
       end
 
