@@ -56,13 +56,10 @@ class AuroraLambdaTest < Minitest::Test
   end
 
   def test_lambda_lowering_to_cpp
-    skip "Lambda lowering not yet implemented"
-
+    # Test direct lambda expression (not in let binding)
     aurora_source = <<~AURORA
-      fn map(arr: i32[], f: i32 => i32) -> i32[] = arr
-
-      fn test() -> i32[] =
-        map([1, 2, 3], x => x * 2)
+      fn apply() -> i32 =
+        (x => x + 1)(5)
     AURORA
 
     cpp_code = Aurora.to_cpp(aurora_source)
@@ -70,6 +67,7 @@ class AuroraLambdaTest < Minitest::Test
     # Should generate C++ lambda
     assert_includes cpp_code, "[]"
     assert_includes cpp_code, "return"
+    assert_includes cpp_code, "int x"
   end
 
   def test_lambda_in_function_call

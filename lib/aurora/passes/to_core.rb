@@ -124,10 +124,15 @@ module Aurora
           type = infer_type(expr.name)
           CoreIR::Builder.var(expr.name, type)
         when AST::BinaryOp
-          left = transform_expression(expr.left)
-          right = transform_expression(expr.right)
-          type = infer_binary_type(expr.op, left.type, right.type)
-          CoreIR::Builder.binary(expr.op, left, right, type)
+          # Check if this is a pipe operator - desugar it
+          if expr.op == "|>"
+            transform_pipe(expr)
+          else
+            left = transform_expression(expr.left)
+            right = transform_expression(expr.right)
+            type = infer_binary_type(expr.op, left.type, right.type)
+            CoreIR::Builder.binary(expr.op, left, right, type)
+          end
         when AST::Call
           callee = transform_expression(expr.callee)
           args = expr.args.map { |arg| transform_expression(arg) }
@@ -163,9 +168,94 @@ module Aurora
           # Type inference: use type from first arm body
           type = arms.first[:body].type
           CoreIR::Builder.match_expr(scrutinee, arms, type)
+        when AST::Lambda
+          transform_lambda(expr)
+        when AST::ArrayLiteral
+          transform_array_literal(expr)
         else
           raise "Unknown expression: #{expr.class}"
         end
+      end
+
+      def transform_pipe(pipe_expr)
+        # Desugar pipe operator: left |> right
+        # If right is a function call, insert left as first argument
+        # Otherwise, treat right as function name and create call with left
+
+        left = transform_expression(pipe_expr.left)
+
+        if pipe_expr.right.is_a?(AST::Call)
+          # right is f(args) => transform to f(left, args)
+          callee = transform_expression(pipe_expr.right.callee)
+          args = pipe_expr.right.args.map { |arg| transform_expression(arg) }
+
+          # Insert left as first argument
+          all_args = [left] + args
+
+          # Infer return type
+          type = infer_call_type(callee, all_args)
+
+          CoreIR::Builder.call(callee, all_args, type)
+        else
+          # right is just a function name => f(left)
+          callee = transform_expression(pipe_expr.right)
+          type = infer_call_type(callee, [left])
+
+          CoreIR::Builder.call(callee, [left], type)
+        end
+      end
+
+      def transform_array_literal(array_lit)
+        # Transform each element
+        elements = array_lit.elements.map { |elem| transform_expression(elem) }
+
+        # Infer element type from first element (or default to i32)
+        element_type = if elements.any?
+                         elements.first.type
+                       else
+                         CoreIR::Builder.primitive_type("i32")
+                       end
+
+        # Create array type
+        array_type = CoreIR::ArrayType.new(element_type: element_type)
+
+        CoreIR::ArrayLiteralExpr.new(
+          elements: elements,
+          type: array_type
+        )
+      end
+
+      def transform_lambda(lambda_expr)
+        # Transform lambda parameters
+        params = lambda_expr.params.map do |param_name|
+          # For now, infer param type as i32 (will be improved with proper type inference)
+          param_type = CoreIR::Builder.primitive_type("i32")
+          CoreIR::Param.new(name: param_name, type: param_type)
+        end
+
+        # Transform body
+        body = transform_expression(lambda_expr.body)
+
+        # Infer return type from body
+        ret_type = body.type
+
+        # Build function type
+        param_types = params.map { |p| {name: p.name, type: p.type} }
+        function_type = CoreIR::FunctionType.new(
+          params: param_types,
+          ret_type: ret_type
+        )
+
+        # For now, no captures (simple lambdas only)
+        # TODO: Implement proper capture analysis
+        captures = []
+
+        CoreIR::LambdaExpr.new(
+          captures: captures,
+          params: params,
+          body: body,
+          function_type: function_type
+        )
       end
 
       def transform_pattern(pattern)

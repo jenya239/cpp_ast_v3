@@ -45,8 +45,6 @@ class AuroraPipeOperatorTest < Minitest::Test
   end
 
   def test_pipe_lowering
-    skip "Pipe lowering not implemented yet"
-
     aurora_source = <<~AURORA
       fn double(x: i32) -> i32 = x + x
 

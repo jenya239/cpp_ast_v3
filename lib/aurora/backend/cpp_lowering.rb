@@ -213,7 +213,7 @@ module Aurora
       
       def lower_expression(expr)
         return CppAst::Nodes::NumberLiteral.new(value: "0") if expr.nil?
-        
+
         case expr
         when CoreIR::LiteralExpr
           lower_literal(expr)
@@ -233,6 +233,10 @@ module Aurora
           lower_if(expr)
         when CoreIR::MatchExpr
           lower_match(expr)
+        when CoreIR::LambdaExpr
+          lower_lambda(expr)
+        when CoreIR::ArrayLiteralExpr
+          lower_array_literal(expr)
         else
           raise "Unknown expression: #{expr.class}"
         end
@@ -350,6 +354,68 @@ module Aurora
           value: scrutinee,
           arms: arms,
           arm_separators: Array.new([arms.size - 1, 0].max, ",\n")
+        )
+      end
+
+      def lower_array_literal(array_lit)
+        # Generate C++ std::vector initializer list
+        # Example: std::vector<int>{1, 2, 3}
+
+        # Get element type
+        element_type = map_type(array_lit.type.element_type)
+
+        # Lower each element
+        elements = array_lit.elements.map { |elem| lower_expression(elem) }
+
+        # Generate brace initializer: std::vector<int>{1, 2, 3}
+        CppAst::Nodes::BraceInitializerExpression.new(
+          type: "std::vector<#{element_type}>",
+          arguments: elements,
+          argument_separators: elements.size > 1 ? Array.new(elements.size - 1, ", ") : []
+        )
+      end
+
+      def lower_lambda(lambda_expr)
+        # Generate C++ lambda: [captures](params) { return body; }
+
+        # Build capture clause (without brackets)
+        if lambda_expr.captures.empty?
+          capture = ""
+        else
+          # Build capture list
+          captures = lambda_expr.captures.map do |cap|
+            case cap[:mode]
+            when :ref
+              "&#{cap[:name]}"
+            when :value
+              cap[:name]
+            else
+              cap[:name]
+            end
+          end
+          capture = captures.join(', ')
+        end
+
+        # Build parameter list
+        params_str = lambda_expr.params.map do |param|
+          "#{map_type(param.type)} #{param.name}"
+        end.join(", ")
+
+        # Lower body
+        body_expr = lower_expression(lambda_expr.body)
+
+        # Build body string with return statement
+        body_str = "return #{body_expr.to_source};"
+
+        # Create C++ lambda expression
+        # LambdaExpression expects strings for parameters, not array
+        CppAst::Nodes::LambdaExpression.new(
+          capture: capture,
+          parameters: params_str,
+          specifiers: "",
+          body: body_str,
+          capture_suffix: "",
+          params_suffix: " "
         )
       end
 
