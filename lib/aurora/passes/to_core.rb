@@ -172,6 +172,8 @@ module Aurora
           transform_lambda(expr)
         when AST::ArrayLiteral
           transform_array_literal(expr)
+        when AST::IndexAccess
+          transform_index_access(expr)
         else
           raise "Unknown expression: #{expr.class}"
         end
@@ -222,6 +224,27 @@ module Aurora
         CoreIR::ArrayLiteralExpr.new(
           elements: elements,
           type: array_type
+        )
+      end
+
+      def transform_index_access(index_access)
+        # Transform array indexing: arr[index]
+        object = transform_expression(index_access.object)
+        index = transform_expression(index_access.index)
+
+        # Infer result type
+        # If object is an array, result type is the element type
+        result_type = if object.type.is_a?(CoreIR::ArrayType)
+                        object.type.element_type
+                      else
+                        # Default fallback
+                        CoreIR::Builder.primitive_type("i32")
+                      end
+
+        CoreIR::IndexExpr.new(
+          object: object,
+          index: index,
+          type: result_type
         )
       end
 

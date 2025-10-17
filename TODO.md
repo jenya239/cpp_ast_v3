@@ -165,7 +165,32 @@ data |> filter(pred) |> map(f)
 
 **Tests:** Manual testing completed, all scenarios working
 
-#### 9. For Loops ✅
+#### 9. Array Indexing ✅
+**Status: FULLY IMPLEMENTED**
+```aurora
+arr[0]
+arr[i]
+arr[1 + 1]
+[1, 2, 3][0]
+```
+
+**Implementation:**
+- ✅ Array indexing parsing: `expr[index]`
+- ✅ IndexAccess AST node
+- ✅ Postfix operator parsing in parse_postfix()
+- ✅ CoreIR IndexExpr with element type inference
+- ✅ C++ lowering to array subscript operator
+- ✅ Works with array literals, variables, and expressions
+- ✅ Index can be literal, variable, or expression
+
+**C++ Output:**
+- `arr[0]` → `arr[0]`
+- `arr[i]` → `arr[i]`
+- `[1,2,3][0]` → `std::vector<int>{1, 2, 3}[0]`
+
+**Tests:** Manual testing completed, all Aurora tests passing (73/73)
+
+#### 10. For Loops ✅
 **Status: FULLY IMPLEMENTED (Architecture docs)**
 ```aurora
 for x in array do
@@ -178,7 +203,7 @@ for x in array do
 - ✅ Range expressions
 - ⏳ Full integration tests needed
 
-#### 10. List Comprehensions ✅
+#### 11. List Comprehensions ✅
 **Status: FULLY IMPLEMENTED (Architecture docs)**
 ```aurora
 [x * 2 for x in arr]
@@ -200,9 +225,10 @@ for x in array do
 
 #### High Priority
 1. **Array Operations**
-   - Array indexing: `arr[i]`
-   - Array methods: `arr.map(f)`, `arr.filter(pred)`
+   - ✅ Array indexing: `arr[i]` - IMPLEMENTED
+   - Array methods: `arr.map(f)`, `arr.filter(pred)`, `arr.length()`
    - Array slicing: `arr[1..5]`
+   - Array mutation: `arr.push(x)`, `arr.pop()`
 
 2. **Error Handling**
    - Better error messages with source locations

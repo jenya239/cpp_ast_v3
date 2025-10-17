@@ -175,14 +175,25 @@ module Aurora
     # Member access
     class MemberExpr < Expr
       attr_reader :object, :member
-      
+
       def initialize(object:, member:, type:, origin: nil)
         super(kind: :member, data: {object: object, member: member}, type: type, origin: origin)
         @object = object
         @member = member
       end
     end
-    
+
+    # Index access (array indexing)
+    class IndexExpr < Expr
+      attr_reader :object, :index
+
+      def initialize(object:, index:, type:, origin: nil)
+        super(kind: :index, data: {object: object, index: index}, type: type, origin: origin)
+        @object = object  # Expr - array being indexed
+        @index = index    # Expr - index expression
+      end
+    end
+
     # Let binding
     class LetExpr < Expr
       attr_reader :name, :value, :body

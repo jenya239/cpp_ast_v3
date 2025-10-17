@@ -237,6 +237,8 @@ module Aurora
           lower_lambda(expr)
         when CoreIR::ArrayLiteralExpr
           lower_array_literal(expr)
+        when CoreIR::IndexExpr
+          lower_index(expr)
         else
           raise "Unknown expression: #{expr.class}"
         end
@@ -372,6 +374,17 @@ module Aurora
           type: "std::vector<#{element_type}>",
           arguments: elements,
           argument_separators: elements.size > 1 ? Array.new(elements.size - 1, ", ") : []
+        )
+      end
+
+      def lower_index(index_expr)
+        # Generate C++ array subscript: arr[index]
+        array = lower_expression(index_expr.object)
+        index = lower_expression(index_expr.index)
+
+        CppAst::Nodes::ArraySubscriptExpression.new(
+          array: array,
+          index: index
         )
       end
 

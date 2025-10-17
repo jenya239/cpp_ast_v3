@@ -731,7 +731,7 @@ module Aurora
       def parse_postfix
         expr = parse_primary
 
-        # Handle member access and method calls
+        # Handle member access, method calls, and array indexing
         loop do
           case current.type
           when :OPERATOR
@@ -757,6 +757,12 @@ module Aurora
             else
               break
             end
+          when :LBRACKET
+            # Array indexing: expr[index]
+            consume(:LBRACKET)
+            index = parse_expression
+            consume(:RBRACKET)
+            expr = AST::IndexAccess.new(object: expr, index: index)
           else
             break
           end
