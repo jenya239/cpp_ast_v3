@@ -175,8 +175,21 @@ module Aurora
       end
 
       def module_path_to_header(path)
-        # Convert Math::Vector -> math/vector.hpp
-        path.split("::").map(&:downcase).join("/") + ".hpp"
+        # Handle three cases:
+        # 1. File path: "./math" -> "math.hpp"
+        # 2. File path: "../core/utils" -> "../core/utils.hpp"
+        # 3. Module name: "Math::Vector" -> "math/vector.hpp"
+
+        if path.start_with?("./", "../", "/")
+          # It's a file path - just add .hpp if needed
+          path.end_with?(".hpp") ? path : path + ".hpp"
+        elsif path.include?("::")
+          # Module path: Math::Vector -> math/vector.hpp
+          path.split("::").map(&:downcase).join("/") + ".hpp"
+        else
+          # Simple name: Math -> math.hpp
+          path.downcase + ".hpp"
+        end
       end
 
       def module_name_to_namespace(name)

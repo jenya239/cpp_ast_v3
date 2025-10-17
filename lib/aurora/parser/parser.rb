@@ -80,10 +80,11 @@ module Aurora
       def parse_import_decl
         consume(:IMPORT)
 
-        # Three syntaxes:
-        # 1. import { add, subtract } from Math
-        # 2. import * as Math from Math
-        # 3. import Math (backward compat)
+        # Four syntaxes:
+        # 1. import { add, subtract } from "./math"  (ESM with file path)
+        # 2. import * as Math from "./math"          (ESM wildcard with file path)
+        # 3. import Math (backward compat - module name)
+        # 4. import Math::{...} (backward compat - module name with selective)
 
         items = nil
         import_all = false
@@ -91,7 +92,7 @@ module Aurora
         path = nil
 
         if current.type == :LBRACE
-          # Syntax 1: import { add, subtract } from Math
+          # Syntax 1: import { add, subtract } from "./math"
           consume(:LBRACE)
           items = []
           loop do
@@ -101,17 +102,17 @@ module Aurora
           end
           consume(:RBRACE)
           consume(:FROM)
-          path = parse_module_path
+          path = parse_import_path  # Can be string or identifier
         elsif current.type == :OPERATOR && current.value == "*"
-          # Syntax 2: import * as Math from Math
+          # Syntax 2: import * as Math from "./math"
           consume(:OPERATOR)  # *
           consume(:AS)
           alias_name = consume(:IDENTIFIER).value
           consume(:FROM)
-          path = parse_module_path
+          path = parse_import_path  # Can be string or identifier
           import_all = true
         else
-          # Syntax 3 (backward compat): import Math or import Math::{...}
+          # Syntax 3-4 (backward compat): import Math or import Math::{...}
           path = parse_module_path
 
           # Check for old-style selective imports: import Math::{sqrt, pow}
@@ -135,6 +136,15 @@ module Aurora
           import_all: import_all,
           alias_name: alias_name
         )
+      end
+
+      def parse_import_path
+        # Can be string literal (ESM-style) or identifier (backward compat)
+        if current.type == :STRING_LITERAL
+          consume(:STRING_LITERAL).value
+        else
+          parse_module_path
+        end
       end
 
       def parse_module_path

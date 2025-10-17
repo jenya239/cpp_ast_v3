@@ -212,4 +212,89 @@ class AuroraESMModulesTest < Minitest::Test
     # Should generate #include
     assert_includes result[:header], '#include "math/geometry.hpp"'
   end
+
+  def test_parse_esm_import_with_relative_path
+    aurora_source = <<~AURORA
+      import { add } from "./math"
+
+      fn test() -> i32 = 0
+    AURORA
+
+    ast = Aurora.parse(aurora_source)
+
+    import_decl = ast.imports[0]
+    assert_equal "./math", import_decl.path
+    assert_equal ["add"], import_decl.items
+  end
+
+  def test_parse_esm_import_with_parent_path
+    aurora_source = <<~AURORA
+      import { Utils } from "../core/utils"
+
+      fn test() -> i32 = 0
+    AURORA
+
+    ast = Aurora.parse(aurora_source)
+
+    import_decl = ast.imports[0]
+    assert_equal "../core/utils", import_decl.path
+    assert_equal ["Utils"], import_decl.items
+  end
+
+  def test_parse_esm_wildcard_import_with_path
+    aurora_source = <<~AURORA
+      import * as Math from "./math"
+
+      fn test() -> i32 = 0
+    AURORA
+
+    ast = Aurora.parse(aurora_source)
+
+    import_decl = ast.imports[0]
+    assert_equal "./math", import_decl.path
+    assert import_decl.import_all
+    assert_equal "Math", import_decl.alias
+  end
+
+  def test_generate_include_from_file_path
+    aurora_source = <<~AURORA
+      import { add } from "./math"
+
+      export fn test() -> i32 = 0
+    AURORA
+
+    result = Aurora.to_hpp_cpp(aurora_source)
+
+    # File path should be preserved in #include
+    assert_includes result[:header], '#include "./math.hpp"'
+  end
+
+  def test_generate_include_from_parent_path
+    aurora_source = <<~AURORA
+      import { Utils } from "../core/utils"
+
+      export fn test() -> i32 = 0
+    AURORA
+
+    result = Aurora.to_hpp_cpp(aurora_source)
+
+    assert_includes result[:header], '#include "../core/utils.hpp"'
+  end
+
+  def test_mixed_import_styles
+    aurora_source = <<~AURORA
+      import { add } from "./math"
+      import { Point } from Geometry
+      import * as Utils from "../utils"
+
+      export fn test() -> i32 = 0
+    AURORA
+
+    ast = Aurora.parse(aurora_source)
+
+    assert_equal 3, ast.imports.length
+    assert_equal "./math", ast.imports[0].path
+    assert_equal "Geometry", ast.imports[1].path
+    assert_equal "../utils", ast.imports[2].path
+  end
 end

@@ -48,7 +48,7 @@ puts "Example 2: Named Imports (ESM-style)"
 puts "-" * 80
 
 aurora_source_2 = <<~AURORA
-  import { add, multiply } from Math
+  import { add, multiply } from "./math"
 
   export fn calculate(x: i32, y: i32) -> i32 =
     add(x, y) |> multiply(2)
@@ -72,7 +72,7 @@ puts "Example 3: Wildcard Imports (import * as ...)"
 puts "-" * 80
 
 aurora_source_3 = <<~AURORA
-  import * as Math from Math
+  import * as Math from "./math"
 
   export fn process(x: i32) -> i32 =
     Math::add(x, 10)
@@ -127,9 +127,9 @@ puts "Example 5: Complete Module with Multiple Imports"
 puts "-" * 80
 
 aurora_source_5 = <<~AURORA
-  import { Point } from Geometry
-  import { sqrt } from Math
-  import * as Utils from Utils
+  import { Point } from "./geometry"
+  import { sqrt } from "./math"
+  import * as Utils from "../utils"
 
   export fn distance(p1: Point, p2: Point) -> f32 =
     sqrt((p2.x - p1.x) * (p2.x - p1.x) + (p2.y - p1.y) * (p2.y - p1.y))
@@ -158,15 +158,16 @@ puts "  •                   export type Point = { x: f32 }"
 puts "  • Private by default (no export keyword)"
 puts
 puts "✅ Imports:"
-puts "  • Named imports:    import { add, multiply } from Math"
-puts "  • Wildcard import:  import * as Math from Math"
-puts "  • Backward compat:  import Math  (old style)"
-puts "  •                   import Math::{add, multiply}  (old style)"
+puts "  • Named imports:    import { add, multiply } from \"./math\""
+puts "  • Wildcard import:  import * as Math from \"./math\""
+puts "  • Relative paths:   \"./file\", \"../parent\", \"/absolute\""
+puts "  • Backward compat:  import Math  (module name)"
 puts
-puts "✅ Module Paths:"
-puts "  • Simple:           Math → #include \"math.hpp\""
-puts "  • Nested:           Math::Vector → #include \"math/vector.hpp\""
-puts "  • Multiple levels:  App::Core::DB → #include \"app/core/db.hpp\""
+puts "✅ File Paths:"
+puts "  • Relative:         \"./math\" → #include \"./math.hpp\""
+puts "  • Parent:           \"../core/utils\" → #include \"../core/utils.hpp\""
+puts "  • Module name:      Math::Vector → #include \"math/vector.hpp\""
+puts "  • No ambiguity - explicit file paths like ESM!"
 puts
 puts "✅ C++ Generation:"
 puts "  • Header guards:    #ifndef MATH_HPP"

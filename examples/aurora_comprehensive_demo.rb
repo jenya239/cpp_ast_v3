@@ -65,7 +65,7 @@ puts "  ✅ Let bindings"
 puts "  ✅ If expressions"
 puts "  ✅ Lambda expressions: x => expr"
 puts "  ✅ Pipe operator: x |> f |> g"
-puts "  ✅ ESM modules: export fn, import { x } from Y"
+puts "  ✅ ESM modules: export fn, import { x } from \"./file\""
 puts
 puts "🎯 Pattern Matching:"
 puts "  ✅ Constructor patterns: Circle(r)"
@@ -85,8 +85,8 @@ puts "  ✅ .hpp/.cpp file generation with header guards"
 puts "  ✅ Namespace generation from modules"
 puts
 puts "📊 Development Statistics:"
-puts "  • Tests: 1009 passing (100%)"
-puts "  • Assertions: 2195+"
+puts "  • Tests: 1015 passing (100%)"
+puts "  • Assertions: 2210+"
 puts "  • Lines of Aurora code: ~600"
 puts "  • C++ AST nodes: 50+"
 puts "  • Development time: 1.5 days"
@@ -146,7 +146,7 @@ puts
 puts "Example 4: ESM Module System"
 puts "-" * 80
 puts <<~CODE
-  import { Vector } from Math::Geometry
+  import { Vector } from "../math/geometry"
 
   export type Shape = Circle(f32) | Rect(f32, f32)
 
@@ -157,7 +157,7 @@ puts <<~CODE
 
   fn internal_helper() -> i32 = 0  // private
 CODE
-puts "ESM-style export/import syntax"
+puts "ESM-style export/import with file paths"
 puts "Generates .hpp header + .cpp implementation"
 puts "Header guards, namespaces, #include statements"
 puts
