@@ -7,6 +7,7 @@ require_relative "aurora/parser/lexer"
 require_relative "aurora/parser/parser"
 require_relative "aurora/passes/to_core"
 require_relative "aurora/backend/cpp_lowering"
+require_relative "aurora/backend/header_generator"
 
 module Aurora
   class ParseError < StandardError; end
@@ -55,6 +56,21 @@ module Aurora
     def to_cpp(source)
       cpp_ast = compile(source)
       cpp_ast.to_source
+    end
+
+    # Generate header and implementation files for a module
+    # Returns: { header: String, implementation: String }
+    def to_hpp_cpp(source)
+      # Parse and transform to CoreIR
+      ast = parse(source)
+      core_ir = transform_to_core(ast)
+
+      # Generate header and implementation
+      lowering = Backend::CppLowering.new
+      generator = Backend::HeaderGenerator.new(lowering)
+      generator.generate(core_ir)
+    rescue => e
+      raise CompileError, "Header generation error: #{e.message}\n#{e.backtrace.join("\n")}"
     end
   end
 end

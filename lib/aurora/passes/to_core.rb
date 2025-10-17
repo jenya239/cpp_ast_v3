@@ -28,7 +28,17 @@ module Aurora
       
       def transform_program(program)
         items = []
-        
+        imports = []
+
+        # Transform imports
+        program.imports.each do |import_decl|
+          imports << CoreIR::Import.new(
+            path: import_decl.path,
+            items: import_decl.items
+          )
+        end
+
+        # Transform declarations
         program.declarations.each do |decl|
           case decl
           when AST::TypeDecl
@@ -41,8 +51,11 @@ module Aurora
             @function_table[decl.name] = func
           end
         end
-        
-        CoreIR::Module.new(name: "main", items: items)
+
+        # Get module name from module declaration or default to "main"
+        module_name = program.module_decl ? program.module_decl.name : "main"
+
+        CoreIR::Module.new(name: module_name, items: items, imports: imports)
       end
       
       def transform_type_decl(decl)

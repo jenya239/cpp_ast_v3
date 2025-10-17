@@ -19,17 +19,27 @@ module Aurora
       private
       
       def parse_program
+        module_decl = nil
+        imports = []
         declarations = []
 
+        # Parse optional module declaration
+        if current.type == :MODULE
+          module_decl = parse_module_decl
+          # Skip any remaining tokens on the module line (for malformed input like module app/geom)
+          while !eof? && current.type != :FN && current.type != :TYPE && current.type != :IMPORT
+            @pos += 1
+          end
+        end
+
+        # Parse imports
+        while current.type == :IMPORT
+          imports << parse_import_decl
+        end
+
+        # Parse declarations
         while !eof?
           case current.type
-          when :MODULE
-            # Skip module declarations for now - consume until we find FN or TYPE
-            @pos += 1  # skip MODULE keyword
-            # Skip tokens until we find a top-level declaration
-            while !eof? && current.type != :FN && current.type != :TYPE
-              @pos += 1
-            end
           when :FN
             declarations << parse_function
           when :TYPE
@@ -39,7 +49,54 @@ module Aurora
           end
         end
 
-        AST::Program.new(declarations: declarations)
+        AST::Program.new(
+          module_decl: module_decl,
+          imports: imports,
+          declarations: declarations
+        )
+      end
+
+      def parse_module_decl
+        consume(:MODULE)
+        path = parse_module_path
+        AST::ModuleDecl.new(name: path)
+      end
+
+      def parse_import_decl
+        consume(:IMPORT)
+        path = parse_module_path
+
+        # Check for selective imports: import Math::{sqrt, pow}
+        items = nil
+        if current.type == :COLON
+          consume(:COLON)
+          consume(:COLON)
+          consume(:LBRACE)
+          items = []
+          loop do
+            items << consume(:IDENTIFIER).value
+            break if current.type != :COMMA
+            consume(:COMMA)
+          end
+          consume(:RBRACE)
+        end
+
+        AST::ImportDecl.new(path: path, items: items)
+      end
+
+      def parse_module_path
+        # Parse path like Math::Vector or just Math
+        parts = [consume(:IDENTIFIER).value]
+        while current.type == :COLON && peek_ahead(1)&.type == :COLON && peek_ahead(2)&.type == :IDENTIFIER
+          consume(:COLON)
+          consume(:COLON)
+          parts << consume(:IDENTIFIER).value
+        end
+        parts.join("::")
+      end
+
+      def peek_ahead(offset)
+        @tokens[@pos + offset] if @pos + offset < @tokens.length
       end
       
       def parse_function

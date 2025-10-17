@@ -67,12 +67,24 @@ module Aurora
     
     # Modules
     class Module < Node
-      attr_reader :name, :items
+      attr_reader :name, :items, :imports
 
-      def initialize(name:, items:, origin: nil)
+      def initialize(name:, items:, imports: [], origin: nil)
         super(origin: origin)
-        @name = name
-        @items = items  # Array of declarations
+        @name = name          # String or nil (for main/anonymous modules)
+        @imports = imports    # Array of Import
+        @items = items        # Array of declarations
+      end
+    end
+
+    # Import declaration
+    class Import < Node
+      attr_reader :path, :items
+
+      def initialize(path:, items: nil, origin: nil)
+        super(origin: origin)
+        @path = path    # String (e.g., "Math::Vector")
+        @items = items  # nil (import all) or Array of String (selective import)
       end
     end
 

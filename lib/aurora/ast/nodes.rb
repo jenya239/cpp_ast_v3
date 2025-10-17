@@ -13,11 +13,34 @@ module Aurora
     
     # Program root
     class Program < Node
-      attr_reader :declarations
-      
-      def initialize(declarations:, origin: nil)
+      attr_reader :module_decl, :imports, :declarations
+
+      def initialize(declarations:, module_decl: nil, imports: [], origin: nil)
         super(origin: origin)
+        @module_decl = module_decl  # ModuleDecl or nil
+        @imports = imports           # Array of ImportDecl
         @declarations = declarations
+      end
+    end
+
+    # Module declaration
+    class ModuleDecl < Node
+      attr_reader :name
+
+      def initialize(name:, origin: nil)
+        super(origin: origin)
+        @name = name  # String (e.g., "Math::Vector")
+      end
+    end
+
+    # Import declaration
+    class ImportDecl < Node
+      attr_reader :path, :items
+
+      def initialize(path:, items: nil, origin: nil)
+        super(origin: origin)
+        @path = path    # String (e.g., "Math::Vector")
+        @items = items  # nil (import all) or Array of String (selective import)
       end
     end
     
