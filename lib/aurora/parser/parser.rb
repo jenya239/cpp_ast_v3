@@ -538,14 +538,26 @@ module Aurora
       end
       
       def parse_equality
-        left = parse_comparison
-        
+        left = parse_pipe
+
         while current.type == :OPERATOR && %w[== !=].include?(current.value)
           op = consume(:OPERATOR).value
-          right = parse_comparison
+          right = parse_pipe
           left = AST::BinaryOp.new(op: op, left: left, right: right)
         end
-        
+
+        left
+      end
+
+      def parse_pipe
+        left = parse_comparison
+
+        while current.type == :PIPE || (current.type == :OPERATOR && current.value == "|>")
+          consume(current.type)  # Consume PIPE or OPERATOR
+          right = parse_comparison
+          left = AST::BinaryOp.new(op: "|>", left: left, right: right)
+        end
+
         left
       end
       
