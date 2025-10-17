@@ -718,8 +718,7 @@ module Aurora
           consume(:FAT_ARROW)
           body = parse_if_expression
 
-          param = AST::LambdaParam.new(name: param_name)
-          AST::Lambda.new(params: [param], body: body)
+          AST::Lambda.new(params: [param_name], body: body)
 
         elsif current.type == :LPAREN
           # Multiple parameters: (x, y) => expr or (x: i32, y: i32) => expr
@@ -741,15 +740,13 @@ module Aurora
         while current.type != :RPAREN
           name = consume(:IDENTIFIER).value
 
-          # Check for type annotation
-          type = if current.type == :COLON
-                   consume(:COLON)
-                   parse_type
-                 else
-                   nil  # Type inference
-                 end
+          # Skip type annotation for now (type inference)
+          if current.type == :COLON
+            consume(:COLON)
+            parse_type  # Just consume, ignore for now
+          end
 
-          params << AST::LambdaParam.new(name: name, type: type)
+          params << name
 
           break unless current.type == :COMMA
           consume(:COMMA)
