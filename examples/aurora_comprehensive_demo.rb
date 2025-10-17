@@ -65,6 +65,7 @@ puts "  ✅ Let bindings"
 puts "  ✅ If expressions"
 puts "  ✅ Lambda expressions: x => expr"
 puts "  ✅ Pipe operator: x |> f |> g"
+puts "  ✅ Module system: module Math, import Math"
 puts
 puts "🎯 Pattern Matching:"
 puts "  ✅ Constructor patterns: Circle(r)"
@@ -80,13 +81,15 @@ puts "  ✅ std::visit for pattern matching"
 puts "  ✅ Structured bindings for destructuring"
 puts "  ✅ Template metaprogramming for generics"
 puts "  ✅ Zero-cost abstractions"
+puts "  ✅ .hpp/.cpp file generation with header guards"
+puts "  ✅ Namespace generation from modules"
 puts
 puts "📊 Development Statistics:"
-puts "  • Tests: 979 passing (100%)"
-puts "  • Assertions: 2075"
-puts "  • Lines of Aurora code: ~500"
+puts "  • Tests: 997 passing (100%)"
+puts "  • Assertions: 2135+"
+puts "  • Lines of Aurora code: ~600"
 puts "  • C++ AST nodes: 50+"
-puts "  • Development time: 1 day"
+puts "  • Development time: 1.5 days"
 puts
 puts "=" * 80
 puts "  CODE EXAMPLES"
@@ -139,12 +142,30 @@ CODE
 puts "Parametric polymorphism with zero runtime cost"
 puts
 
+# Example: Module system
+puts "Example 4: Module System"
+puts "-" * 80
+puts <<~CODE
+  module Math::Geometry
+
+  import Math::Vector
+
+  type Shape = Circle(f32) | Rect(f32, f32)
+
+  fn area(s: Shape) -> f32 =
+    match s
+      | Circle(r) => r * r * 3.14159
+      | Rect(w, h) => w * h
+CODE
+puts "Generates .hpp header + .cpp implementation"
+puts "Header guards, namespaces, #include statements"
+puts
+
 puts "=" * 80
 puts "  FUTURE ROADMAP"
 puts "=" * 80
 puts
 puts "🚧 Planned Features:"
-puts "  ⏳ Module system (import/export)"
 puts "  ⏳ Array types and operations"
 puts "  ⏳ Method call syntax (x.method())"
 puts "  ⏳ Trait system (type classes)"
