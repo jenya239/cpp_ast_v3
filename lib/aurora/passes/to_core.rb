@@ -76,6 +76,12 @@ module Aurora
         when AST::RecordType
           fields = type.fields.map { |field| {name: field[:name], type: transform_type(field[:type])} }
           CoreIR::Builder.record_type(type.name, fields)
+        when AST::SumType
+          variants = type.variants.map do |variant|
+            fields = variant[:fields].map { |field| {name: field[:name], type: transform_type(field[:type])} }
+            {name: variant[:name], fields: fields}
+          end
+          CoreIR::Builder.sum_type(type.name, variants)
         else
           raise "Unknown type: #{type.class}"
         end
@@ -121,8 +127,34 @@ module Aurora
           else_branch = expr.else_branch ? transform_expression(expr.else_branch) : nil
           type = then_branch.type  # Type inference: result type is from then branch
           CoreIR::Builder.if_expr(condition, then_branch, else_branch, type)
+        when AST::MatchExpr
+          scrutinee = transform_expression(expr.scrutinee)
+          arms = expr.arms.map do |arm|
+            pattern = transform_pattern(arm[:pattern])
+            guard = arm[:guard] ? transform_expression(arm[:guard]) : nil
+            body = transform_expression(arm[:body])
+            {pattern: pattern, guard: guard, body: body}
+          end
+          # Type inference: use type from first arm body
+          type = arms.first[:body].type
+          CoreIR::Builder.match_expr(scrutinee, arms, type)
         else
           raise "Unknown expression: #{expr.class}"
+        end
+      end
+
+      def transform_pattern(pattern)
+        case pattern.kind
+        when :wildcard
+          {kind: :wildcard}
+        when :literal
+          {kind: :literal, value: pattern.data[:value]}
+        when :constructor
+          {kind: :constructor, name: pattern.data[:name], fields: pattern.data[:fields]}
+        when :var
+          {kind: :var, name: pattern.data[:name]}
+        else
+          raise "Unknown pattern kind: #{pattern.kind}"
         end
       end
       

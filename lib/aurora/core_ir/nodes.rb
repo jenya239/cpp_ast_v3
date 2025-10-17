@@ -37,17 +37,27 @@ module Aurora
     # Record type with fields
     class RecordType < Type
       attr_reader :fields
-      
+
       def initialize(name:, fields:, origin: nil)
         super(kind: :record, name: name, origin: origin)
         @fields = fields  # Array of {name: String, type: Type}
       end
     end
-    
+
+    # Sum type (variant/tagged union)
+    class SumType < Type
+      attr_reader :variants
+
+      def initialize(name:, variants:, origin: nil)
+        super(kind: :sum, name: name, origin: origin)
+        @variants = variants  # Array of {name: String, fields: Array of {name:, type:}}
+      end
+    end
+
     # Function type
     class FunctionType < Type
       attr_reader :params, :ret_type
-      
+
       def initialize(params:, ret_type:, origin: nil)
         super(kind: :func, name: "function", origin: origin)
         @params = params  # Array of {name: String, type: Type}
@@ -192,6 +202,17 @@ module Aurora
         @condition = condition
         @then_branch = then_branch
         @else_branch = else_branch
+      end
+    end
+
+    # Match expression
+    class MatchExpr < Expr
+      attr_reader :scrutinee, :arms
+
+      def initialize(scrutinee:, arms:, type:, origin: nil)
+        super(kind: :match, data: {scrutinee: scrutinee, arms: arms}, type: type, origin: origin)
+        @scrutinee = scrutinee  # Expression being matched
+        @arms = arms  # Array of {pattern:, guard:, body:}
       end
     end
 

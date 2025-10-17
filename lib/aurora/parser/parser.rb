@@ -100,11 +100,64 @@ module Aurora
                  else
                    parse_type
                  end
+               when :IDENTIFIER
+                 # Could be sum type (Variant1 | Variant2) or named type
+                 # Look ahead to see if there's a | after the identifier
+                 parse_type_or_sum
                else
                  parse_type
                end
 
         AST::TypeDecl.new(name: name, type: type)
+      end
+
+      def parse_type_or_sum
+        # Try parsing as sum type first
+        start_pos = @pos
+        first_variant_name = consume(:IDENTIFIER).value
+
+        # Check if this is a sum type variant
+        # Patterns: Variant(...) or Variant {...} or Variant | ...
+        is_sum_type = current.type == :LPAREN ||
+                      (current.type == :LBRACE && peek_for_sum_type?) ||
+                      (current.type == :OPERATOR && current.value == "|")
+
+        if is_sum_type
+          # Reset and parse as sum type
+          @pos = start_pos
+          return parse_sum_type
+        end
+
+        # Otherwise, it's just a type reference
+        @pos = start_pos
+        parse_type
+      end
+
+      def peek_for_sum_type?
+        # Look ahead to see if this is a sum type variant with named fields
+        # Check if after { there's eventually a | (indicating more variants)
+        saved_pos = @pos
+        depth = 0
+
+        while @pos < @tokens.size
+          case current.type
+          when :LBRACE
+            depth += 1
+          when :RBRACE
+            depth -= 1
+            if depth == 0
+              @pos += 1
+              # After closing brace, check for | indicating another variant
+              result = current.type == :OPERATOR && current.value == "|"
+              @pos = saved_pos
+              return result
+            end
+          end
+          @pos += 1
+        end
+
+        @pos = saved_pos
+        false
       end
       
       def parse_type
@@ -224,7 +277,25 @@ module Aurora
           variant_fields = []
 
           # Check if variant has fields
-          if current.type == :LBRACE
+          if current.type == :LPAREN
+            # Tuple-like variant: Circle(f32, f32)
+            consume(:LPAREN)
+            field_index = 0
+            while current.type != :RPAREN
+              field_type = parse_type
+              # Generate field name for tuple-like variants
+              variant_fields << {name: "field#{field_index}", type: field_type}
+              field_index += 1
+
+              if current.type == :COMMA
+                consume(:COMMA)
+              else
+                break
+              end
+            end
+            consume(:RPAREN)
+          elsif current.type == :LBRACE
+            # Named fields variant: Ok { value: i32 }
             consume(:LBRACE)
             while current.type != :RBRACE
               field_name = consume(:IDENTIFIER).value
@@ -336,12 +407,58 @@ module Aurora
       end
 
       def parse_pattern
-        # For now, just support constructor patterns like Circle{r} or Rect{w,h}
-        if current.type == :IDENTIFIER
+        case current.type
+        when :UNDERSCORE, :OPERATOR
+          # Wildcard pattern: _
+          if current.type == :UNDERSCORE || (current.type == :OPERATOR && current.value == "_")
+            consume(current.type)
+            return AST::Pattern.new(kind: :wildcard, data: {})
+          end
+          raise "Unexpected operator in pattern: #{current.value}"
+        when :INT_LITERAL
+          # Literal pattern: 0, 1, 42
+          value = consume(:INT_LITERAL).value.to_i
+          AST::Pattern.new(kind: :literal, data: {value: value})
+        when :FLOAT_LITERAL
+          # Float literal pattern
+          value = consume(:FLOAT_LITERAL).value.to_f
+          AST::Pattern.new(kind: :literal, data: {value: value})
+        when :IDENTIFIER
           constructor = consume(:IDENTIFIER).value
 
-          # Check for field binding
-          if current.type == :LBRACE
+          # Check for constructor pattern with fields
+          if current.type == :LPAREN
+            # Tuple-like constructor: Circle(r) or Rect(w, h)
+            consume(:LPAREN)
+            fields = []
+
+            while current.type != :RPAREN
+              if current.type == :IDENTIFIER
+                field_name = consume(:IDENTIFIER).value
+                fields << field_name
+              elsif current.type == :UNDERSCORE || (current.type == :OPERATOR && current.value == "_")
+                # Wildcard field binding
+                consume(current.type)
+                fields << "_"
+              else
+                raise "Expected identifier or _ in pattern, got #{current.type}"
+              end
+
+              if current.type == :COMMA
+                consume(:COMMA)
+              else
+                break
+              end
+            end
+
+            consume(:RPAREN)
+
+            AST::Pattern.new(
+              kind: :constructor,
+              data: {name: constructor, fields: fields}
+            )
+          elsif current.type == :LBRACE
+            # Named fields constructor: Ok { value }
             consume(:LBRACE)
             bindings = []
 
@@ -360,11 +477,23 @@ module Aurora
 
             AST::Pattern.new(
               kind: :constructor,
-              data: {constructor: constructor, bindings: bindings}
+              data: {name: constructor, fields: bindings}
             )
           else
-            # Simple variable pattern
-            AST::Pattern.new(kind: :var, data: {name: constructor})
+            # Constructor without fields (like Point), wildcard, or variable pattern
+            if constructor == "_"
+              # Wildcard pattern
+              AST::Pattern.new(kind: :wildcard, data: {})
+            elsif constructor[0] == constructor[0].upcase
+              # Constructor without fields (like Point)
+              AST::Pattern.new(
+                kind: :constructor,
+                data: {name: constructor, fields: []}
+              )
+            else
+              # Variable pattern
+              AST::Pattern.new(kind: :var, data: {name: constructor})
+            end
           end
         else
           raise "Unexpected token in pattern: #{current}"

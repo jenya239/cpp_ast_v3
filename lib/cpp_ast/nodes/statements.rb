@@ -688,7 +688,9 @@ module CppAst
       end
       
       def to_source
-        result = "#{leading_trivia}friend#{friend_suffix}#{type}"
+        result = "#{leading_trivia}friend"
+        result << friend_suffix if type.empty?
+        result << " #{type}" unless type.empty?
         result << " #{name}" if name
         result << ";"
         result

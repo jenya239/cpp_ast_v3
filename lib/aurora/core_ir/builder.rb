@@ -13,7 +13,11 @@ module Aurora
       def self.record_type(name, fields, origin: nil)
         RecordType.new(name: name, fields: fields, origin: origin)
       end
-      
+
+      def self.sum_type(name, variants, origin: nil)
+        SumType.new(name: name, variants: variants, origin: origin)
+      end
+
       def self.function_type(params, ret_type, origin: nil)
         FunctionType.new(params: params, ret_type: ret_type, origin: origin)
       end
@@ -56,6 +60,10 @@ module Aurora
 
       def self.if_expr(condition, then_branch, else_branch, type, origin: nil)
         IfExpr.new(condition: condition, then_branch: then_branch, else_branch: else_branch, type: type, origin: origin)
+      end
+
+      def self.match_expr(scrutinee, arms, type, origin: nil)
+        MatchExpr.new(scrutinee: scrutinee, arms: arms, type: type, origin: origin)
       end
 
       def self.block(stmts, origin: nil)

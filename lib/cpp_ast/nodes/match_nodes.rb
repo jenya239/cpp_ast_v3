@@ -39,16 +39,31 @@ module CppAst
 
       def to_source
         result = +"[&](const #{case_name}& #{case_name.downcase}) { "
-        
+
         if bindings.any?
           # Generate structured binding: auto [binding1, binding2] = case;
           binding_list = bindings.join(", ")
           result << "auto [#{binding_list}] = #{case_name.downcase}; "
         end
-        
+
         body_str = body.respond_to?(:to_source) ? body.to_source : body.to_s
         result << "return #{body_str}; }"
         result
+      end
+    end
+
+    # Wildcard match arm - generates generic lambda for catch-all cases
+    class WildcardMatchArm < Node
+      attr_accessor :var_name, :body
+
+      def initialize(var_name:, body:)
+        @var_name = var_name
+        @body = body
+      end
+
+      def to_source
+        body_str = body.respond_to?(:to_source) ? body.to_source : body.to_s
+        "[&](auto&& #{var_name}) { return #{body_str}; }"
       end
     end
   end

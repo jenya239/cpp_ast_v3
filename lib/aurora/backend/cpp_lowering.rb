@@ -31,7 +31,11 @@ module Aurora
       private
       
       def lower_module(module_node)
-        items = module_node.items.map { |item| lower(item) }
+        items = module_node.items.flat_map do |item|
+          result = lower(item)
+          # If result is a Program (from sum types), extract its statements
+          result.is_a?(CppAst::Nodes::Program) ? result.statements : [result]
+        end
         CppAst::Nodes::Program.new(statements: items, statement_trailings: Array.new(items.size, ""))
       end
       
@@ -67,6 +71,8 @@ module Aurora
         case type_decl.type
         when CoreIR::RecordType
           lower_record_type(type_decl.name, type_decl.type)
+        when CoreIR::SumType
+          lower_sum_type(type_decl.name, type_decl.type)
         else
           # For primitive types, we don't need to generate anything
           CppAst::Nodes::Comment.new(text: "// Type alias: #{type_decl.name}")
@@ -85,7 +91,7 @@ module Aurora
             prefix_modifiers: ""
           )
         end
-        
+
         CppAst::Nodes::StructDeclaration.new(
           name: name,
           members: members,
@@ -95,6 +101,66 @@ module Aurora
           lbrace_suffix: "",
           rbrace_suffix: "",
           base_classes_text: ""
+        )
+      end
+
+      def lower_sum_type(name, sum_type)
+        # Generate structs for each variant
+        variant_structs = sum_type.variants.map do |variant|
+          if variant[:fields].empty?
+            # Empty variant - generate empty struct
+            CppAst::Nodes::StructDeclaration.new(
+              name: variant[:name],
+              members: [],
+              member_trailings: [],
+              struct_suffix: " ",
+              name_suffix: " ",
+              lbrace_suffix: "",
+              rbrace_suffix: "",
+              base_classes_text: ""
+            )
+          else
+            # Variant with fields
+            members = variant[:fields].map do |field|
+              field_type = map_type(field[:type])
+              CppAst::Nodes::VariableDeclaration.new(
+                type: field_type,
+                declarators: [field[:name]],
+                declarator_separators: [],
+                type_suffix: " ",
+                prefix_modifiers: ""
+              )
+            end
+
+            CppAst::Nodes::StructDeclaration.new(
+              name: variant[:name],
+              members: members,
+              member_trailings: Array.new(members.size, ""),
+              struct_suffix: " ",
+              name_suffix: " ",
+              lbrace_suffix: "",
+              rbrace_suffix: "",
+              base_classes_text: ""
+            )
+          end
+        end
+
+        # Generate using declaration for std::variant
+        variant_type_names = sum_type.variants.map { |v| v[:name] }.join(", ")
+        using_decl = CppAst::Nodes::UsingDeclaration.new(
+          kind: :alias,
+          name: name,
+          alias_target: "std::variant<#{variant_type_names}>",
+          using_suffix: " ",
+          equals_prefix: " ",
+          equals_suffix: " "
+        )
+
+        # Return program with all structs + using declaration
+        all_statements = variant_structs + [using_decl]
+        CppAst::Nodes::Program.new(
+          statements: all_statements,
+          statement_trailings: Array.new(all_statements.size, "")
         )
       end
       
@@ -118,6 +184,8 @@ module Aurora
           lower_record(expr)
         when CoreIR::IfExpr
           lower_if(expr)
+        when CoreIR::MatchExpr
+          lower_match(expr)
         else
           raise "Unknown expression: #{expr.class}"
         end
@@ -222,11 +290,68 @@ module Aurora
         )
       end
 
+      def lower_match(match_expr)
+        scrutinee = lower_expression(match_expr.scrutinee)
+
+        # Generate MatchArm for each arm
+        arms = match_expr.arms.map do |arm|
+          lower_match_arm(arm)
+        end
+
+        # Use MatchExpression which generates std::visit with overloaded
+        CppAst::Nodes::MatchExpression.new(
+          value: scrutinee,
+          arms: arms,
+          arm_separators: Array.new([arms.size - 1, 0].max, ",\n")
+        )
+      end
+
+      def lower_match_arm(arm)
+        pattern = arm[:pattern]
+        body = lower_expression(arm[:body])
+
+        case pattern[:kind]
+        when :constructor
+          # Generate MatchArm with constructor pattern
+          case_name = pattern[:name]
+          bindings = pattern[:fields] || []
+
+          CppAst::Nodes::MatchArm.new(
+            case_name: case_name,
+            bindings: bindings.reject { |f| f == "_" },  # Filter out wildcards
+            body: body
+          )
+        when :wildcard, :var
+          # For wildcard or variable patterns, we need a generic lambda
+          # This is tricky - we'll treat as a default case
+          # Generate a lambda that matches anything
+          var_name = pattern[:kind] == :var ? pattern[:name] : "_unused"
+
+          # Create a catch-all arm using a generic type
+          # We'll use a helper that generates: [&](auto&&) { return body; }
+          CppAst::Nodes::WildcardMatchArm.new(
+            var_name: var_name,
+            body: body
+          )
+        when :literal
+          # Literal patterns need special handling
+          # For now, treat as wildcard with a check
+          CppAst::Nodes::WildcardMatchArm.new(
+            var_name: "_v",
+            body: body
+          )
+        else
+          raise "Unknown pattern kind: #{pattern[:kind]}"
+        end
+      end
+
       def map_type(type)
         case type
         when CoreIR::Type
           @type_map[type.name] || type.name
         when CoreIR::RecordType
+          type.name
+        when CoreIR::SumType
           type.name
         when CoreIR::FunctionType
           "auto" # Simplified - real implementation would be more complex
