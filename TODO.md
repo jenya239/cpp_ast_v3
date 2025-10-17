@@ -190,7 +190,42 @@ arr[1 + 1]
 
 **Tests:** Manual testing completed, all Aurora tests passing (73/73)
 
-#### 10. For Loops ✅
+#### 10. Array Methods ✅
+**Status: FULLY IMPLEMENTED (Basic Methods)**
+```aurora
+arr.length()    // Get size
+arr.push(elem)  // Add element
+arr.pop()       // Remove last
+[1,2,3].length() // Direct on literal
+```
+
+**Implementation:**
+- ✅ Method call syntax via member access
+- ✅ Type tracking for let-bound variables (@var_types)
+- ✅ Array method detection in C++ lowering
+- ✅ Method name translation to std::vector equivalents
+- ✅ Works with let-bound arrays and literals
+- ✅ Combines with array indexing
+
+**Method Translation:**
+- `.length()` → `.size()`
+- `.push(elem)` → `.push_back(elem)`
+- `.pop()` → `.pop_back()`
+
+**Type Inference Enhancement:**
+- Added `@var_types` hash to track variable types
+- Let bindings save their value types
+- Variable references look up saved types
+- Enables proper method translation on variables
+
+**C++ Output:**
+- `arr.length()` → `arr.size()`
+- `arr.push(4)` → `arr.push_back(4)`
+- `[1,2,3].length()` → `std::vector<int>{1, 2, 3}.size()`
+
+**Tests:** Manual testing completed, all Aurora tests passing (73/73)
+
+#### 11. For Loops ✅
 **Status: FULLY IMPLEMENTED (Architecture docs)**
 ```aurora
 for x in array do
@@ -203,7 +238,7 @@ for x in array do
 - ✅ Range expressions
 - ⏳ Full integration tests needed
 
-#### 11. List Comprehensions ✅
+#### 12. List Comprehensions ✅
 **Status: FULLY IMPLEMENTED (Architecture docs)**
 ```aurora
 [x * 2 for x in arr]
@@ -226,9 +261,10 @@ for x in array do
 #### High Priority
 1. **Array Operations**
    - ✅ Array indexing: `arr[i]` - IMPLEMENTED
-   - Array methods: `arr.map(f)`, `arr.filter(pred)`, `arr.length()`
+   - ✅ Basic methods: `arr.length()`, `arr.push()`, `arr.pop()` - IMPLEMENTED
+   - Higher-order methods: `arr.map(f)`, `arr.filter(pred)`
    - Array slicing: `arr[1..5]`
-   - Array mutation: `arr.push(x)`, `arr.pop()`
+   - Additional methods: `arr.first()`, `arr.last()`, `arr.empty()`
 
 2. **Error Handling**
    - Better error messages with source locations

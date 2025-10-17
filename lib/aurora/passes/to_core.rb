@@ -9,6 +9,7 @@ module Aurora
       def initialize
         @type_table = {}
         @function_table = {}
+        @var_types = {}  # Track variable types for let bindings
       end
       
       def transform(ast)
@@ -144,7 +145,11 @@ module Aurora
           CoreIR::Builder.member(object, expr.member, type)
         when AST::Let
           value = transform_expression(expr.value)
+          # Save the type of the bound variable
+          @var_types[expr.name] = value.type
           body = transform_expression(expr.body)
+          # Clean up after processing body
+          @var_types.delete(expr.name)
           type = body.type
           CoreIR::Builder.let(expr.name, value, body, type)
         when AST::RecordLit
@@ -297,6 +302,11 @@ module Aurora
       end
       
       def infer_type(name)
+        # Check if this is a known variable from a let binding
+        if @var_types.key?(name)
+          return @var_types[name]
+        end
+
         # Simple type inference - in real implementation would be more sophisticated
         case name
         when "sqrt"

@@ -275,17 +275,54 @@ module Aurora
       end
       
       def lower_call(call)
-        callee = lower_expression(call.callee)
-        args = call.args.map { |arg| lower_expression(arg) }
+        # Check if this is an array method call that needs translation
+        if call.callee.is_a?(CoreIR::MemberExpr) && call.callee.object.type.is_a?(CoreIR::ArrayType)
+          # Translate array method names to C++ std::vector equivalents
+          method_name = call.callee.member
+          cpp_method_name = case method_name
+                            when "length"
+                              "size"
+                            when "push"
+                              "push_back"
+                            when "pop"
+                              "pop_back"
+                            else
+                              method_name
+                            end
 
-        # Calculate separators - need n-1 separators for n arguments, minimum 0
-        num_separators = [args.size - 1, 0].max
+          # Lower the array object
+          array_obj = lower_expression(call.callee.object)
 
-        CppAst::Nodes::FunctionCallExpression.new(
-          callee: callee,
-          arguments: args,
-          argument_separators: Array.new(num_separators, ", ")
-        )
+          # Create member access with translated method name
+          member_access = CppAst::Nodes::MemberAccessExpression.new(
+            object: array_obj,
+            operator: ".",
+            member: CppAst::Nodes::Identifier.new(name: cpp_method_name)
+          )
+
+          # Lower arguments
+          args = call.args.map { |arg| lower_expression(arg) }
+          num_separators = [args.size - 1, 0].max
+
+          CppAst::Nodes::FunctionCallExpression.new(
+            callee: member_access,
+            arguments: args,
+            argument_separators: Array.new(num_separators, ", ")
+          )
+        else
+          # Regular function call
+          callee = lower_expression(call.callee)
+          args = call.args.map { |arg| lower_expression(arg) }
+
+          # Calculate separators - need n-1 separators for n arguments, minimum 0
+          num_separators = [args.size - 1, 0].max
+
+          CppAst::Nodes::FunctionCallExpression.new(
+            callee: callee,
+            arguments: args,
+            argument_separators: Array.new(num_separators, ", ")
+          )
+        end
       end
       
       def lower_member(member)
