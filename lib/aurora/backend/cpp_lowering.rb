@@ -16,9 +16,10 @@ module Aurora
       def initialize
         @type_map = {
           "i32" => "int",
-          "f32" => "float", 
+          "f32" => "float",
           "bool" => "bool",
-          "void" => "void"
+          "void" => "void",
+          "string" => "std::string"
         }
       end
       
@@ -261,6 +262,8 @@ module Aurora
           CppAst::Nodes::NumberLiteral.new(value: lit.value.to_s)
         when "bool"
           CppAst::Nodes::BooleanLiteral.new(value: lit.value)
+        when "string"
+          CppAst::Nodes::StringLiteral.new(value: lit.value)
         else
           CppAst::Nodes::NumberLiteral.new(value: lit.value.to_s)
         end

@@ -121,6 +121,9 @@ module Aurora
         when AST::FloatLit
           type = CoreIR::Builder.primitive_type("f32")
           CoreIR::Builder.literal(expr.value, type)
+        when AST::StringLit
+          type = CoreIR::Builder.primitive_type("string")
+          CoreIR::Builder.literal(expr.value, type)
         when AST::VarRef
           type = infer_type(expr.name)
           CoreIR::Builder.var(expr.name, type)
