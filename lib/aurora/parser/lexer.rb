@@ -51,7 +51,14 @@ module Aurora
             tokenize_number
           when '"'
             tokenize_string
-          when /[=+\-*\/%<>!&|.]/
+          when '/'
+            # Distinguish between division operator and regex literal
+            if regex_context?
+              tokenize_regex
+            else
+              tokenize_operator
+            end
+          when /[=+\-*%<>!&|.]/
             tokenize_operator
           when '('
             add_token(:LPAREN, char)
@@ -171,6 +178,77 @@ module Aurora
         add_token(:STRING_LITERAL, value)
       end
       
+      def regex_context?
+        # Regex can appear after: =, (, [, {, ,, return, :, =>, operators
+        # Regex cannot appear after: ), ], identifiers, numbers, strings
+        return true if @tokens.empty?
+
+        last_token = @tokens.last
+        return false if last_token.nil?
+
+        # After these tokens, / starts a regex
+        regex_after = [:EQUAL, :LPAREN, :LBRACKET, :LBRACE, :COMMA,
+                       :RETURN, :COLON, :FAT_ARROW, :ARROW, :OPERATOR]
+
+        regex_after.include?(last_token.type)
+      end
+
+      def tokenize_regex
+        # Regex format: /pattern/flags
+        start_pos = @pos
+        start_column = @column
+
+        # Skip opening /
+        @pos += 1
+        @column += 1
+
+        pattern = ""
+
+        # Read pattern until closing /
+        while @pos < @source.length
+          char = @source[@pos]
+
+          if char == '/'
+            # Found closing /
+            @pos += 1
+            @column += 1
+            break
+          elsif char == '\\'
+            # Escape sequence
+            pattern += char
+            @pos += 1
+            @column += 1
+
+            if @pos < @source.length
+              pattern += @source[@pos]
+              @pos += 1
+              @column += 1
+            end
+          elsif char == "\n"
+            # Newline in regex pattern is an error, but we'll be permissive
+            @line += 1
+            @column = 1
+            pattern += char
+            @pos += 1
+          else
+            pattern += char
+            @pos += 1
+            @column += 1
+          end
+        end
+
+        # Read flags (optional)
+        flags = ""
+        while @pos < @source.length && @source[@pos] =~ /[gimsuvy]/
+          flags += @source[@pos]
+          @pos += 1
+          @column += 1
+        end
+
+        # Store both pattern and flags in the token value
+        add_token(:REGEX, {pattern: pattern, flags: flags})
+      end
+
       def tokenize_operator
         char = @source[@pos]
 

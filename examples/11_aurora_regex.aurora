@@ -1,0 +1,10 @@
+// Aurora regex literals test
+
+fn email_pattern() -> regex =
+  /\w+@\w+\.\w+/
+
+fn case_insensitive_pattern() -> regex =
+  /hello/i
+
+fn main() -> i32 =
+  0

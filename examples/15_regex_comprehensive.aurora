@@ -1,0 +1,13 @@
+// Comprehensive regex pattern matching demo
+
+fn classify(text: string) -> string =
+  match text {
+    /^(\d+)$/ as [_, num] => "number",
+    /^(\w+)@(\w+\.\w+)$/ as [_, user, domain] => "email",
+    /^https?:\/\/(.+)$/ as [_, url] => "link",
+    /hello/i => "greeting",
+    _ => "unknown"
+  }
+
+fn main() -> i32 =
+  0

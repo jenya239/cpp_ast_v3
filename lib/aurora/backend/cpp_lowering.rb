@@ -19,7 +19,8 @@ module Aurora
           "f32" => "float",
           "bool" => "bool",
           "void" => "void",
-          "string" => "std::string"
+          "string" => "aurora::String",
+          "regex" => "aurora::Regex"
         }
       end
       
@@ -225,6 +226,8 @@ module Aurora
         case expr
         when CoreIR::LiteralExpr
           lower_literal(expr)
+        when CoreIR::RegexExpr
+          lower_regex(expr)
         when CoreIR::VarExpr
           lower_variable(expr)
         when CoreIR::BinaryExpr
@@ -263,12 +266,41 @@ module Aurora
         when "bool"
           CppAst::Nodes::BooleanLiteral.new(value: lit.value)
         when "string"
-          CppAst::Nodes::StringLiteral.new(value: lit.value)
+          # Generate: aurora::String("literal")
+          string_lit = CppAst::Nodes::StringLiteral.new(value: lit.value)
+          CppAst::Nodes::FunctionCallExpression.new(
+            callee: CppAst::Nodes::Identifier.new(name: "aurora::String"),
+            arguments: [string_lit],
+            argument_separators: []
+          )
         else
           CppAst::Nodes::NumberLiteral.new(value: lit.value.to_s)
         end
       end
-      
+
+      def lower_regex(regex_expr)
+        # Generate: aurora::regex_i(String("pattern")) or aurora::regex(String("pattern"))
+        pattern_lit = CppAst::Nodes::StringLiteral.new(value: regex_expr.pattern)
+        pattern_string = CppAst::Nodes::FunctionCallExpression.new(
+          callee: CppAst::Nodes::Identifier.new(name: "aurora::String"),
+          arguments: [pattern_lit],
+          argument_separators: []
+        )
+
+        # Choose function based on flags
+        func_name = if regex_expr.flags.include?("i")
+                      "aurora::regex_i"
+                    else
+                      "aurora::regex"
+                    end
+
+        CppAst::Nodes::FunctionCallExpression.new(
+          callee: CppAst::Nodes::Identifier.new(name: func_name),
+          arguments: [pattern_string],
+          argument_separators: []
+        )
+      end
+
       def lower_variable(var)
         CppAst::Nodes::Identifier.new(name: var.name)
       end
@@ -395,16 +427,144 @@ module Aurora
       def lower_match(match_expr)
         scrutinee = lower_expression(match_expr.scrutinee)
 
-        # Generate MatchArm for each arm
-        arms = match_expr.arms.map do |arm|
-          lower_match_arm(arm)
+        # Check if any arms have regex patterns
+        has_regex = match_expr.arms.any? { |arm| arm[:pattern][:kind] == :regex }
+
+        if has_regex
+          # Generate if-else chain for regex matching
+          lower_match_with_regex(match_expr, scrutinee)
+        else
+          # Generate MatchArm for each arm
+          arms = match_expr.arms.map do |arm|
+            lower_match_arm(arm)
+          end
+
+          # Use MatchExpression which generates std::visit with overloaded
+          CppAst::Nodes::MatchExpression.new(
+            value: scrutinee,
+            arms: arms,
+            arm_separators: Array.new([arms.size - 1, 0].max, ",\n")
+          )
+        end
+      end
+
+      def lower_match_with_regex(match_expr, scrutinee)
+        # Generate an IIFE (Immediately Invoked Function Expression) lambda
+        # that contains if-else chain for regex matching:
+        # [&]() {
+        #   if (regex1.test(scrutinee)) return value1;
+        #   if (regex2.test(scrutinee)) return value2;
+        #   return default_value;
+        # }()
+
+        # Build if-else chain body
+        statements = []
+
+        match_expr.arms.each do |arm|
+          pattern = arm[:pattern]
+          body = lower_expression(arm[:body])
+
+          case pattern[:kind]
+          when :regex
+            regex_pattern = pattern[:pattern]
+            regex_flags = pattern[:flags] || ""
+            bindings = pattern[:bindings] || []
+
+            # Create regex object
+            pattern_lit = CppAst::Nodes::StringLiteral.new(value: regex_pattern)
+            pattern_string = CppAst::Nodes::FunctionCallExpression.new(
+              callee: CppAst::Nodes::Identifier.new(name: "aurora::String"),
+              arguments: [pattern_lit],
+              argument_separators: []
+            )
+
+            func_name = regex_flags.include?("i") ? "aurora::regex_i" : "aurora::regex"
+            regex_obj = CppAst::Nodes::FunctionCallExpression.new(
+              callee: CppAst::Nodes::Identifier.new(name: func_name),
+              arguments: [pattern_string],
+              argument_separators: []
+            )
+
+            if bindings.empty?
+              # No capture groups - use test()
+              test_call = CppAst::Nodes::MemberAccessExpression.new(
+                object: regex_obj,
+                member: CppAst::Nodes::Identifier.new(name: "test"),
+                operator: "."
+              )
+
+              test_result = CppAst::Nodes::FunctionCallExpression.new(
+                callee: test_call,
+                arguments: [scrutinee],
+                argument_separators: []
+              )
+
+              return_stmt = CppAst::Nodes::ReturnStatement.new(expression: body)
+              if_stmt = CppAst::Nodes::IfStatement.new(
+                condition: test_result,
+                then_statement: return_stmt,
+                else_statement: nil
+              )
+              statements << if_stmt
+            else
+              # Has capture groups - use match() and extract captures
+              # Generate: if (auto match_opt = regex.match(text)) { auto match = *match_opt; auto user = match.get(1).text(); ... return body; }
+
+              regex_src = regex_obj.to_source
+              scrutinee_src = scrutinee.to_source
+              body_src = body.to_source
+
+              # Build capture variable declarations
+              capture_decls = []
+              bindings.each_with_index do |binding, idx|
+                next if binding == "_"  # Skip wildcards
+                # Generate: auto user = match.get(1).text();
+                capture_decls << "auto #{binding} = match.get(#{idx}).text();"
+              end
+
+              # Build if statement with match and captures
+              if_body = [
+                "auto match = *match_opt;",
+                *capture_decls,
+                "return #{body_src};"
+              ].join(" ")
+
+              # Create raw if statement as string
+              # We'll wrap this in a RawCode node
+              if_str = "if (auto match_opt = #{regex_src}.match(#{scrutinee_src})) { #{if_body} }"
+
+              # Add as raw statement (we'll use a simple wrapper)
+              statements << CppAst::Nodes::RawStatement.new(code: if_str)
+            end
+
+          when :wildcard, :var
+            # Default case - just return
+            return_stmt = CppAst::Nodes::ReturnStatement.new(expression: body)
+            statements << return_stmt
+
+          else
+            # Other patterns not yet supported in regex match
+            # Treat as wildcard for now
+            return_stmt = CppAst::Nodes::ReturnStatement.new(expression: body)
+            statements << return_stmt
+          end
         end
 
-        # Use MatchExpression which generates std::visit with overloaded
-        CppAst::Nodes::MatchExpression.new(
-          value: scrutinee,
-          arms: arms,
-          arm_separators: Array.new([arms.size - 1, 0].max, ",\n")
+        # Build body string from statements
+        body_str = statements.map { |stmt| stmt.to_source }.join(" ")
+
+        # Create IIFE lambda: [&]() { ... }()
+        CppAst::Nodes::FunctionCallExpression.new(
+          callee: CppAst::Nodes::LambdaExpression.new(
+            capture: "&",
+            parameters: "",
+            specifiers: "",
+            body: body_str,
+            capture_suffix: "",
+            params_suffix: ""
+          ),
+          arguments: [],
+          argument_separators: []
         )
       end
 
@@ -544,9 +704,27 @@ module Aurora
             var_name: "_v",
             body: body
           )
+        when :regex
+          # Regex pattern matching
+          # Generate code that checks if regex matches and extracts capture groups
+          lower_regex_pattern_arm(pattern, body)
         else
           raise "Unknown pattern kind: #{pattern[:kind]}"
         end
+      end
+
+      def lower_regex_pattern_arm(pattern, body)
+        # For regex patterns, we need to generate an if-like check
+        # This will be a WildcardMatchArm but with special handling
+        # For now, generate a comment indicating this is a regex match
+        # Full implementation would require more complex C++ generation
+
+        # Create a wildcard arm that will match and extract groups
+        # The actual matching logic will be in the body wrapper
+        CppAst::Nodes::WildcardMatchArm.new(
+          var_name: "_text",
+          body: body
+        )
       end
 
       def map_type(type)

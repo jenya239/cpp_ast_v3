@@ -524,40 +524,91 @@ module Aurora
         end
       end
 
+      def parse_match_scrutinee
+        # Parse scrutinee for match expression - special handling to avoid
+        # consuming { as record literal when it's actually the start of match arms
+        # We parse at comparison level to get most operators but stop before
+        # consuming record literals
+        left = parse_comparison
+
+        # Don't parse record literal here - that's handled by match arms
+        # Just return the identifier/expression
+        left
+      end
+
       def parse_match_expression
         consume(:MATCH)
-        scrutinee = parse_equality
+        scrutinee = parse_match_scrutinee
 
         arms = []
 
-        # Parse match arms
-        while current.type == :OPERATOR && current.value == "|"
-          consume(:OPERATOR)  # consume |
+        # Check for brace-style or pipe-style match
+        if current.type == :LBRACE
+          # Brace style: match expr { pattern => body, ... }
+          consume(:LBRACE)
 
-          # Parse pattern
-          pattern = parse_pattern
+          while current.type != :RBRACE
+            # Parse pattern
+            pattern = parse_pattern
 
-          # Parse guard (optional: "if condition")
-          guard = nil
-          if current.type == :IF
-            consume(:IF)
-            guard = parse_equality
+            # Parse guard (optional: "if condition")
+            guard = nil
+            if current.type == :IF
+              consume(:IF)
+              guard = parse_equality
+            end
+
+            # Expect =>
+            if current.type == :FAT_ARROW
+              consume(:FAT_ARROW)
+            else
+              raise "Expected => in match arm"
+            end
+
+            # Parse body
+            body = parse_if_expression
+
+            arms << {pattern: pattern, guard: guard, body: body}
+
+            # Expect comma or closing brace
+            if current.type == :COMMA
+              consume(:COMMA)
+            elsif current.type != :RBRACE
+              raise "Expected , or } in match expression"
+            end
           end
 
-          # Expect =>
-          if current.type == :FAT_ARROW
-            consume(:FAT_ARROW)
-          elsif current.type == :OPERATOR && current.value == "=>"
-            # Fallback for old lexer compatibility
-            consume(:OPERATOR)
-          else
-            raise "Expected => in match arm"
+          consume(:RBRACE)
+        else
+          # Pipe style: match expr | pattern => body | ...
+          while current.type == :OPERATOR && current.value == "|"
+            consume(:OPERATOR)  # consume |
+
+            # Parse pattern
+            pattern = parse_pattern
+
+            # Parse guard (optional: "if condition")
+            guard = nil
+            if current.type == :IF
+              consume(:IF)
+              guard = parse_equality
+            end
+
+            # Expect =>
+            if current.type == :FAT_ARROW
+              consume(:FAT_ARROW)
+            elsif current.type == :OPERATOR && current.value == "=>"
+              # Fallback for old lexer compatibility
+              consume(:OPERATOR)
+            else
+              raise "Expected => in match arm"
+            end
+
+            # Parse body
+            body = parse_if_expression
+
+            arms << {pattern: pattern, guard: guard, body: body}
           end
-
-          # Parse body
-          body = parse_if_expression
-
-          arms << {pattern: pattern, guard: guard, body: body}
         end
 
         AST::MatchExpr.new(scrutinee: scrutinee, arms: arms)
@@ -572,6 +623,48 @@ module Aurora
             return AST::Pattern.new(kind: :wildcard, data: {})
           end
           raise "Unexpected operator in pattern: #{current.value}"
+        when :REGEX
+          # Regex pattern: /pattern/flags
+          regex_data = consume(:REGEX).value
+          bindings = []
+
+          # Check for 'as' clause to capture groups
+          if current.type == :AS
+            consume(:AS) # consume 'as'
+
+            # Expect array of binding names: as [_, username, domain]
+            if current.type == :LBRACKET
+              consume(:LBRACKET)
+
+              while current.type != :RBRACKET
+                if current.type == :IDENTIFIER
+                  bindings << consume(:IDENTIFIER).value
+                elsif current.type == :UNDERSCORE || (current.type == :OPERATOR && current.value == "_")
+                  consume(current.type)
+                  bindings << "_"
+                else
+                  raise "Expected identifier or _ in regex bindings"
+                end
+
+                if current.type == :COMMA
+                  consume(:COMMA)
+                else
+                  break
+                end
+              end
+
+              consume(:RBRACKET)
+            end
+          end
+
+          AST::Pattern.new(
+            kind: :regex,
+            data: {
+              pattern: regex_data[:pattern],
+              flags: regex_data[:flags],
+              bindings: bindings
+            }
+          )
         when :INT_LITERAL
           # Literal pattern: 0, 1, 42
           value = consume(:INT_LITERAL).value.to_i
@@ -784,6 +877,9 @@ module Aurora
         when :STRING_LITERAL
           value = consume(:STRING_LITERAL).value
           AST::StringLit.new(value: value)
+        when :REGEX
+          regex_data = consume(:REGEX).value
+          AST::RegexLit.new(pattern: regex_data[:pattern], flags: regex_data[:flags])
         when :IDENTIFIER
           # Check for lambda: x => expr
           if peek && peek.type == :FAT_ARROW
@@ -797,8 +893,8 @@ module Aurora
               args = parse_args
               consume(:RPAREN)
               AST::Call.new(callee: AST::VarRef.new(name: name), args: args)
-            elsif current.type == :LBRACE
-              # Record literal
+            elsif current.type == :LBRACE && !looks_like_match_arms?
+              # Record literal (but not match arms)
               consume(:LBRACE)
               fields = parse_record_fields
               consume(:RBRACE)
@@ -1026,7 +1122,36 @@ module Aurora
         
         fields
       end
-      
+
+      def looks_like_match_arms?
+        # Lookahead to determine if { starts match arms or record literal
+        # Match arms start with patterns: /, _, uppercase IDENTIFIER, lowercase identifier, etc.
+        # Record literals start with: lowercase_identifier :
+        return false unless current.type == :LBRACE
+
+        next_token = peek
+        return false unless next_token
+
+        # If next token is /, _, or RBRACE, it's match arms
+        return true if next_token.type == :REGEX
+        return true if next_token.type == :UNDERSCORE
+        return true if next_token.type == :RBRACE
+
+        # If next token is IDENTIFIER followed by :, it's a record field
+        # If next token is IDENTIFIER followed by =>, it's a match arm
+        if next_token.type == :IDENTIFIER
+          token_after_next = @tokens[@pos + 2] if @pos + 2 < @tokens.length
+          return false if token_after_next && token_after_next.type == :COLON
+          return true if token_after_next && token_after_next.type == :FAT_ARROW
+
+          # Otherwise, assume it's a match arm if identifier is uppercase (constructor pattern)
+          # or lowercase (variable binding pattern)
+          return true
+        end
+
+        false
+      end
+
       def current
         @tokens[@pos]
       end

@@ -33,17 +33,36 @@ module Aurora
       def self.literal(value, type, origin: nil)
         LiteralExpr.new(value: value, type: type, origin: origin)
       end
-      
+
+      def self.regex(pattern, flags, type, origin: nil)
+        RegexExpr.new(pattern: pattern, flags: flags, type: type, origin: origin)
+      end
+
       def self.var(name, type, origin: nil)
         VarExpr.new(name: name, type: type, origin: origin)
       end
-      
+
+      # Alias for var
+      def self.var_expr(name, type, origin: nil)
+        var(name, type, origin: origin)
+      end
+
       def self.binary(op, left, right, type, origin: nil)
         BinaryExpr.new(op: op, left: left, right: right, type: type, origin: origin)
       end
-      
+
+      # Alias for binary
+      def self.binary_expr(op, left, right, type, origin: nil)
+        binary(op, left, right, type, origin: origin)
+      end
+
       def self.call(callee, args, type, origin: nil)
         CallExpr.new(callee: callee, args: args, type: type, origin: origin)
+      end
+
+      # Alias for call
+      def self.call_expr(callee, args, type, origin: nil)
+        call(callee, args, type, origin: origin)
       end
       
       def self.member(object, member, type, origin: nil)
@@ -52,6 +71,11 @@ module Aurora
       
       def self.let(name, value, body, type, origin: nil)
         LetExpr.new(name: name, value: value, body: body, type: type, origin: origin)
+      end
+
+      # Alias for let
+      def self.let_expr(name, value, body, type, origin: nil)
+        let(name, value, body, type, origin: origin)
       end
       
       def self.record(type_name, fields, type, origin: nil)
@@ -76,6 +100,10 @@ module Aurora
       
       def self.type_decl(name, type, origin: nil)
         TypeDecl.new(name: name, type: type, origin: origin)
+      end
+
+      def self.module_node(items, name: nil, imports: [], origin: nil)
+        Module.new(name: name, items: items, imports: imports, origin: origin)
       end
     end
   end

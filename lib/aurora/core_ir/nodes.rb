@@ -132,13 +132,24 @@ module Aurora
     # Literal expression
     class LiteralExpr < Expr
       attr_reader :value
-      
+
       def initialize(value:, type:, origin: nil)
         super(kind: :lit, data: value, type: type, origin: origin)
         @value = value
       end
     end
-    
+
+    # Regex literal expression
+    class RegexExpr < Expr
+      attr_reader :pattern, :flags
+
+      def initialize(pattern:, flags: "", type:, origin: nil)
+        super(kind: :regex, data: {pattern: pattern, flags: flags}, type: type, origin: origin)
+        @pattern = pattern
+        @flags = flags
+      end
+    end
+
     # Variable reference
     class VarExpr < Expr
       attr_reader :name

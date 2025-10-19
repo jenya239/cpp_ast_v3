@@ -1,0 +1,11 @@
+// Regex pattern matching
+
+fn classify_input(text: string) -> i32 =
+  match text {
+    /hello/ => 1,
+    /world/ => 2,
+    _ => 0
+  }
+
+fn main() -> i32 =
+  classify_input("hello")

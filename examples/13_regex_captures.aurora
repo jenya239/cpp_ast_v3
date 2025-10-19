@@ -1,0 +1,11 @@
+// Regex pattern matching with capture groups
+
+fn parse_email(text: string) -> i32 =
+  match text {
+    /(\w+)@(\w+)/ as [_, user, domain] => 1,
+    /hello/ => 2,
+    _ => 0
+  }
+
+fn main() -> i32 =
+  parse_email("test@example")

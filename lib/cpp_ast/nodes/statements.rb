@@ -1092,6 +1092,20 @@ module CppAst
         "#{leading_trivia}for (#{variable.to_source} : #{container.to_source}) #{body.to_source}"
       end
     end
+
+    # RawStatement: raw C++ code as string
+    class RawStatement < Statement
+      attr_accessor :code
+
+      def initialize(leading_trivia: "", code:)
+        super(leading_trivia: leading_trivia)
+        @code = code
+      end
+
+      def to_source
+        "#{leading_trivia}#{code}"
+      end
+    end
   end
 end
 

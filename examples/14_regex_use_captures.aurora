@@ -1,0 +1,10 @@
+// Using capture groups in match arms
+
+fn get_username(email: string) -> string =
+  match email {
+    /(\w+)@(\w+)/ as [_, user, domain] => user,
+    _ => "unknown"
+  }
+
+fn main() -> i32 =
+  0

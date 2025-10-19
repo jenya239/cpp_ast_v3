@@ -181,6 +181,17 @@ module Aurora
       end
     end
 
+    # Regex literal
+    class RegexLit < Expr
+      attr_reader :pattern, :flags
+
+      def initialize(pattern:, flags: "", origin: nil)
+        super(kind: :regex_lit, data: {pattern: pattern, flags: flags}, origin: origin)
+        @pattern = pattern  # String - regex pattern
+        @flags = flags      # String - flags like "i", "m", "im"
+      end
+    end
+
     # Variable reference
     class VarRef < Expr
       attr_reader :name

@@ -31,13 +31,15 @@ module CppAst
     # StringLiteral
     class StringLiteral < Expression
       attr_accessor :value
-      
+
       def initialize(value:)
         @value = value
       end
-      
+
       def to_source
-        value
+        # Escape special characters and wrap in quotes
+        escaped = value.gsub('\\', '\\\\\\').gsub('"', '\\"').gsub("\n", '\\n').gsub("\t", '\\t')
+        "\"#{escaped}\""
       end
     end
     

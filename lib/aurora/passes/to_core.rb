@@ -124,6 +124,9 @@ module Aurora
         when AST::StringLit
           type = CoreIR::Builder.primitive_type("string")
           CoreIR::Builder.literal(expr.value, type)
+        when AST::RegexLit
+          type = CoreIR::Builder.primitive_type("regex")
+          CoreIR::Builder.regex(expr.pattern, expr.flags, type)
         when AST::VarRef
           type = infer_type(expr.name)
           CoreIR::Builder.var(expr.name, type)
@@ -330,6 +333,13 @@ module Aurora
           {kind: :constructor, name: pattern.data[:name], fields: pattern.data[:fields]}
         when :var
           {kind: :var, name: pattern.data[:name]}
+        when :regex
+          {
+            kind: :regex,
+            pattern: pattern.data[:pattern],
+            flags: pattern.data[:flags],
+            bindings: pattern.data[:bindings] || []
+          }
         else
           raise "Unknown pattern kind: #{pattern.kind}"
         end
