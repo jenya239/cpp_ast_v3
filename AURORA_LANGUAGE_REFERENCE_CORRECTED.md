@@ -79,6 +79,12 @@ type Option<T> = Some(T) | None
 type Result = Ok { value: i32 } | Err { code: i32, message: str }
 ```
 
+#### **Enum Types**
+```aurora
+type Color = enum { Red, Green, Blue }
+type Status = enum { Pending, Active, Completed }
+```
+
 #### **Pattern Matching**
 ```aurora
 fn area(s: Shape) -> f32 =
@@ -219,7 +225,28 @@ fn classify(text: string) -> string =
 - ✅ C++ lowering: Full regex support
 - ✅ **FULLY WORKING** - Complete implementation
 
-### ✅ **7. Binary Data Support (FULLY WORKING)**
+### ✅ **7. Header Generation (FULLY WORKING)**
+
+#### **Separate Header and Implementation Files**
+```aurora
+module Math
+  type Point = { x: f32, y: f32 }
+  fn add(a: i32, b: i32) -> i32 = a + b
+  fn multiply(a: i32, b: i32) -> i32 = a * b
+end
+```
+
+**Generated Files:**
+- `math.hpp` - Header with declarations
+- `math.cpp` - Implementation with definitions
+
+**Implementation Status**:
+- ✅ Header generator: `Backend::HeaderGenerator`
+- ✅ Separate declarations and definitions
+- ✅ Header guards and includes
+- ✅ **FULLY WORKING** - Complete implementation
+
+### ✅ **8. Binary Data Support (FULLY WORKING)**
 
 #### **Buffer Operations**
 ```aurora
@@ -370,6 +397,18 @@ let value = reader.read_u32()        // 0x12345678
 let text = reader.read_string(5)     // "Hello"
 ```
 
+### **Header Generation**
+```aurora
+module Math
+  type Point = { x: f32, y: f32 }
+  fn add(a: i32, b: i32) -> i32 = a + b
+end
+```
+
+**Generated Files:**
+- `math.hpp` - Header with declarations
+- `math.cpp` - Implementation with definitions
+
 ---
 
 ## ⚠️ **LIMITATIONS (Based on Code Analysis)**
@@ -393,11 +432,13 @@ let text = reader.read_string(5)     // "Hello"
 ### **✅ Production Ready**
 - Basic language features (functions, types, expressions)
 - Record types and pattern matching
+- Enum types
 - Module system
 - String support (UTF-8 aware)
 - Regex support with capture groups
 - **Binary data support** (Buffer, BinaryReader, BinaryWriter)
 - Endianness support (Little, Big, Native)
+- **Header generation** (.hpp/.cpp files)
 - **Real C++ compilation and execution**
 
 ### **⏳ In Development**
@@ -468,6 +509,10 @@ aurora_code = "[x*2 for x in arr]"      # Comprehension parsing only
 - `runtime/aurora_buffer.hpp` - Binary data support
 - `runtime/aurora_string.hpp` - String support (UTF-8)
 - `runtime/aurora_regex.hpp` - Regex support with captures
+
+### **XQR Support**
+- `lib/xqr.rb` - XQR as alias for Aurora
+- `test/builder/dsl_v2/aurora_xqr_test.rb` - XQR integration tests
 
 ### **Test Files**
 - `test/aurora/integration_test.rb` - Real compilation tests
