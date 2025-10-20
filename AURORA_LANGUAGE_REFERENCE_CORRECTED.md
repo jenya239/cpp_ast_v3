@@ -188,18 +188,44 @@ let evens = [x for x in numbers if x % 2 == 0]
 - ⏳ **CoreIR transformation**: Not implemented
 - ⏳ **C++ lowering**: Not implemented
 
-#### **Array Literals** ✅ **PARSING WORKING**
+#### **Array Literals** ✅ **FULLY WORKING**
 ```aurora
 let numbers = [1, 2, 3, 4, 5]
 let empty = []
 let mixed = [1, 2.0, true]
 ```
 
+#### **Array Indexing** ✅ **FULLY WORKING**
+```aurora
+fn get_first() -> i32 =
+  let arr = [1, 2, 3]
+  arr[0]                     // Simple indexing
+
+fn get_at(i: i32) -> i32 =
+  let arr = [10, 20, 30, 40]
+  arr[i]                     // Parameterized indexing
+
+fn get_computed() -> i32 =
+  let arr = [1, 2, 3, 4, 5]
+  arr[1 + 1]                 // Computed index
+```
+
+#### **Array Methods** ✅ **FULLY WORKING**
+```aurora
+fn array_operations() -> i32 =
+  let arr = [1, 2, 3]
+  let len = arr.length()     // Get size
+  arr.push(4)               // Add element
+  arr.pop()                  // Remove last
+  arr[arr.length() - 1]      // Get last element
+```
+
 **Implementation Status**:
-- ✅ AST node: `ArrayLiteral`
-- ✅ Parser: Array literal parsing
-- ⏳ **CoreIR transformation**: Partial
-- ⏳ **C++ lowering**: Partial
+- ✅ AST nodes: `ArrayLiteral`, `IndexAccess`
+- ✅ Parser: Array literal parsing, indexing, method calls
+- ✅ CoreIR transformation: Type inference for arrays
+- ✅ C++ lowering: `std::vector` methods and indexing
+- ✅ **FULLY WORKING** - Complete implementation
 
 #### **Pipe Operator** ✅ **PARSING WORKING**
 ```aurora
@@ -448,11 +474,10 @@ export fn distance(p1: Point, p2: Point) -> f32 =
 ## ⚠️ **LIMITATIONS (Based on Code Analysis)**
 
 ### **Not Fully Implemented**
-1. **Array Operations** - Parsing only, no CoreIR/C++ lowering
-2. **List Comprehensions** - Parsing only, no transformation
-3. **Pipe Operator** - Parsing only, no desugaring
-4. **Lambda Closures** - Basic parsing, no capture analysis
-5. **For Loop Body** - Parsing only, no full C++ lowering
+1. **List Comprehensions** - Parsing only, no transformation
+2. **Pipe Operator** - Parsing only, no desugaring
+3. **Lambda Closures** - Basic parsing, no capture analysis
+4. **For Loop Body** - Parsing only, no full C++ lowering
 
 ### **Partially Implemented**
 1. **Generic Types** - Parsing works, C++ lowering basic
@@ -468,6 +493,7 @@ export fn distance(p1: Point, p2: Point) -> f32 =
 - Record types and pattern matching
 - Enum types
 - **ESM-style module system** (export/import like JavaScript/TypeScript)
+- **Array operations** (indexing, methods: length, push, pop)
 - String support (UTF-8 aware)
 - Regex support with capture groups
 - **Binary data support** (Buffer, BinaryReader, BinaryWriter)
@@ -538,6 +564,11 @@ aurora_code = "[x*2 for x in arr]"      # Comprehension parsing only
 - `examples/aurora_esm_demo.rb` - Complete ESM module system demo
 - `test/aurora/esm_modules_test.rb` - ESM module tests (18/18 passing)
 - `examples/aurora_comprehensive_demo.rb` - ESM integration examples
+
+### **Array Operations Examples**
+- `examples/aurora_array_indexing_demo.rb` - Array indexing demo
+- `examples/aurora_array_methods_demo.rb` - Array methods demo
+- `examples/aurora_array_demo.rb` - Complete array operations demo
 
 ### **Binary Data Examples**
 - `examples/16_buffer_basics.cpp` - All buffer operations demo
