@@ -1,0 +1,210 @@
+#!/usr/bin/env ruby
+# frozen_string_literal: true
+
+require "optparse"
+require "tmpdir"
+require "open3"
+require "fileutils"
+
+ROOT_DIR = File.expand_path("..", __dir__)
+RUNTIME_DIR = File.join(ROOT_DIR, "runtime")
+DEFAULT_COMPILER = ENV.fetch("CXX", "g++")
+
+$LOAD_PATH.unshift(File.join(ROOT_DIR, "lib"))
+require "aurora"
+
+def wrap_cpp(body)
+  <<~CPP
+    #include <cmath>
+    #include <cstdint>
+    #include <iostream>
+    #include <optional>
+    #include <span>
+    #include <string>
+    #include <variant>
+    #include <vector>
+    #include "aurora_string.hpp"
+    #include "aurora_buffer.hpp"
+    #include "aurora_regex.hpp"
+
+    #{body}
+  CPP
+end
+
+def parse_arguments(argv)
+  options = {
+    compiler: DEFAULT_COMPILER,
+    keep_tmp: false,
+    emit_cpp: false,
+    emit_cpp_output: nil,
+    verbose: false
+  }
+
+  raw_args = []
+
+  parser = OptionParser.new do |opts|
+    opts.banner = "Usage: aurora [options] [file] [-- program-args]"
+
+    opts.on("--emit-cpp", "Emit generated C++ to STDOUT") do
+      options[:emit_cpp] = true
+    end
+
+    opts.on("-oFILE", "--output=FILE", "Write generated C++ to FILE (implies --emit-cpp)") do |file|
+      options[:emit_cpp] = true
+      options[:emit_cpp_output] = file
+    end
+
+    opts.on("--compiler=CMD", "C++ compiler command (default: #{DEFAULT_COMPILER})") do |cmd|
+      options[:compiler] = cmd
+    end
+
+    opts.on("--keep-tmp", "Keep temporary build directory for inspection") do
+      options[:keep_tmp] = true
+    end
+
+    opts.on("--verbose", "Print commands executed by the CLI") do
+      options[:verbose] = true
+    end
+
+    opts.on("--version", "Show CLI version information") do
+      puts "Aurora CLI (experimental)"
+      exit
+    end
+
+    opts.on("-h", "--help", "Show this help message") do
+      puts opts
+      exit
+    end
+  end
+
+  begin
+    parser.order!(argv) { |nonopt| raw_args << nonopt }
+  rescue OptionParser::ParseError => e
+    warn e.message
+    warn parser
+    exit 1
+  end
+
+  separator_index = raw_args.index("--")
+  program_args = separator_index ? raw_args[(separator_index + 1)..] : []
+  input_args = separator_index ? raw_args[0...separator_index] : raw_args
+
+  if input_args.size > 1
+    warn "Multiple input files provided: #{input_args.join(', ')}"
+    warn parser
+    exit 1
+  end
+
+  input_path = input_args.first
+  { options: options, input_path: input_path, program_args: program_args }
+end
+
+def read_source(input_path)
+  if input_path.nil?
+    if STDIN.tty?
+      warn "No input file provided. Pass a file path or pipe source code via STDIN."
+      exit 1
+    end
+    STDIN.read
+  elsif input_path == "-"
+    STDIN.read
+  else
+    File.read(input_path)
+  end
+rescue Errno::ENOENT
+  warn "Input file not found: #{input_path}"
+  exit 1
+rescue Errno::EACCES
+  warn "Cannot read input file: #{input_path}"
+  exit 1
+end
+
+def emit_cpp(options, cpp_source)
+  if (output = options[:emit_cpp_output])
+    FileUtils.mkdir_p(File.dirname(output))
+    File.write(output, cpp_source)
+  else
+    puts cpp_source
+  end
+end
+
+def compile_cpp(options, cpp_source)
+  Dir.mktmpdir("aurora-cli") do |dir|
+    source_path = File.join(dir, "aurora_main.cpp")
+    binary_path = File.join(dir, "aurora_program")
+
+    File.write(source_path, cpp_source)
+
+    runtime_cpp = File.join(RUNTIME_DIR, "aurora_string.cpp")
+    compile_cmd = [
+      options[:compiler],
+      "-std=c++20",
+      "-O2",
+      "-I", RUNTIME_DIR,
+      source_path,
+      runtime_cpp,
+      "-o", binary_path
+    ]
+
+    if options[:verbose]
+      warn "Compiling: #{compile_cmd.join(' ')}"
+    end
+
+    stdout, stderr, status = Open3.capture3(*compile_cmd)
+
+    unless status.success?
+      warn stdout unless stdout.empty?
+      warn stderr unless stderr.empty?
+      warn "Compilation failed (status #{status.exitstatus})"
+      warn "Command: #{compile_cmd.join(' ')}" if options[:verbose]
+      exit status.exitstatus || 1
+    end
+
+    yield(binary_path, dir)
+  ensure
+    if options[:keep_tmp]
+      warn "Temporary build directory retained: #{dir}" if dir && options[:verbose]
+    elsif dir && Dir.exist?(dir)
+      FileUtils.remove_entry(dir)
+    end
+  end
+end
+
+def run_program(binary_path, program_args, verbose:)
+  if verbose
+    warn "Running: #{([binary_path] + program_args).join(' ')}"
+  end
+
+  system(binary_path, *program_args)
+  status = $?
+  exit(status ? status.exitstatus : 1)
+end
+
+def main
+  parsed = parse_arguments(ARGV.dup)
+  options = parsed[:options]
+  program_args = parsed[:program_args]
+  input_path = parsed[:input_path]
+
+  source_code = read_source(input_path)
+
+  begin
+    generated_cpp = Aurora.to_cpp(source_code)
+  rescue Aurora::ParseError, Aurora::CompileError => e
+    warn e.message
+    exit 1
+  end
+
+  wrapped_cpp = wrap_cpp(generated_cpp)
+
+  if options[:emit_cpp]
+    emit_cpp(options, wrapped_cpp)
+    return
+  end
+
+  compile_cpp(options, wrapped_cpp) do |binary_path, _temp_dir|
+    run_program(binary_path, program_args, verbose: options[:verbose])
+  end
+end
+
+main

@@ -54,6 +54,29 @@ This compiles to efficient C++ using `std::variant` and `std::visit`.
 - **Total tests**: 1030 runs / 2308 assertions (0 failures)
 - Sum types, pattern matching, generics, modules all fully working
 
+### Aurora CLI
+
+The repository ships with `bin/aurora`, a small helper that compiles Aurora source to C++20 behind the scenes, invokes the system compiler (`$CXX` or `g++`), and executes the resulting binary with standard streams intact. Typical usage:
+
+```bash
+# Run a file
+bin/aurora examples/hello_world.aur
+
+# Stream source from STDIN
+cat examples/hello_world.aur | bin/aurora -
+
+# Pass arguments to the compiled program
+bin/aurora app.aur -- arg1 arg2
+
+# Inspect the generated C++
+bin/aurora --emit-cpp app.aur
+
+# Keep the temporary build directory for debugging
+bin/aurora --keep-tmp app.aur
+```
+
+Runtime headers (`aurora_string.hpp`, `aurora_buffer.hpp`, `aurora_regex.hpp`) are linked automatically, so `.aur` files can be treated like scripts that participate naturally in shell pipelines and I/O redirection.
+
 ---
 
 ## 🎯 C++ AST DSL
@@ -268,7 +291,7 @@ graphics_lib = program(
 ### Additional Achievements
 - ✅ **C++20 features support**
 - ✅ **Performance optimization with caching**
-- ✅ **Comprehensive test coverage (1022 tests)**
+- ✅ **Comprehensive test coverage (1030 tests)**
 - ✅ **Extensive documentation and examples**
 - ✅ **100% passing tests**
 
@@ -310,5 +333,5 @@ graphics_lib = program(
 ---
 
 **Status**: ✅ **PRODUCTION READY**
-**Test Coverage**: 1022 runs, 2255 assertions, **100% passing**
-**Aurora Language**: 73/73 tests passing
+**Test Coverage**: 1030 runs, 2308 assertions, **100% passing**
+**Aurora Language**: all language tests passing
