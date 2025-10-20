@@ -61,7 +61,8 @@ module Aurora
       
       def transform_type_decl(decl)
         type = transform_type(decl.type)
-        CoreIR::TypeDecl.new(name: decl.name, type: type, type_params: decl.type_params)
+        type_params = normalize_type_params(decl.type_params)
+        CoreIR::TypeDecl.new(name: decl.name, type: type, type_params: type_params)
       end
       
       def transform_function(func)
@@ -69,14 +70,20 @@ module Aurora
         ret_type = transform_type(func.ret_type)
         body = transform_expression(func.body)
 
+        type_params = normalize_type_params(func.type_params)
+
         CoreIR::Func.new(
           name: func.name,
           params: params,
           ret_type: ret_type,
           body: body,
           effects: infer_effects(body),
-          type_params: func.type_params
+          type_params: type_params
         )
+      end
+
+      def normalize_type_params(params)
+        params.map { |tp| tp.respond_to?(:name) ? tp.name : tp }
       end
       
       def transform_param(param)

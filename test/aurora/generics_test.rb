@@ -18,8 +18,7 @@ class AuroraGenericsTest < Minitest::Test
 
     # Should have type parameters
     assert_equal 2, type_decl.type_params.length
-    assert_equal "T", type_decl.type_params[0]
-    assert_equal "E", type_decl.type_params[1]
+    assert_equal ["T", "E"], type_decl.type_params.map(&:name)
   end
 
   def test_parse_generic_function
@@ -35,7 +34,7 @@ class AuroraGenericsTest < Minitest::Test
 
     # Should have type parameters
     assert_equal 1, func.type_params.length
-    assert_equal "T", func.type_params[0]
+    assert_equal ["T"], func.type_params.map(&:name)
   end
 
   def test_generic_option_type
@@ -48,7 +47,7 @@ class AuroraGenericsTest < Minitest::Test
 
     assert_equal "Option", type_decl.name
     assert_equal 1, type_decl.type_params.length
-    assert_equal "T", type_decl.type_params[0]
+    assert_equal ["T"], type_decl.type_params.map(&:name)
 
     # Type should be a sum type
     assert_instance_of Aurora::AST::SumType, type_decl.type
@@ -56,8 +55,6 @@ class AuroraGenericsTest < Minitest::Test
   end
 
   def test_generic_function_with_constraints
-    skip "Type constraints not yet implemented"
-
     aurora_source = <<~AURORA
       fn add<T: Numeric>(a: T, b: T) -> T = a + b
     AURORA
@@ -66,6 +63,8 @@ class AuroraGenericsTest < Minitest::Test
     func = ast.declarations.first
 
     # Should have type parameter with constraint
+    assert_equal 1, func.type_params.length
+    assert_equal "T", func.type_params[0].name
     assert_equal "Numeric", func.type_params[0].constraint
   end
 

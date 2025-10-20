@@ -54,7 +54,7 @@ module Aurora
         super(origin: origin)
         @name = name
         @type = type
-        @type_params = type_params  # Array of String (type parameter names)
+        @type_params = type_params  # Array of TypeParam
         @exported = exported        # Boolean - is this exported?
       end
     end
@@ -69,8 +69,19 @@ module Aurora
         @params = params
         @ret_type = ret_type
         @body = body
-        @type_params = type_params  # Array of String (type parameter names)
+        @type_params = type_params  # Array of TypeParam
         @exported = exported        # Boolean - is this exported?
+      end
+    end
+
+    # Type parameter with optional constraint
+    class TypeParam < Node
+      attr_reader :name, :constraint
+
+      def initialize(name:, constraint: nil, origin: nil)
+        super(origin: origin)
+        @name = name
+        @constraint = constraint
       end
     end
     

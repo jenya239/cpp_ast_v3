@@ -261,10 +261,24 @@ module Aurora
       end
 
       def parse_type_params
-        # Parse comma-separated list of type parameters: T, E, R
+        # Parse comma-separated list of type parameters: T, E, R or T: Constraint
         params = []
         loop do
-          params << consume(:IDENTIFIER).value
+          name = consume(:IDENTIFIER).value
+          constraint = nil
+
+          if current.type == :COLON
+            consume(:COLON)
+
+            if current.type == :IDENTIFIER
+              constraint = consume(:IDENTIFIER).value
+            else
+              raise "Expected constraint identifier, got #{current.type}(#{current.value})"
+            end
+          end
+
+          params << AST::TypeParam.new(name: name, constraint: constraint)
+
           break unless current.type == :COMMA
           consume(:COMMA)
         end
