@@ -51,7 +51,7 @@ module Aurora
 
       def generate_header_guard(module_name)
         # Convert Math::Vector -> MATH_VECTOR_HPP
-        module_name.upcase.gsub("::", "_") + "_HPP"
+        module_name.upcase.gsub("::", "_").gsub("/", "_") + "_HPP"
       end
 
       def generate_header(module_name:, guard:, imports:, items:)
@@ -194,7 +194,7 @@ module Aurora
 
       def module_name_to_namespace(name)
         # Convert Math::Vector -> math::vector
-        name.split("::").map(&:downcase).join("::")
+        name.gsub("/", "::").split("::").map(&:downcase).join("::")
       end
     end
   end

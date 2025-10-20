@@ -108,6 +108,9 @@ module Aurora
             {name: variant[:name], fields: fields}
           end
           CoreIR::Builder.sum_type(type.name, variants)
+        when AST::ArrayType
+          element_type = transform_type(type.element_type)
+          CoreIR::ArrayType.new(element_type: element_type)
         else
           raise "Unknown type: #{type.class}"
         end
@@ -187,6 +190,8 @@ module Aurora
           transform_index_access(expr)
         when AST::ForLoop
           transform_for_loop(expr)
+        when AST::ListComprehension
+          transform_list_comprehension(expr)
         else
           raise "Unknown expression: #{expr.class}"
         end
@@ -321,6 +326,47 @@ module Aurora
           iterable: iterable,
           body: body
         )
+      end
+
+      def transform_list_comprehension(list_comp)
+        saved_var_types = @var_types.dup
+
+        generators = []
+
+        list_comp.generators.each do |gen|
+          iterable_ir = transform_expression(gen.iterable)
+
+          element_type = if iterable_ir.type.is_a?(CoreIR::ArrayType)
+                           iterable_ir.type.element_type
+                         else
+                           iterable_ir.type || CoreIR::Builder.primitive_type("i32")
+                         end
+
+          generators << {
+            var_name: gen.var_name,
+            iterable: iterable_ir,
+            var_type: element_type
+          }
+
+          @var_types[gen.var_name] = element_type
+        end
+
+        filters = list_comp.filters.map { |filter| transform_expression(filter) }
+
+        output_expr = transform_expression(list_comp.output_expr)
+        element_type = output_expr.type || CoreIR::Builder.primitive_type("i32")
+
+        array_type = CoreIR::ArrayType.new(element_type: element_type)
+
+        CoreIR::ListCompExpr.new(
+          element_type: element_type,
+          generators: generators,
+          filters: filters,
+          output_expr: output_expr,
+          type: array_type
+        )
+      ensure
+        @var_types = saved_var_types
       end
 
       def transform_pattern(pattern)

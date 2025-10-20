@@ -252,6 +252,8 @@ module Aurora
           lower_index(expr)
         when CoreIR::ForLoopExpr
           lower_for_loop(expr)
+        when CoreIR::ListCompExpr
+          lower_list_comprehension(expr)
         else
           raise "Unknown expression: #{expr.class}"
         end
@@ -623,6 +625,123 @@ module Aurora
           variable: variable,
           container: container,
           body: compound_body
+        )
+      end
+
+      def lower_list_comprehension(list_comp)
+        element_cpp_type = map_type(list_comp.element_type)
+        vector_type = "std::vector<#{element_cpp_type}>"
+
+        result_decl = CppAst::Nodes::VariableDeclaration.new(
+          type: vector_type,
+          declarators: ["result"],
+          declarator_separators: [],
+          type_suffix: " "
+        )
+
+        lambda_statements = [result_decl]
+
+        body_statements = []
+
+        list_comp.filters.each do |filter_expr|
+          condition_expr = lower_expression(filter_expr)
+          parenthesized = CppAst::Nodes::ParenthesizedExpression.new(
+            expression: condition_expr
+          )
+          negated = CppAst::Nodes::UnaryExpression.new(
+            operator: "!",
+            operand: parenthesized,
+            prefix: true,
+            operator_suffix: ""
+          )
+
+          continue_stmt = CppAst::Nodes::ContinueStatement.new
+          continue_block = CppAst::Nodes::BlockStatement.new(
+            statements: [continue_stmt],
+            statement_trailings: ["\n"],
+            lbrace_suffix: "\n",
+            rbrace_prefix: ""
+          )
+
+          body_statements << CppAst::Nodes::IfStatement.new(
+            condition: negated,
+            then_statement: continue_block,
+            else_statement: nil,
+            if_suffix: " ",
+            condition_lparen_suffix: "",
+            condition_rparen_suffix: "",
+            else_prefix: "",
+            else_suffix: ""
+          )
+        end
+
+        push_call = CppAst::Nodes::FunctionCallExpression.new(
+          callee: CppAst::Nodes::MemberAccessExpression.new(
+            object: CppAst::Nodes::Identifier.new(name: "result"),
+            operator: ".",
+            member: CppAst::Nodes::Identifier.new(name: "push_back")
+          ),
+          arguments: [lower_expression(list_comp.output_expr)],
+          argument_separators: []
+        )
+
+        body_statements << CppAst::Nodes::ExpressionStatement.new(expression: push_call)
+
+        body_block = CppAst::Nodes::BlockStatement.new(
+          statements: body_statements,
+          statement_trailings: Array.new(body_statements.length, "\n"),
+          lbrace_suffix: "\n",
+          rbrace_prefix: ""
+        )
+
+        current_body = body_block
+        outer_range_stmt = nil
+
+        list_comp.generators.reverse_each do |generator|
+          var_type_str = map_type(generator[:var_type])
+          variable = ForLoopVariable.new(var_type_str, generator[:var_name])
+          container_expr = lower_expression(generator[:iterable])
+
+          range_stmt = CppAst::Nodes::RangeForStatement.new(
+            variable: variable,
+            container: container_expr,
+            body: current_body
+          )
+
+          outer_range_stmt = range_stmt
+          current_body = CppAst::Nodes::BlockStatement.new(
+            statements: [range_stmt],
+            statement_trailings: ["\n"],
+            lbrace_suffix: "\n",
+            rbrace_prefix: ""
+          )
+        end
+
+        if outer_range_stmt
+          lambda_statements << outer_range_stmt
+        else
+          lambda_statements.concat(body_statements)
+        end
+
+        lambda_statements << CppAst::Nodes::ReturnStatement.new(
+          expression: CppAst::Nodes::Identifier.new(name: "result")
+        )
+
+        body_str = lambda_statements.map(&:to_source).join("\n")
+
+        lambda_expr = CppAst::Nodes::LambdaExpression.new(
+          capture: "&",
+          parameters: "",
+          specifiers: "",
+          body: body_str,
+          capture_suffix: "",
+          params_suffix: ""
+        )
+
+        CppAst::Nodes::FunctionCallExpression.new(
+          callee: lambda_expr,
+          arguments: [],
+          argument_separators: []
         )
       end
 

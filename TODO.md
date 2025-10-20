@@ -257,7 +257,7 @@ for x in arr do
 **Tests:** Manual testing completed, all Aurora tests passing (73/73)
 
 #### 12. List Comprehensions ✅
-**Status: FULLY IMPLEMENTED (Architecture docs)**
+**Status: Fully implemented with code generation**
 ```aurora
 [x * 2 for x in arr]
 [x for x in arr if x > 0]
@@ -265,9 +265,9 @@ for x in arr do
 
 **Implementation:**
 - ✅ ListComprehension AST node (in nodes.rb)
-- ✅ Parser support (documented)
-- ✅ Generator syntax
-- ⏳ Full integration tests needed
+- ✅ Parser support (single and multi generator)
+- ✅ CoreIR lowering + C++ codegen (nested range-for with filters)
+- ✅ Regression coverage (`test/aurora/list_comprehension_test.rb`)
 
 ### 🚧 Partially Implemented
 

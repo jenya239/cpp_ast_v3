@@ -394,7 +394,6 @@ module CppAst
         if body && body.respond_to?(:inline?) && body.inline?
           result << body.to_source
         elsif body
-          # Architecture: space before { is in body.leading_trivia, don't add it here
           result << body.to_source
         else
           result << ";"
@@ -1108,4 +1107,3 @@ module CppAst
     end
   end
 end
-

@@ -207,6 +207,35 @@ class AuroraModuleSystemTest < Minitest::Test
     assert_includes result[:implementation], '#include "math.hpp"'
   end
 
+  def test_parse_module_with_slash_path
+    aurora_source = <<~AURORA
+      module app/geom
+
+      fn area(r: i32) -> i32 = r * r
+    AURORA
+
+    ast = Aurora.parse(aurora_source)
+    assert_equal "app/geom", ast.module_decl.name
+
+    result = Aurora.to_hpp_cpp(aurora_source)
+    assert_includes result[:header], 'namespace app::geom {'
+    assert_includes result[:implementation], '#include "app/geom.hpp"'
+  end
+
+  def test_import_with_slash_path
+    aurora_source = <<~AURORA
+      import std/containers
+
+      fn test() -> i32 = 0
+    AURORA
+
+    ast = Aurora.parse(aurora_source)
+    assert_equal "std/containers", ast.imports.first.path
+
+    result = Aurora.to_hpp_cpp(aurora_source)
+    assert_includes result[:implementation], '#include "std/containers.hpp"'
+  end
+
   def test_type_declaration_in_header
     aurora_source = <<~AURORA
       module Shapes

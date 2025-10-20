@@ -149,13 +149,24 @@ module Aurora
 
       def parse_module_path
         # Parse path like Math::Vector or just Math
-        parts = [consume(:IDENTIFIER).value]
-        while current.type == :COLON && peek_ahead(1)&.type == :COLON && peek_ahead(2)&.type == :IDENTIFIER
-          consume(:COLON)
-          consume(:COLON)
-          parts << consume(:IDENTIFIER).value
+        result = consume(:IDENTIFIER).value.dup
+
+        loop do
+          if current.type == :COLON && peek_ahead(1)&.type == :COLON && peek_ahead(2)&.type == :IDENTIFIER
+            consume(:COLON)
+            consume(:COLON)
+            result << "::"
+            result << consume(:IDENTIFIER).value
+          elsif current.type == :OPERATOR && current.value == "/" && peek_ahead(1)&.type == :IDENTIFIER
+            consume(:OPERATOR)  # /
+            result << "/"
+            result << consume(:IDENTIFIER).value
+          else
+            break
+          end
         end
-        parts.join("::")
+
+        result
       end
 
       def peek_ahead(offset)

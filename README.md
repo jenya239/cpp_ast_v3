@@ -40,18 +40,18 @@ This compiles to efficient C++ using `std::variant` and `std::visit`.
 - **Sum Types** - Type-safe unions with pattern matching
 - **Pattern Matching** - Exhaustive matching with `std::visit`
 - **Generic Types** - Parametric polymorphism (`Option<T>`, `Result<T,E>`)
-- **Module System** - Traditional C++ header/implementation separation
+- **Module System** - Traditional C++ header/implementation separation (supports `Math::Vector` and `app/geom` paths)
 - **Lambdas** - First-class functions (parsing complete)
 - **Pipe Operator** - Functional composition `|>`
 - **Product Types** - Structs with named fields
-- **Type Inference** - Smart type deduction
+- **Type Inference** - Basic let/loop inference with sensible defaults
 - **For Loops** - Range-based iteration
-- **List Comprehensions** - Functional list construction
+- **List Comprehensions** - Functional list construction (desugars to nested `std::vector` loops)
 - **Array Operations** - Indexing, methods, literals
 
 #### 📊 Test Coverage
-- **73/73 Aurora tests passing** (100% pass rate)
-- **1022/1022 total tests passing** (0 failures, 4 skips)
+- **75/75 Aurora tests passing** (100% pass rate)
+- **1026/1026 total tests passing** (0 failures, 2 skips)
 - Sum types, pattern matching, generics, modules all fully working
 
 ---

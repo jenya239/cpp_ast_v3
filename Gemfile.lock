@@ -8,9 +8,12 @@ GEM
     irb (1.6.2)
       reline (>= 0.3.0)
     minitest (5.25.5)
+    power_assert (2.0.5)
     rake (13.0.6)
     reline (0.3.2)
       io-console (~> 0.5)
+    test-unit (3.7.0)
+      power_assert
 
 PLATFORMS
   ruby
@@ -20,6 +23,7 @@ DEPENDENCIES
   debug
   minitest (~> 5.0)
   rake (~> 13.0)
+  test-unit (~> 3.6)
 
 BUNDLED WITH
    2.5.18
