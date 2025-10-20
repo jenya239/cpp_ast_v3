@@ -21,7 +21,8 @@ class AuroraLambdaTest < Minitest::Test
     lambda_expr = func.body.value
     assert_instance_of Aurora::AST::Lambda, lambda_expr
     assert_equal 1, lambda_expr.params.length
-    assert_equal "x", lambda_expr.params[0]
+    assert_instance_of Aurora::AST::LambdaParam, lambda_expr.params[0]
+    assert_equal "x", lambda_expr.params[0].name
   end
 
   def test_parse_lambda_with_multiple_params
@@ -37,11 +38,10 @@ class AuroraLambdaTest < Minitest::Test
 
     assert_instance_of Aurora::AST::Lambda, lambda_expr
     assert_equal 2, lambda_expr.params.length
+    assert_equal ["x", "y"], lambda_expr.params.map(&:name)
   end
 
   def test_parse_lambda_with_types
-    skip "Typed lambdas not yet implemented"
-
     aurora_source = <<~AURORA
       fn test() -> i32 =
         let f = (x: i32) => x + 1;

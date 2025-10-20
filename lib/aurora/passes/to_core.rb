@@ -267,28 +267,31 @@ module Aurora
       end
 
       def transform_lambda(lambda_expr)
-        # Transform lambda parameters
-        params = lambda_expr.params.map do |param_name|
-          # For now, infer param type as i32 (will be improved with proper type inference)
-          param_type = CoreIR::Builder.primitive_type("i32")
-          CoreIR::Param.new(name: param_name, type: param_type)
+        saved_var_types = @var_types.dup
+
+        params = lambda_expr.params.map do |param|
+          if param.is_a?(AST::LambdaParam)
+            param_type = param.type ? transform_type(param.type) : CoreIR::Builder.primitive_type("i32")
+            @var_types[param.name] = param_type
+            CoreIR::Param.new(name: param.name, type: param_type)
+          else
+            param_name = param.respond_to?(:name) ? param.name : param
+            param_type = CoreIR::Builder.primitive_type("i32")
+            @var_types[param_name] = param_type
+            CoreIR::Param.new(name: param_name, type: param_type)
+          end
         end
 
-        # Transform body
         body = transform_expression(lambda_expr.body)
 
-        # Infer return type from body
         ret_type = body.type
 
-        # Build function type
         param_types = params.map { |p| {name: p.name, type: p.type} }
         function_type = CoreIR::FunctionType.new(
           params: param_types,
           ret_type: ret_type
         )
 
-        # For now, no captures (simple lambdas only)
-        # TODO: Implement proper capture analysis
         captures = []
 
         CoreIR::LambdaExpr.new(
@@ -297,6 +300,8 @@ module Aurora
           body: body,
           function_type: function_type
         )
+      ensure
+        @var_types = saved_var_types
       end
 
       def transform_for_loop(for_loop)

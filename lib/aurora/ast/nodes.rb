@@ -270,17 +270,6 @@ module Aurora
       end
     end
 
-    # Lambda expression (anonymous function): x => expr or (x, y) => expr
-    class Lambda < Expr
-      attr_reader :params, :body
-
-      def initialize(params:, body:, origin: nil)
-        super(kind: :lambda, data: {params: params, body: body}, origin: origin)
-        @params = params  # Array of String (param names)
-        @body = body      # Expression
-      end
-    end
-
     # Record literal
     class RecordLit < Expr
       attr_reader :type_name, :fields
