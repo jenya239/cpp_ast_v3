@@ -18,5 +18,11 @@ end
 
 class Minitest::Test
   include TestHelpers
-end
 
+  def teardown
+    super
+    if defined?(CppAst) && CppAst.respond_to?(:formatting_mode=)
+      CppAst.formatting_mode = :pretty
+    end
+  end
+end

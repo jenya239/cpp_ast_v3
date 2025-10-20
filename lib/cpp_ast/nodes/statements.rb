@@ -43,7 +43,11 @@ module CppAst
         @lbrace_suffix = lbrace_suffix
         @rbrace_prefix = rbrace_prefix
       end
-      
+
+      def inline?
+        instance_variable_get(:@inline)
+      end
+
       def to_source
         result = "#{leading_trivia}{#{lbrace_suffix}"
         

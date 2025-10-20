@@ -6,9 +6,14 @@ require_relative "../core_ir/builder"
 module Aurora
   module Passes
     class ToCore
+      BUILTIN_CONSTRAINTS = {
+        "Numeric" => %w[i32 f32 i64 f64 u32 u64]
+      }.freeze
+
       def initialize
         @type_table = {}
         @function_table = {}
+        @type_decl_table = {}
         @var_types = {}  # Track variable types for let bindings
       end
       
@@ -43,6 +48,7 @@ module Aurora
         program.declarations.each do |decl|
           case decl
           when AST::TypeDecl
+            @type_decl_table[decl.name] = decl
             type_decl = transform_type_decl(decl)
             items << type_decl
             @type_table[decl.name] = type_decl.type
@@ -84,11 +90,10 @@ module Aurora
 
       def normalize_type_params(params)
         params.map do |tp|
-          if tp.respond_to?(:name)
-            CoreIR::TypeParam.new(name: tp.name, constraint: tp.respond_to?(:constraint) ? tp.constraint : nil)
-          else
-            CoreIR::TypeParam.new(name: tp, constraint: nil)
-          end
+          name = tp.respond_to?(:name) ? tp.name : tp
+          constraint = tp.respond_to?(:constraint) ? tp.constraint : nil
+          validate_constraint_name(constraint)
+          CoreIR::TypeParam.new(name: name, constraint: constraint)
         end
       end
       
@@ -109,6 +114,7 @@ module Aurora
           # In C++, this becomes: Option<T> (template instantiation)
           # For CoreIR, we represent as a special generic type
           base_name = type.base_type.name
+          validate_type_constraints(base_name, type.type_params)
           type_arg_names = type.type_params.map { |tp| transform_type(tp).name }.join(", ")
           # Create a synthetic name for the instantiated generic type
           CoreIR::Builder.primitive_type("#{base_name}<#{type_arg_names}>")
@@ -128,7 +134,7 @@ module Aurora
           raise "Unknown type: #{type.class}"
         end
       end
-      
+
       def transform_expression(expr)
         case expr
         when AST::IntLit
@@ -208,6 +214,46 @@ module Aurora
         else
           raise "Unknown expression: #{expr.class}"
         end
+      end
+
+      def validate_constraint_name(name)
+        return if name.nil? || name.empty?
+        return if BUILTIN_CONSTRAINTS.key?(name)
+
+        raise Aurora::CompileError, "Unknown constraint '#{name}'"
+      end
+
+      def validate_type_constraints(base_name, actual_type_nodes)
+        decl = @type_decl_table[base_name]
+        return unless decl && decl.type_params.any?
+
+        decl.type_params.zip(actual_type_nodes).each do |param_info, actual_node|
+          next unless param_info.respond_to?(:constraint) && param_info.constraint && !param_info.constraint.empty?
+
+          actual_name = extract_actual_type_name(actual_node)
+          next if actual_name.nil?
+
+          unless type_satisfies_constraint?(param_info.constraint, actual_name)
+            raise Aurora::CompileError, "Type '#{actual_name}' does not satisfy constraint '#{param_info.constraint}' for '#{param_info.name}'"
+          end
+        end
+      end
+
+      def extract_actual_type_name(type_node)
+        case type_node
+        when AST::PrimType
+          name = type_node.name
+          return nil if name.nil?
+          return nil if name[0]&.match?(/[A-Z]/)
+          name
+        else
+          nil
+        end
+      end
+
+      def type_satisfies_constraint?(constraint, type_name)
+        allowed = BUILTIN_CONSTRAINTS[constraint]
+        allowed && allowed.include?(type_name)
       end
 
       def transform_pipe(pipe_expr)

@@ -82,6 +82,7 @@ class AuroraGenericsTest < Minitest::Test
   def test_type_constraint_in_cpp_output
     aurora_source = <<~AURORA
       type Box<T: Numeric> = { value: T }
+      type IntBox = Box<i32>
     AURORA
 
     cpp = Aurora.to_cpp(aurora_source)
@@ -89,6 +90,32 @@ class AuroraGenericsTest < Minitest::Test
     assert_includes cpp, "template<typename T>"
     assert_includes cpp, "requires Numeric<T>"
     assert_includes cpp, "struct Box"
+  end
+
+  def test_type_constraint_violation_raises
+    aurora_source = <<~AURORA
+      type Box<T: Numeric> = { value: T }
+      type BoolBox = Box<bool>
+    AURORA
+
+    error = assert_raises Aurora::CompileError do
+      Aurora.to_cpp(aurora_source)
+    end
+
+    assert_includes error.message, "does not satisfy constraint"
+    assert_includes error.message, "Numeric"
+  end
+
+  def test_unknown_constraint_raises
+    aurora_source = <<~AURORA
+      type Box<T: Fancy> = { value: T }
+    AURORA
+
+    error = assert_raises Aurora::CompileError do
+      Aurora.to_cpp(aurora_source)
+    end
+
+    assert_includes error.message, "Unknown constraint"
   end
 
   def test_generic_lowering_to_cpp_templates

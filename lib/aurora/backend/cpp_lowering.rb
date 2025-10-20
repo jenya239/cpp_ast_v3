@@ -101,10 +101,10 @@ module Aurora
                    lower_record_type(type_decl.name, type_decl.type)
                  when CoreIR::SumType
                    lower_sum_type(type_decl.name, type_decl.type, type_decl.type_params)
-                 else
-                   # For primitive types, we don't need to generate anything
-                   CppAst::Nodes::Comment.new(text: "// Type alias: #{type_decl.name}")
-                 end
+                else
+                  # For primitive types, generate empty program (no direct C++ emission)
+                  CppAst::Nodes::Program.new(statements: [], statement_trailings: [])
+                end
 
         if type_decl.type_params.any?
           if result.is_a?(CppAst::Nodes::Program)

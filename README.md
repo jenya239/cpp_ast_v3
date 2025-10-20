@@ -51,7 +51,7 @@ This compiles to efficient C++ using `std::variant` and `std::visit`.
 
 #### 📊 Test Coverage
 - **Aurora test suite**: all scenarios passing
-- **Total tests**: 1028 runs / 2300 assertions (0 failures)
+- **Total tests**: 1030 runs / 2308 assertions (0 failures)
 - Sum types, pattern matching, generics, modules all fully working
 
 ---
