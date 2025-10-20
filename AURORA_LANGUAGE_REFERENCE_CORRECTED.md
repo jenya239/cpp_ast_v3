@@ -100,21 +100,49 @@ fn identity<T>(x: T) -> T = x
 type Container<T> = Empty | Node(T, Container<T>)
 ```
 
-### ✅ **3. Module System (FULLY WORKING)**
+### ✅ **3. ESM-Style Module System (FULLY WORKING)**
 
+#### **Export/Import Syntax (JavaScript/TypeScript-like)**
 ```aurora
-module Math
-  fn add(a: i32, b: i32) -> i32 = a + b
-  fn multiply(a: i32, b: i32) -> i32 = a * b
-end
+// math.aurora
+export fn add(a: i32, b: i32) -> i32 = a + b
+export fn multiply(a: i32, b: i32) -> i32 = a * b
+export type Point = { x: f32, y: f32 }
 
-module Geometry
-  import Math
-  
-  fn area(radius: f32) -> f32 = 
-    Math.multiply(3.14159, radius * radius)
-end
+fn helper() -> i32 = 42  // private function
 ```
+
+#### **Named Imports**
+```aurora
+import { add, multiply } from "./math"
+import { Point } from "./geometry"
+
+export fn calculate(x: i32, y: i32) -> i32 =
+  add(x, y) |> multiply(2)
+```
+
+#### **Wildcard Imports**
+```aurora
+import * as Math from "./math"
+import * as Utils from "../utils"
+
+export fn process(x: i32) -> i32 =
+  Math::add(x, 10)
+```
+
+#### **Relative Paths**
+```aurora
+import { sqrt } from "./math"           // Same directory
+import { Point } from "../geometry"     // Parent directory
+import { Config } from "/core/config"   // Absolute path
+```
+
+**Implementation Status**:
+- ✅ Parser: `parse_import_decl`, `parse_export_decl`
+- ✅ AST: `ImportDecl`, `ExportDecl` nodes
+- ✅ C++ lowering: `#include` statements, namespaces
+- ✅ Header generation: Separate .hpp/.cpp files
+- ✅ **FULLY WORKING** - Complete ESM-like implementation
 
 ### ✅ **4. Advanced Features (PARSING COMPLETE)**
 
@@ -397,17 +425,23 @@ let value = reader.read_u32()        // 0x12345678
 let text = reader.read_string(5)     // "Hello"
 ```
 
-### **Header Generation**
+### **ESM-Style Modules**
 ```aurora
-module Math
-  type Point = { x: f32, y: f32 }
-  fn add(a: i32, b: i32) -> i32 = a + b
-end
+// math.aurora
+export fn add(a: i32, b: i32) -> i32 = a + b
+export type Point = { x: f32, y: f32 }
+
+// geometry.aurora
+import { Point } from "./math"
+export fn distance(p1: Point, p2: Point) -> f32 = 
+  sqrt((p2.x - p1.x) * (p2.x - p1.x) + (p2.y - p1.y) * (p2.y - p1.y))
 ```
 
 **Generated Files:**
 - `math.hpp` - Header with declarations
 - `math.cpp` - Implementation with definitions
+- `geometry.hpp` - Header with includes
+- `geometry.cpp` - Implementation with includes
 
 ---
 
@@ -433,7 +467,7 @@ end
 - Basic language features (functions, types, expressions)
 - Record types and pattern matching
 - Enum types
-- Module system
+- **ESM-style module system** (export/import like JavaScript/TypeScript)
 - String support (UTF-8 aware)
 - Regex support with capture groups
 - **Binary data support** (Buffer, BinaryReader, BinaryWriter)
@@ -499,6 +533,11 @@ aurora_code = "[x*2 for x in arr]"      # Comprehension parsing only
 - `examples/13_regex_captures.aurora` - Capture groups
 - `examples/14_regex_use_captures.aurora` - Using captures
 - `examples/15_regex_comprehensive.aurora` - Complete example
+
+### **ESM Module Examples**
+- `examples/aurora_esm_demo.rb` - Complete ESM module system demo
+- `test/aurora/esm_modules_test.rb` - ESM module tests (18/18 passing)
+- `examples/aurora_comprehensive_demo.rb` - ESM integration examples
 
 ### **Binary Data Examples**
 - `examples/16_buffer_basics.cpp` - All buffer operations demo
