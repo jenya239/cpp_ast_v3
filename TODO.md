@@ -271,8 +271,8 @@ for x in arr do
 
 ### 🚧 Partially Implemented
 
-#### Type Constraints
-- ⏳ Generic type constraints: `<T: Numeric>`
+#### Type Constraints ✅
+- ✅ Generic type constraints: `<T: Numeric>` (parsed and propagated to lowerings)
 
 ### 📋 Future Enhancements
 

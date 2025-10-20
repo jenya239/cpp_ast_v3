@@ -84,15 +84,14 @@ module Aurora
       end
 
       def generate_template_function(type_params, func_decl)
-        # Generate: template<typename T, typename E> func_decl
-        template_params_str = type_params.map { |tp| "typename #{tp}" }.join(", ")
+        template_params_str, params_suffix = build_template_signature(type_params)
 
         CppAst::Nodes::TemplateDeclaration.new(
           template_params: template_params_str,
           declaration: func_decl,
           template_suffix: "",
           less_suffix: "",
-          params_suffix: "\n"
+          params_suffix: params_suffix
         )
       end
       
@@ -107,9 +106,19 @@ module Aurora
                    CppAst::Nodes::Comment.new(text: "// Type alias: #{type_decl.name}")
                  end
 
-        # If type has type parameters and result is a Program, wrap each statement with template
-        if type_decl.type_params.any? && result.is_a?(CppAst::Nodes::Program)
-          wrap_statements_with_template(type_decl.type_params, result)
+        if type_decl.type_params.any?
+          if result.is_a?(CppAst::Nodes::Program)
+            wrap_statements_with_template(type_decl.type_params, result)
+          else
+            template_params_str, params_suffix = build_template_signature(type_decl.type_params)
+            CppAst::Nodes::TemplateDeclaration.new(
+              template_params: template_params_str,
+              declaration: result,
+              template_suffix: "",
+              less_suffix: "",
+              params_suffix: params_suffix
+            )
+          end
         else
           result
         end
@@ -117,7 +126,7 @@ module Aurora
 
       def wrap_statements_with_template(type_params, program)
         # Wrap each statement (struct declarations, using) with template
-        template_params_str = type_params.map { |tp| "typename #{tp}" }.join(", ")
+        template_params_str, params_suffix = build_template_signature(type_params)
 
         wrapped_statements = program.statements.map do |stmt|
           CppAst::Nodes::TemplateDeclaration.new(
@@ -125,7 +134,7 @@ module Aurora
             declaration: stmt,
             template_suffix: "",
             less_suffix: "",
-            params_suffix: "\n"
+            params_suffix: params_suffix
           )
         end
 
@@ -133,6 +142,21 @@ module Aurora
           statements: wrapped_statements,
           statement_trailings: Array.new(wrapped_statements.size, "")
         )
+      end
+
+      def build_template_signature(type_params)
+        params = type_params.map { |tp| "typename #{tp.name}" }.join(", ")
+        requires_clause = build_requires_clause(type_params)
+        params_suffix = requires_clause.empty? ? "\n" : "\nrequires #{requires_clause}\n"
+        [params, params_suffix]
+      end
+
+      def build_requires_clause(type_params)
+        clauses = type_params.map do |tp|
+          next unless tp.constraint && !tp.constraint.empty?
+          "#{tp.constraint}<#{tp.name}>"
+        end.compact
+        clauses.join(" && ")
       end
       
       def lower_record_type(name, record_type)

@@ -160,12 +160,15 @@ module Aurora
         end.join(", ")
 
         # Add template parameters if generic
-        if func.type_params && !func.type_params.empty?
-          template_params = func.type_params.map { |tp| "typename #{tp}" }.join(", ")
-          "template<#{template_params}>\n#{ret_type} #{name}(#{params});"
-        else
-          "#{ret_type} #{name}(#{params});"
+        lines = []
+        type_params = func.type_params || []
+
+        unless type_params.empty?
+          lines.concat(build_template_lines(type_params))
         end
+
+        lines << "#{ret_type} #{name}(#{params});"
+        lines.join("\n")
       end
 
       def generate_function_implementation(func)
@@ -195,6 +198,22 @@ module Aurora
       def module_name_to_namespace(name)
         # Convert Math::Vector -> math::vector
         name.gsub("/", "::").split("::").map(&:downcase).join("::")
+      end
+
+      def build_template_lines(type_params)
+        template_params = type_params.map { |tp| "typename #{tp.name}" }.join(", ")
+        requires_clause = build_requires_clause(type_params)
+        lines = ["template<#{template_params}>"]
+        lines << "requires #{requires_clause}" unless requires_clause.empty?
+        lines
+      end
+
+      def build_requires_clause(type_params)
+        clauses = type_params.map do |tp|
+          next unless tp.constraint && !tp.constraint.empty?
+          "#{tp.constraint}<#{tp.name}>"
+        end.compact
+        clauses.join(" && ")
       end
     end
   end

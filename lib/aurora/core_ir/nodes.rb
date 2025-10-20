@@ -102,7 +102,7 @@ module Aurora
         @ret_type = ret_type
         @body = body
         @effects = effects  # Array of :noexcept, :constexpr, etc.
-        @type_params = type_params  # Array of String (type parameter names)
+        @type_params = type_params  # Array of TypeParam
       end
     end
     
@@ -283,7 +283,18 @@ module Aurora
         super(origin: origin)
         @name = name
         @type = type
-        @type_params = type_params  # Array of String (type parameter names)
+        @type_params = type_params  # Array of TypeParam
+      end
+    end
+
+    # Type parameter metadata for generics
+    class TypeParam < Node
+      attr_reader :name, :constraint
+
+      def initialize(name:, constraint: nil, origin: nil)
+        super(origin: origin)
+        @name = name
+        @constraint = constraint
       end
     end
 

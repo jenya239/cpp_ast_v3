@@ -83,7 +83,13 @@ module Aurora
       end
 
       def normalize_type_params(params)
-        params.map { |tp| tp.respond_to?(:name) ? tp.name : tp }
+        params.map do |tp|
+          if tp.respond_to?(:name)
+            CoreIR::TypeParam.new(name: tp.name, constraint: tp.respond_to?(:constraint) ? tp.constraint : nil)
+          else
+            CoreIR::TypeParam.new(name: tp, constraint: nil)
+          end
+        end
       end
       
       def transform_param(param)

@@ -68,6 +68,29 @@ class AuroraGenericsTest < Minitest::Test
     assert_equal "Numeric", func.type_params[0].constraint
   end
 
+  def test_constraint_lowering_to_cpp
+    aurora_source = <<~AURORA
+      fn add<T: Numeric>(a: T, b: T) -> T = a + b
+    AURORA
+
+    cpp = Aurora.to_cpp(aurora_source)
+
+    assert_includes cpp, "template<typename T>"
+    assert_includes cpp, "requires Numeric<T>"
+  end
+
+  def test_type_constraint_in_cpp_output
+    aurora_source = <<~AURORA
+      type Box<T: Numeric> = { value: T }
+    AURORA
+
+    cpp = Aurora.to_cpp(aurora_source)
+
+    assert_includes cpp, "template<typename T>"
+    assert_includes cpp, "requires Numeric<T>"
+    assert_includes cpp, "struct Box"
+  end
+
   def test_generic_lowering_to_cpp_templates
     aurora_source = <<~AURORA
       type Option<T> = Some(T) | None
