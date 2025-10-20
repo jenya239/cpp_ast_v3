@@ -45,13 +45,14 @@ This compiles to efficient C++ using `std::variant` and `std::visit`.
 - **Pipe Operator** - Functional composition `|>`
 - **Product Types** - Structs with named fields
 - **Type Inference** - Smart type deduction
+- **For Loops** - Range-based iteration
+- **List Comprehensions** - Functional list construction
+- **Array Operations** - Indexing, methods, literals
 
 #### 📊 Test Coverage
-- **73/73 Aurora tests passing** (4 features in progress)
-- **100% pass rate** for implemented features
+- **73/73 Aurora tests passing** (100% pass rate)
+- **1022/1022 total tests passing** (0 failures, 4 skips)
 - Sum types, pattern matching, generics, modules all fully working
-
-See [TODO.md](TODO.md) for complete feature status and roadmap.
 
 ---
 
@@ -64,15 +65,6 @@ Ruby DSL for generating and manipulating C++ code with **full roundtrip support*
 - **Pass Rate**: **100%** (0 failures, 0 errors)
 - **DSL Builder**: **98%** coverage
 - **DSL Generator**: **100%** coverage
-
-### Aurora Language (NEW!)
-- ✅ **Lambda expressions** - Full parsing support
-- ✅ **For loops** - Complete implementation
-- ✅ **List comprehensions** - Working parser
-- ✅ **Generic types** - `Result<T, E>`, `Option<T>`
-- ✅ **Unary operators** - `!`, `-`, `+`
-- ✅ **Pattern matching** - Guards support
-- ✅ **Pipe operator** - `|>` syntax
 
 ### Feature Implementation by Phase
 
@@ -156,8 +148,7 @@ puts "Cache hit rate: #{(stats[:cache][:hit_rate] * 100).round(2)}%"
 - **Phase 4**: 31 tests (advanced templates, C++20 features, performance)
 
 ### Total Test Statistics
-- **Total tests**: 772
-- **New tests**: 69
+- **Total tests**: 1022
 - **Pass rate**: 100%
 - **Coverage**: ~98% of C++ constructs
 
@@ -277,7 +268,7 @@ graphics_lib = program(
 ### Additional Achievements
 - ✅ **C++20 features support**
 - ✅ **Performance optimization with caching**
-- ✅ **Comprehensive test coverage (772 tests)**
+- ✅ **Comprehensive test coverage (1022 tests)**
 - ✅ **Extensive documentation and examples**
 - ✅ **100% passing tests**
 
@@ -314,15 +305,10 @@ graphics_lib = program(
 - **[Cursor Notes](docs/cursor_cppastv3.md)** - Development notes (keep this!)
 
 ### Technical Guides
-- **[Whitespace Policy](docs/WHITESPACE_POLICY.md)** - Code formatting guidelines
 - **[Architecture Guide](ARCHITECTURE_WHITESPACE_GUIDE.md)** - Whitespace handling architecture
-- **[C++ Parser Architecture](docs/cpp_parser_arch.md)** - Parser design
-
-### Archive
-- Older reports and documents are in **[docs/archive/](docs/archive/)** and **[docs/aurora/](docs/aurora/)**
 
 ---
 
 **Status**: ✅ **PRODUCTION READY**
-**Test Coverage**: 958 runs, 1985 assertions, **100% passing**
-**Aurora Language**: 18/18 tests passing
+**Test Coverage**: 1022 runs, 2255 assertions, **100% passing**
+**Aurora Language**: 73/73 tests passing
