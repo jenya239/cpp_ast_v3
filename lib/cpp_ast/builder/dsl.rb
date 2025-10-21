@@ -749,8 +749,8 @@ module CppAst
       def static_constexpr(type, name, value)
         Nodes::VariableDeclaration.new(
           type: type,
-          declarators: [name, value],
-          declarator_separators: [", "],
+          declarators: ["#{name} = #{value}"],
+          declarator_separators: [],
           type_suffix: " ",
           prefix_modifiers: "constexpr static "
         )
@@ -759,8 +759,8 @@ module CppAst
       def static_const(type, name, value)
         Nodes::VariableDeclaration.new(
           type: type,
-          declarators: [name, value],
-          declarator_separators: [", "],
+          declarators: ["#{name} = #{value}"],
+          declarator_separators: [],
           type_suffix: " ",
           prefix_modifiers: "const static "
         )
@@ -769,8 +769,8 @@ module CppAst
       def inline_var(type, name, value)
         Nodes::VariableDeclaration.new(
           type: type,
-          declarators: [name, value],
-          declarator_separators: [", "],
+          declarators: ["#{name} = #{value}"],
+          declarator_separators: [],
           type_suffix: " ",
           prefix_modifiers: "inline "
         )
@@ -779,8 +779,8 @@ module CppAst
       def static_inline_var(type, name, value)
         Nodes::VariableDeclaration.new(
           type: type,
-          declarators: [name, value],
-          declarator_separators: [", "],
+          declarators: ["#{name} = #{value}"],
+          declarator_separators: [],
           type_suffix: " ",
           prefix_modifiers: "inline static "
         )
@@ -860,4 +860,3 @@ module CppAst
     end
   end
 end
-

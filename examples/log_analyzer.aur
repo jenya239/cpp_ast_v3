@@ -1,0 +1,64 @@
+type Stats = { total: i32, warnings: i32, errors: i32 }
+
+fn normalize(line: str) -> str = line.trim()
+fn is_empty_line(line: str) -> bool = line.is_empty()
+
+fn detect(line: str) -> str =
+  let parts = line.split(":")
+  if parts.is_empty() then
+    "OTHER"
+  else {
+    let upper = parts[0].trim().upper()
+    if upper == "WARN" || upper == "ERROR" then upper else "INFO"
+  }
+
+fn update_stats(acc: Stats, level: str) -> Stats =
+  if level == "WARN" then
+    Stats { total: acc.total + 1, warnings: acc.warnings + 1, errors: acc.errors }
+  else if level == "ERROR" then
+    Stats { total: acc.total + 1, warnings: acc.warnings, errors: acc.errors + 1 }
+  else
+    Stats { total: acc.total + 1, warnings: acc.warnings, errors: acc.errors }
+
+fn summary_line(stats: Stats) -> str =
+  format("total={}, warnings={}, errors={}", stats.total, stats.warnings, stats.errors)
+
+fn fold_levels(levels: str[]) -> Stats =
+  levels.fold(
+    Stats { total: 0, warnings: 0, errors: 0 },
+    (acc: Stats, status: str) => update_stats(acc, status)
+  )
+
+fn main() -> i32 =
+  let raw = input()
+  let lines = raw.split("\n")
+  let clean = lines
+    .map((line: str) => normalize(line))
+    .filter((line: str) => !is_empty_line(line))
+
+  let levels = clean.map((line: str) => detect(line))
+  let stats = fold_levels(levels)
+
+  let verdict =
+    if stats.errors > 0 then {
+      println("❌ build failed");
+      1
+    } else if stats.warnings > 0 then {
+      println("⚠️ warnings present");
+      0
+    } else {
+      println("✅ all good");
+      0
+    }
+
+  for level in levels do {
+    if level == "ERROR" then println(" -> error seen!")
+  }
+
+  let mut countdown = stats.total
+  while countdown > 0 do {
+    countdown = countdown - 1;
+  }
+
+  println(summary_line(stats))
+  verdict

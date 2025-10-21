@@ -13,12 +13,25 @@ module Aurora
     end
 
     class CppLowering
+      IO_FUNCTIONS = {
+        "print" => "aurora::io::print",
+        "println" => "aurora::io::println",
+        "eprint" => "aurora::io::eprint",
+        "eprintln" => "aurora::io::eprintln",
+        "read_line" => "aurora::io::read_line",
+        "input" => "aurora::io::read_all",
+        "args" => "aurora::io::args",
+        "to_string" => "aurora::to_string",
+        "format" => "aurora::format"
+      }.freeze
+
       def initialize
         @type_map = {
           "i32" => "int",
           "f32" => "float",
           "bool" => "bool",
           "void" => "void",
+          "str" => "aurora::String",
           "string" => "aurora::String",
           "regex" => "aurora::Regex"
         }
@@ -40,27 +53,43 @@ module Aurora
       private
       
       def lower_module(module_node)
+        include_stmt = CppAst::Nodes::IncludeDirective.new(
+          path: "aurora_match.hpp",
+          system: false
+        )
+
         items = module_node.items.flat_map do |item|
           result = lower(item)
           # If result is a Program (from sum types), extract its statements
           result.is_a?(CppAst::Nodes::Program) ? result.statements : [result]
         end
-        CppAst::Nodes::Program.new(statements: items, statement_trailings: Array.new(items.size, ""))
+        statements = [include_stmt] + items
+        trailings = ["\n"] + Array.new(items.size, "")
+        CppAst::Nodes::Program.new(statements: statements, statement_trailings: trailings)
       end
       
       def lower_function(func)
         return_type = map_type(func.ret_type)
         name = func.name
         parameters = func.params.map { |param| "#{map_type(param.type)} #{param.name}" }
-        body = lower_expression(func.body)
 
-        # Create function body as block
-        block_body = CppAst::Nodes::BlockStatement.new(
-          statements: [CppAst::Nodes::ReturnStatement.new(expression: body)],
-          statement_trailings: [""],
-          lbrace_suffix: "",
-          rbrace_prefix: ""
-        )
+        block_body = if func.body.is_a?(CoreIR::BlockExpr)
+                       stmts = lower_block_expr_statements(func.body, emit_return: true)
+                       CppAst::Nodes::BlockStatement.new(
+                         statements: stmts,
+                         statement_trailings: Array.new(stmts.length, "\n"),
+                         lbrace_suffix: "\n",
+                         rbrace_prefix: ""
+                       )
+                     else
+                       body_expr = lower_expression(func.body)
+                       CppAst::Nodes::BlockStatement.new(
+                         statements: [CppAst::Nodes::ReturnStatement.new(expression: body_expr)],
+                         statement_trailings: [""],
+                         lbrace_suffix: "",
+                         rbrace_prefix: ""
+                       )
+                     end
 
         func_decl = CppAst::Nodes::FunctionDeclaration.new(
           return_type: return_type,
@@ -256,12 +285,12 @@ module Aurora
           lower_variable(expr)
         when CoreIR::BinaryExpr
           lower_binary(expr)
+        when CoreIR::UnaryExpr
+          lower_unary(expr)
         when CoreIR::CallExpr
           lower_call(expr)
         when CoreIR::MemberExpr
           lower_member(expr)
-        when CoreIR::LetExpr
-          lower_let(expr)
         when CoreIR::RecordExpr
           lower_record(expr)
         when CoreIR::IfExpr
@@ -275,9 +304,13 @@ module Aurora
         when CoreIR::IndexExpr
           lower_index(expr)
         when CoreIR::ForLoopExpr
-          lower_for_loop(expr)
+          lower_for_loop_expr(expr)
+        when CoreIR::WhileLoopExpr
+          lower_while_loop_expr(expr)
         when CoreIR::ListCompExpr
           lower_list_comprehension(expr)
+        when CoreIR::BlockExpr
+          lower_block_expr(expr)
         else
           raise "Unknown expression: #{expr.class}"
         end
@@ -292,13 +325,7 @@ module Aurora
         when "bool"
           CppAst::Nodes::BooleanLiteral.new(value: lit.value)
         when "string"
-          # Generate: aurora::String("literal")
-          string_lit = CppAst::Nodes::StringLiteral.new(value: lit.value)
-          CppAst::Nodes::FunctionCallExpression.new(
-            callee: CppAst::Nodes::Identifier.new(name: "aurora::String"),
-            arguments: [string_lit],
-            argument_separators: []
-          )
+          build_aurora_string(lit.value)
         else
           CppAst::Nodes::NumberLiteral.new(value: lit.value.to_s)
         end
@@ -306,12 +333,7 @@ module Aurora
 
       def lower_regex(regex_expr)
         # Generate: aurora::regex_i(String("pattern")) or aurora::regex(String("pattern"))
-        pattern_lit = CppAst::Nodes::StringLiteral.new(value: regex_expr.pattern)
-        pattern_string = CppAst::Nodes::FunctionCallExpression.new(
-          callee: CppAst::Nodes::Identifier.new(name: "aurora::String"),
-          arguments: [pattern_lit],
-          argument_separators: []
-        )
+        pattern_string = build_aurora_string(regex_expr.pattern)
 
         # Choose function based on flags
         func_name = if regex_expr.flags.include?("i")
@@ -343,42 +365,120 @@ module Aurora
           operator_suffix: " "
         )
       end
+
+      def lower_unary(unary)
+        operand = lower_expression(unary.operand)
+
+        CppAst::Nodes::UnaryExpression.new(
+          operator: unary.op,
+          operand: operand,
+          operator_suffix: unary.op == "!" ? "" : "",
+          prefix: true
+        )
+      end
       
       def lower_call(call)
+        if call.callee.is_a?(CoreIR::VarExpr) && IO_FUNCTIONS.key?(call.callee.name)
+          return lower_io_function(call)
+        end
+
         # Check if this is an array method call that needs translation
         if call.callee.is_a?(CoreIR::MemberExpr) && call.callee.object.type.is_a?(CoreIR::ArrayType)
-          # Translate array method names to C++ std::vector equivalents
           method_name = call.callee.member
-          cpp_method_name = case method_name
-                            when "length"
-                              "size"
-                            when "push"
-                              "push_back"
-                            when "pop"
-                              "pop_back"
-                            else
-                              method_name
-                            end
-
-          # Lower the array object
           array_obj = lower_expression(call.callee.object)
 
-          # Create member access with translated method name
-          member_access = CppAst::Nodes::MemberAccessExpression.new(
-            object: array_obj,
-            operator: ".",
-            member: CppAst::Nodes::Identifier.new(name: cpp_method_name)
-          )
-
-          # Lower arguments
-          args = call.args.map { |arg| lower_expression(arg) }
-          num_separators = [args.size - 1, 0].max
-
-          CppAst::Nodes::FunctionCallExpression.new(
-            callee: member_access,
-            arguments: args,
-            argument_separators: Array.new(num_separators, ", ")
-          )
+          case method_name
+          when "length"
+            member_access = CppAst::Nodes::MemberAccessExpression.new(
+              object: array_obj,
+              operator: ".",
+              member: CppAst::Nodes::Identifier.new(name: "size")
+            )
+            CppAst::Nodes::FunctionCallExpression.new(
+              callee: member_access,
+              arguments: [],
+              argument_separators: []
+            )
+          when "is_empty"
+            member_access = CppAst::Nodes::MemberAccessExpression.new(
+              object: array_obj,
+              operator: ".",
+              member: CppAst::Nodes::Identifier.new(name: "empty")
+            )
+            CppAst::Nodes::FunctionCallExpression.new(
+              callee: member_access,
+              arguments: [],
+              argument_separators: []
+            )
+          when "push"
+            member_access = CppAst::Nodes::MemberAccessExpression.new(
+              object: array_obj,
+              operator: ".",
+              member: CppAst::Nodes::Identifier.new(name: "push_back")
+            )
+            args = call.args.map { |arg| lower_expression(arg) }
+            CppAst::Nodes::FunctionCallExpression.new(
+              callee: member_access,
+              arguments: args,
+              argument_separators: Array.new([args.size - 1, 0].max, ", ")
+            )
+          when "pop"
+            member_access = CppAst::Nodes::MemberAccessExpression.new(
+              object: array_obj,
+              operator: ".",
+              member: CppAst::Nodes::Identifier.new(name: "pop_back")
+            )
+            CppAst::Nodes::FunctionCallExpression.new(
+              callee: member_access,
+              arguments: [],
+              argument_separators: []
+            )
+          when "map"
+            func_arg = call.args.first ? lower_expression(call.args.first) : nil
+            CppAst::Nodes::FunctionCallExpression.new(
+              callee: CppAst::Nodes::Identifier.new(name: "aurora::collections::map"),
+              arguments: [array_obj, func_arg].compact,
+              argument_separators: func_arg ? [", "] : []
+            )
+          when "filter"
+            predicate = call.args.first ? lower_expression(call.args.first) : nil
+            CppAst::Nodes::FunctionCallExpression.new(
+              callee: CppAst::Nodes::Identifier.new(name: "aurora::collections::filter"),
+              arguments: [array_obj, predicate].compact,
+              argument_separators: predicate ? [", "] : []
+            )
+          when "fold"
+            init_arg = call.args[0] ? lower_expression(call.args[0]) : nil
+            func_arg = call.args[1] ? lower_expression(call.args[1]) : nil
+            arguments = [array_obj]
+            separators = []
+            if init_arg
+              arguments << init_arg
+              separators << ", "
+            end
+            if func_arg
+              arguments << func_arg
+              separators << ", "
+            end
+            CppAst::Nodes::FunctionCallExpression.new(
+              callee: CppAst::Nodes::Identifier.new(name: "aurora::collections::fold"),
+              arguments: arguments,
+              argument_separators: separators
+            )
+          else
+            # Fallback: call method directly
+            member_access = CppAst::Nodes::MemberAccessExpression.new(
+              object: array_obj,
+              operator: ".",
+              member: CppAst::Nodes::Identifier.new(name: method_name)
+            )
+            args = call.args.map { |arg| lower_expression(arg) }
+            CppAst::Nodes::FunctionCallExpression.new(
+              callee: member_access,
+              arguments: args,
+              argument_separators: Array.new([args.size - 1, 0].max, ", ")
+            )
+          end
         else
           # Regular function call
           callee = lower_expression(call.callee)
@@ -394,6 +494,19 @@ module Aurora
           )
         end
       end
+
+      def lower_io_function(call)
+        target = IO_FUNCTIONS[call.callee.name]
+        callee = CppAst::Nodes::Identifier.new(name: target)
+        args = call.args.map { |arg| lower_expression(arg) }
+        num_separators = [args.size - 1, 0].max
+
+        CppAst::Nodes::FunctionCallExpression.new(
+          callee: callee,
+          arguments: args,
+          argument_separators: Array.new(num_separators, ", ")
+        )
+      end
       
       def lower_member(member)
         object = lower_expression(member.object)
@@ -405,18 +518,6 @@ module Aurora
         )
       end
       
-      def lower_let(let)
-        # For let expressions, we need to create a block with variable declaration
-        # and then the body. This is a simplification - in real implementation
-        # we'd need to handle this more carefully.
-        _value = lower_expression(let.value)
-        body = lower_expression(let.body)
-
-        # Create a block that declares the variable and returns the body
-        # This is a simplified approach - real implementation would be more complex
-        body
-      end
-      
       def lower_record(record)
         # For record literals, we need to create a constructor call
         # This is simplified - real implementation would handle this properly
@@ -425,11 +526,10 @@ module Aurora
 
         # Create constructor call with field values
         args = fields.values.map { |value| lower_expression(value) }
-
-        CppAst::Nodes::FunctionCallExpression.new(
-          callee: CppAst::Nodes::Identifier.new(name: type_name),
+        CppAst::Nodes::BraceInitializerExpression.new(
+          type: type_name,
           arguments: args,
-          argument_separators: Array.new(args.size - 1, ", ")
+          argument_separators: args.size > 1 ? Array.new(args.size - 1, ", ") : []
         )
       end
 
@@ -497,13 +597,7 @@ module Aurora
             bindings = pattern[:bindings] || []
 
             # Create regex object
-            pattern_lit = CppAst::Nodes::StringLiteral.new(value: regex_pattern)
-            pattern_string = CppAst::Nodes::FunctionCallExpression.new(
-              callee: CppAst::Nodes::Identifier.new(name: "aurora::String"),
-              arguments: [pattern_lit],
-              argument_separators: []
-            )
-
+            pattern_string = build_aurora_string(regex_pattern)
             func_name = regex_flags.include?("i") ? "aurora::regex_i" : "aurora::regex"
             regex_obj = CppAst::Nodes::FunctionCallExpression.new(
               callee: CppAst::Nodes::Identifier.new(name: func_name),
@@ -623,33 +717,65 @@ module Aurora
         )
       end
 
-      def lower_for_loop(for_loop)
-        # Generate C++ range-based for: for (type var : container) { body }
+      def lower_for_loop_expr(for_loop)
+        stmt = build_range_for(for_loop.var_name, for_loop.var_type, for_loop.iterable, for_loop.body)
+        body_lines = ["  #{stmt.to_source}"]
+        lambda_body = "\n#{body_lines.join("\n")}\n"
 
-        # Lower the container/iterable
-        container = lower_expression(for_loop.iterable)
-
-        # Create variable representation for range-for
-        var_type_str = map_type(for_loop.var_type)
-        variable = ForLoopVariable.new(var_type_str, for_loop.var_name)
-
-        # Lower the body - wrap in BlockStatement if needed
-        body_expr = lower_expression(for_loop.body)
-
-        # Wrap body in block statement
-        # Note: For now, for loop body is an expression, so we create a statement from it
-        body_stmt = CppAst::Nodes::ExpressionStatement.new(expression: body_expr)
-        compound_body = CppAst::Nodes::BlockStatement.new(
-          statements: [body_stmt],
-          statement_trailings: [";"]
+        lambda_expr = CppAst::Nodes::LambdaExpression.new(
+          capture: "&",
+          parameters: "",
+          specifiers: "",
+          body: lambda_body,
+          capture_suffix: "",
+          params_suffix: ""
         )
 
-        # Create range-based for statement
-        CppAst::Nodes::RangeForStatement.new(
-          variable: variable,
-          container: container,
-          body: compound_body
+        CppAst::Nodes::FunctionCallExpression.new(
+          callee: lambda_expr,
+          arguments: [],
+          argument_separators: []
         )
+      end
+
+      def lower_while_loop_expr(while_loop)
+        temp_stmt = CoreIR::WhileStmt.new(
+          condition: while_loop.condition,
+          body: while_loop.body,
+          origin: while_loop.origin
+        )
+
+        stmt = lower_while_stmt(temp_stmt)
+        body_lines = ["  #{stmt.to_source}"]
+        lambda_body = "\n#{body_lines.join("\n")}\n"
+
+        lambda_expr = CppAst::Nodes::LambdaExpression.new(
+          capture: "&",
+          parameters: "",
+          specifiers: "",
+          body: lambda_body,
+          capture_suffix: "",
+          params_suffix: ""
+        )
+
+        CppAst::Nodes::FunctionCallExpression.new(
+          callee: lambda_expr,
+          arguments: [],
+          argument_separators: []
+        )
+      end
+
+      def lower_for_loop_statement(for_loop)
+        build_range_for(for_loop.var_name, for_loop.var_type, for_loop.iterable, for_loop.body)
+      end
+
+      def lower_while_loop_statement(while_loop)
+        temp_stmt = CoreIR::WhileStmt.new(
+          condition: while_loop.condition,
+          body: while_loop.body,
+          origin: while_loop.origin
+        )
+        lower_while_stmt(temp_stmt)
       end
 
       def lower_list_comprehension(list_comp)
@@ -769,6 +895,187 @@ module Aurora
         )
       end
 
+      def lower_block_expr(block_expr)
+        statements = lower_block_expr_statements(block_expr, emit_return: true)
+        body_lines = statements.map { |stmt| "  #{stmt.to_source}" }
+        lambda_body = "\n#{body_lines.join("\n")}\n"
+
+        lambda_expr = CppAst::Nodes::LambdaExpression.new(
+          capture: "&",
+          parameters: "",
+          specifiers: "",
+          body: lambda_body,
+          capture_suffix: "",
+          params_suffix: ""
+        )
+
+        CppAst::Nodes::FunctionCallExpression.new(
+          callee: lambda_expr,
+          arguments: [],
+          argument_separators: []
+        )
+      end
+
+      def lower_block_expr_statements(block_expr, emit_return: true)
+        statements = block_expr.statements.map { |stmt| lower_coreir_statement(stmt) }
+
+        if block_expr.result
+          result_expr = lower_expression(block_expr.result)
+          if emit_return
+            statements << CppAst::Nodes::ReturnStatement.new(expression: result_expr)
+          else
+            statements << CppAst::Nodes::ExpressionStatement.new(expression: result_expr)
+          end
+        end
+
+        statements
+      end
+
+      def lower_coreir_statement(stmt)
+        case stmt
+        when CoreIR::ExprStatement
+          if stmt.expression.is_a?(CoreIR::ForLoopExpr)
+            lower_for_loop_statement(stmt.expression)
+          elsif stmt.expression.is_a?(CoreIR::WhileLoopExpr)
+            lower_while_loop_statement(stmt.expression)
+          else
+            expr = lower_expression(stmt.expression)
+            CppAst::Nodes::ExpressionStatement.new(expression: expr)
+          end
+        when CoreIR::VariableDeclStmt
+          type_str = map_type(stmt.type)
+          use_auto = type_requires_auto?(stmt.type, type_str)
+          init_expr = lower_expression(stmt.value)
+          decl_type = use_auto ? "auto" : type_str
+          declarator = "#{stmt.name} = #{init_expr.to_source}"
+          prefix = stmt.mutable ? "" : "const "
+          CppAst::Nodes::VariableDeclaration.new(
+            type: decl_type,
+            declarators: [declarator],
+            declarator_separators: [],
+            type_suffix: " ",
+            prefix_modifiers: prefix
+          )
+        when CoreIR::AssignmentStmt
+          left_expr = lower_expression(stmt.target)
+          right_expr = lower_expression(stmt.value)
+          assignment = CppAst::Nodes::AssignmentExpression.new(
+            left: left_expr,
+            operator: "=",
+            right: right_expr
+          )
+          CppAst::Nodes::ExpressionStatement.new(expression: assignment)
+        when CoreIR::IfStmt
+          lower_if_stmt(stmt)
+        when CoreIR::WhileStmt
+          lower_while_stmt(stmt)
+        when CoreIR::ForStmt
+          lower_for_stmt(stmt)
+        when CoreIR::Return
+          if stmt.expr
+            expr = lower_expression(stmt.expr)
+            CppAst::Nodes::ReturnStatement.new(expression: expr)
+          else
+            CppAst::Nodes::ReturnStatement.new(expression: nil, keyword_suffix: " ")
+          end
+        when CoreIR::BreakStmt
+          CppAst::Nodes::BreakStatement.new
+        when CoreIR::ContinueStmt
+          CppAst::Nodes::ContinueStatement.new
+        else
+          desugared = stmt.respond_to?(:desugared_expr) ? stmt.desugared_expr : nil
+          return lower_expression(desugared) if desugared
+          raise "Unsupported block statement: #{stmt.class}"
+        end
+      end
+
+      def lower_for_stmt(for_stmt)
+        build_range_for(for_stmt.var_name, for_stmt.var_type, for_stmt.iterable, for_stmt.body)
+      end
+
+      def lower_if_stmt(if_stmt)
+        condition = lower_expression(if_stmt.condition)
+        then_statement = lower_statement_block(if_stmt.then_body)
+        else_statement = if_stmt.else_body ? lower_statement_block(if_stmt.else_body) : nil
+
+        CppAst::Nodes::IfStatement.new(
+          condition: condition,
+          then_statement: then_statement,
+          else_statement: else_statement,
+          if_suffix: " ",
+          condition_lparen_suffix: "",
+          condition_rparen_suffix: "",
+          else_prefix: " ",
+          else_suffix: " "
+        )
+      end
+
+      def lower_while_stmt(while_stmt)
+        condition = lower_expression(while_stmt.condition)
+        body_statement = lower_statement_block(while_stmt.body)
+
+        CppAst::Nodes::WhileStatement.new(
+          condition: condition,
+          body: body_statement,
+          while_suffix: " ",
+          condition_lparen_suffix: "",
+          condition_rparen_suffix: ""
+        )
+      end
+
+      def build_range_for(var_name, var_type, iterable_ir, body_ir)
+        container = lower_expression(iterable_ir)
+        var_type_str = map_type(var_type)
+        variable = ForLoopVariable.new(var_type_str, var_name)
+        body_block = lower_for_body(body_ir)
+
+        CppAst::Nodes::RangeForStatement.new(
+          variable: variable,
+          container: container,
+          body: body_block
+        )
+      end
+
+      def lower_for_body(body_ir)
+        if body_ir.is_a?(CoreIR::BlockExpr)
+          stmts = lower_block_expr_statements(body_ir, emit_return: false)
+          CppAst::Nodes::BlockStatement.new(
+            statements: stmts,
+            statement_trailings: Array.new(stmts.length, "\n"),
+            lbrace_suffix: "\n",
+            rbrace_prefix: ""
+          )
+        else
+          expr = lower_expression(body_ir)
+          CppAst::Nodes::BlockStatement.new(
+            statements: [CppAst::Nodes::ExpressionStatement.new(expression: expr)],
+            statement_trailings: [";"],
+            lbrace_suffix: "",
+            rbrace_prefix: ""
+          )
+        end
+      end
+
+      def lower_statement_block(body_ir)
+        if body_ir.is_a?(CoreIR::BlockExpr)
+          stmts = lower_block_expr_statements(body_ir, emit_return: false)
+          CppAst::Nodes::BlockStatement.new(
+            statements: stmts,
+            statement_trailings: Array.new(stmts.length, "\n"),
+            lbrace_suffix: "\n",
+            rbrace_prefix: ""
+          )
+        else
+          expr = lower_expression(body_ir)
+          CppAst::Nodes::BlockStatement.new(
+            statements: [CppAst::Nodes::ExpressionStatement.new(expression: expr)],
+            statement_trailings: ["\n"],
+            lbrace_suffix: "\n",
+            rbrace_prefix: ""
+          )
+        end
+      end
+
       def lower_lambda(lambda_expr)
         # Generate C++ lambda: [captures](params) { return body; }
 
@@ -872,6 +1179,8 @@ module Aurora
 
       def map_type(type)
         case type
+        when CoreIR::ArrayType
+          "std::vector<#{map_type(type.element_type)}>"
         when CoreIR::Type
           # Check if it's a known primitive type, otherwise treat as type parameter
           mapped = @type_map[type.name]
@@ -891,6 +1200,65 @@ module Aurora
         else
           "auto"
         end
+      end
+
+      def type_requires_auto?(type, type_str = nil)
+        return true if type.nil?
+
+        type_str ||= map_type(type)
+        return true if type_str.nil? || type_str.empty?
+        return true if type_str.include?("auto")
+
+        case type
+        when CoreIR::ArrayType
+          type_requires_auto?(type.element_type)
+        when CoreIR::FunctionType
+          true
+        when CoreIR::RecordType
+          type.name.nil? || type.name.empty? || type.name == "record"
+        when CoreIR::SumType
+          type.name.nil? || type.name.empty?
+        when CoreIR::Type
+          name = type.name
+          return false if name && @type_map.key?(name)
+          name.nil? || name.empty? || name == "auto"
+        else
+          false
+        end
+      end
+
+      def build_aurora_string(value)
+        CppAst::Nodes::FunctionCallExpression.new(
+          callee: CppAst::Nodes::Identifier.new(name: "aurora::String"),
+          arguments: [cpp_string_literal(value)],
+          argument_separators: []
+        )
+      end
+
+      def cpp_string_literal(value)
+        escaped = escape_cpp_string(value)
+        CppAst::Nodes::StringLiteral.new(value: "\"#{escaped}\"")
+      end
+
+      def escape_cpp_string(value)
+        value.each_char.map do |ch|
+          case ch
+          when "\\"
+            "\\\\"
+          when "\""
+            "\\\""
+          when "\n"
+            "\\n"
+          when "\r"
+            "\\r"
+          when "\t"
+            "\\t"
+          when "\0"
+            "\\0"
+          else
+            ch
+          end
+        end.join
       end
     end
   end

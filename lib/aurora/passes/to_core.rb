@@ -6,6 +6,17 @@ require_relative "../core_ir/builder"
 module Aurora
   module Passes
     class ToCore
+      IO_RETURN_TYPES = {
+        "print" => "i32",
+        "println" => "i32",
+        "eprint" => "i32",
+        "eprintln" => "i32",
+        "read_line" => "string",
+        "input" => "string",
+        "args" => :array_of_string,
+        "to_string" => "string",
+        "format" => "string"
+      }.freeze
       BUILTIN_CONSTRAINTS = {
         "Numeric" => %w[i32 f32 i64 f64 u32 u64]
       }.freeze
@@ -15,6 +26,8 @@ module Aurora
         @function_table = {}
         @type_decl_table = {}
         @var_types = {}  # Track variable types for let bindings
+        @temp_counter = 0
+        @loop_depth = 0
       end
       
       def transform(ast)
@@ -67,6 +80,15 @@ module Aurora
       
       def transform_type_decl(decl)
         type = transform_type(decl.type)
+
+        type = case type
+               when CoreIR::RecordType
+                 CoreIR::Builder.record_type(decl.name, type.fields)
+               when CoreIR::SumType
+                 CoreIR::Builder.sum_type(decl.name, type.variants)
+               else
+                 type
+               end
         type_params = normalize_type_params(decl.type_params)
         CoreIR::TypeDecl.new(name: decl.name, type: type, type_params: type_params)
       end
@@ -74,6 +96,12 @@ module Aurora
       def transform_function(func)
         params = func.params.map { |param| transform_param(param) }
         ret_type = transform_type(func.ret_type)
+        saved_var_types = @var_types.dup
+
+        params.each do |param|
+          @var_types[param.name] = param.type
+        end
+
         body = transform_expression(func.body)
 
         type_params = normalize_type_params(func.type_params)
@@ -86,6 +114,8 @@ module Aurora
           effects: infer_effects(body),
           type_params: type_params
         )
+      ensure
+        @var_types = saved_var_types if defined?(saved_var_types)
       end
 
       def normalize_type_params(params)
@@ -162,24 +192,41 @@ module Aurora
             type = infer_binary_type(expr.op, left.type, right.type)
             CoreIR::Builder.binary(expr.op, left, right, type)
           end
+        when AST::UnaryOp
+          operand = transform_expression(expr.operand)
+          type = infer_unary_type(expr.op, operand.type)
+          CoreIR::Builder.unary(expr.op, operand, type)
         when AST::Call
-          callee = transform_expression(expr.callee)
-          args = expr.args.map { |arg| transform_expression(arg) }
-          type = infer_call_type(callee, args)
-          CoreIR::Builder.call(callee, args, type)
+          if expr.callee.is_a?(AST::VarRef) && IO_RETURN_TYPES.key?(expr.callee.name)
+            callee = transform_expression(expr.callee)
+            args = expr.args.map { |arg| transform_expression(arg) }
+            type = io_return_type(expr.callee.name)
+            CoreIR::Builder.call(callee, args, type)
+          else
+            callee = transform_expression(expr.callee)
+            args = expr.args.map { |arg| transform_expression(arg) }
+            type = infer_call_type(callee, args)
+            CoreIR::Builder.call(callee, args, type)
+          end
         when AST::MemberAccess
           object = transform_expression(expr.object)
           type = infer_member_type(object.type, expr.member)
           CoreIR::Builder.member(object, expr.member, type)
         when AST::Let
           value = transform_expression(expr.value)
-          # Save the type of the bound variable
+          previous = @var_types[expr.name]
           @var_types[expr.name] = value.type
           body = transform_expression(expr.body)
-          # Clean up after processing body
-          @var_types.delete(expr.name)
-          type = body.type
-          CoreIR::Builder.let(expr.name, value, body, type)
+          statements = [
+            CoreIR::Builder.variable_decl_stmt(expr.name, value.type, value, mutable: expr.mutable)
+          ]
+          result = CoreIR::Builder.block_expr(statements, body, body.type)
+          if previous
+            @var_types[expr.name] = previous
+          else
+            @var_types.delete(expr.name)
+          end
+          result
         when AST::RecordLit
           type = @type_table[expr.type_name]
           fields = expr.fields.transform_values { |value| transform_expression(value) }
@@ -203,12 +250,16 @@ module Aurora
           CoreIR::Builder.match_expr(scrutinee, arms, type)
         when AST::Lambda
           transform_lambda(expr)
+        when AST::Block
+          transform_block(expr)
         when AST::ArrayLiteral
           transform_array_literal(expr)
         when AST::IndexAccess
           transform_index_access(expr)
         when AST::ForLoop
           transform_for_loop(expr)
+        when AST::WhileLoop
+          transform_while_loop(expr)
         when AST::ListComprehension
           transform_list_comprehension(expr)
         else
@@ -256,6 +307,19 @@ module Aurora
         allowed && allowed.include?(type_name)
       end
 
+      def io_return_type(name)
+        case IO_RETURN_TYPES[name]
+        when "i32"
+          CoreIR::Builder.primitive_type("i32")
+        when "string"
+          CoreIR::Builder.primitive_type("string")
+        when :array_of_string
+          CoreIR::ArrayType.new(element_type: CoreIR::Builder.primitive_type("string"))
+        else
+          CoreIR::Builder.primitive_type("i32")
+        end
+      end
+
       def transform_pipe(pipe_expr)
         # Desugar pipe operator: left |> right
         # If right is a function call, insert left as first argument
@@ -282,6 +346,128 @@ module Aurora
 
           CoreIR::Builder.call(callee, [left], type)
         end
+      end
+
+      def transform_block(block, require_value: true)
+        saved_var_types = @var_types.dup
+        if block.stmts.empty?
+          if require_value
+            raise Aurora::CompileError, "Block must end with an expression"
+          else
+            return CoreIR::Builder.block_expr(
+              [],
+              nil,
+              CoreIR::Builder.primitive_type("void")
+            )
+          end
+        end
+
+        statements = block.stmts.dup
+        result_ir = nil
+
+        if require_value
+          tail = statements.pop
+          case tail
+          when AST::ExprStmt
+            result_ir = transform_expression(tail.expr)
+          when AST::Return
+            statements << tail
+            result_ir = nil
+          else
+            statements << tail if tail
+            result_ir = nil
+          end
+        end
+
+        statement_nodes = transform_statements(statements)
+        block_type = result_ir ? result_ir.type : CoreIR::Builder.primitive_type("void")
+        CoreIR::Builder.block_expr(statement_nodes, result_ir, block_type)
+      ensure
+        @var_types = saved_var_types if defined?(saved_var_types)
+      end
+
+      def transform_statements(statements)
+        statements.each_with_object([]) do |stmt, acc|
+          case stmt
+          when AST::ExprStmt
+            acc.concat(transform_expr_statement(stmt))
+          when AST::VariableDecl
+            value_ir = transform_expression(stmt.value)
+            previous = @var_types[stmt.name]
+            @var_types[stmt.name] = value_ir.type
+            acc << CoreIR::Builder.variable_decl_stmt(
+              stmt.name,
+              value_ir.type,
+              value_ir,
+              mutable: stmt.mutable
+            )
+          when AST::Assignment
+            unless stmt.target.is_a?(AST::VarRef)
+              raise Aurora::CompileError, "Assignment target must be a variable"
+            end
+            target_name = stmt.target.name
+            existing_type = @var_types[target_name]
+            raise Aurora::CompileError, "Assignment to undefined variable '#{target_name}'" unless existing_type
+
+            value_ir = transform_expression(stmt.value)
+            @var_types[target_name] = value_ir.type
+            target_ir = CoreIR::Builder.var(target_name, existing_type)
+            acc << CoreIR::Builder.assignment_stmt(target_ir, value_ir)
+          when AST::ForLoop
+            acc << transform_for_statement(stmt)
+          when AST::IfStmt
+            acc << transform_if_statement(stmt.condition, stmt.then_branch, stmt.else_branch)
+          when AST::WhileStmt
+            acc << transform_while_statement(stmt.condition, stmt.body)
+          when AST::Return
+            acc << transform_return_statement(stmt)
+          when AST::Break
+            raise Aurora::CompileError, "'break' used outside of loop" if @loop_depth.to_i <= 0
+            acc << CoreIR::Builder.break_stmt
+          when AST::Continue
+            raise Aurora::CompileError, "'continue' used outside of loop" if @loop_depth.to_i <= 0
+            acc << CoreIR::Builder.continue_stmt
+          when AST::Block
+            nested = transform_block(stmt, require_value: false)
+            acc.concat(nested.statements)
+          else
+            raise Aurora::CompileError, "Unsupported statement: #{stmt.class}"
+          end
+        end
+      end
+
+      def transform_for_statement(stmt)
+        iterable_ir = transform_expression(stmt.iterable)
+        saved = @var_types[stmt.var_name]
+        element_type = infer_iterable_type(iterable_ir)
+        @var_types[stmt.var_name] = element_type
+        body_ir = within_loop_scope { transform_statement_block(stmt.body) }
+
+        CoreIR::Builder.for_stmt(stmt.var_name, element_type, iterable_ir, body_ir)
+      ensure
+        if saved
+          @var_types[stmt.var_name] = saved
+        else
+          @var_types.delete(stmt.var_name)
+        end
+      end
+
+      def transform_if_statement(condition_node, then_node, else_node)
+        condition_ir = transform_expression(condition_node)
+        then_ir = transform_statement_block(then_node)
+        else_ir = else_node ? transform_statement_block(else_node) : nil
+        CoreIR::Builder.if_stmt(condition_ir, then_ir, else_ir)
+      end
+
+      def transform_while_statement(condition_node, body_node)
+        condition_ir = transform_expression(condition_node)
+        body_ir = within_loop_scope { transform_statement_block(body_node) }
+        CoreIR::Builder.while_stmt(condition_ir, body_ir)
+      end
+
+      def transform_return_statement(stmt)
+        expr_ir = stmt.expr ? transform_expression(stmt.expr) : nil
+        CoreIR::Builder.return_stmt(expr_ir)
       end
 
       def transform_array_literal(array_lit)
@@ -364,25 +550,12 @@ module Aurora
       end
 
       def transform_for_loop(for_loop)
-        # Transform for loop: for x in iterable do body
         iterable = transform_expression(for_loop.iterable)
-
-        # Infer element type from iterable type
-        var_type = if iterable.type.is_a?(CoreIR::ArrayType)
-                     iterable.type.element_type
-                   else
-                     # Default fallback
-                     CoreIR::Builder.primitive_type("i32")
-                   end
-
-        # Save loop variable type for body transformation
+        saved = @var_types[for_loop.var_name]
+        var_type = infer_iterable_type(iterable)
         @var_types[for_loop.var_name] = var_type
 
-        # Transform body
-        body = transform_expression(for_loop.body)
-
-        # Cleanup
-        @var_types.delete(for_loop.var_name)
+        body = within_loop_scope { transform_expression(for_loop.body) }
 
         CoreIR::ForLoopExpr.new(
           var_name: for_loop.var_name,
@@ -390,6 +563,12 @@ module Aurora
           iterable: iterable,
           body: body
         )
+      ensure
+        if saved
+          @var_types[for_loop.var_name] = saved
+        else
+          @var_types.delete(for_loop.var_name)
+        end
       end
 
       def transform_list_comprehension(list_comp)
@@ -433,6 +612,68 @@ module Aurora
         @var_types = saved_var_types
       end
 
+      def transform_while_loop(while_loop)
+        condition = transform_expression(while_loop.condition)
+        body = within_loop_scope { transform_statement_block(while_loop.body) }
+        CoreIR::Builder.while_loop_expr(condition, body)
+      end
+
+      def lambda_return_type(arg)
+        return nil unless arg
+
+        if arg.respond_to?(:function_type) && arg.function_type
+          arg.function_type.ret_type
+        elsif arg.respond_to?(:type) && arg.type.is_a?(CoreIR::FunctionType)
+          arg.type.ret_type
+        else
+          nil
+        end
+      end
+
+      def transform_expr_statement(expr_stmt)
+        expr = expr_stmt.expr
+        case expr
+        when AST::ForLoop
+          [transform_for_statement(expr)]
+        when AST::IfExpr
+          [transform_if_statement(expr.condition, expr.then_branch, expr.else_branch)]
+        when AST::WhileLoop
+          [transform_while_statement(expr.condition, expr.body)]
+        when AST::Block
+          transform_block(expr, require_value: false).statements
+        else
+          ir = transform_expression(expr)
+          if expr.is_a?(AST::IfExpr) && ir.is_a?(CoreIR::IfExpr)
+            CoreIR::Builder.if_stmt(ir.condition, transform_statement_block(expr.then_branch), expr.else_branch ? transform_statement_block(expr.else_branch) : nil)
+            []
+          else
+            [CoreIR::Builder.expr_statement(ir)]
+          end
+        end
+      end
+
+      def transform_statement_block(node)
+        block_ast =
+          case node
+          when AST::Block
+            node
+          when AST::Stmt
+            AST::Block.new(stmts: [node])
+          else
+            AST::Block.new(stmts: [AST::ExprStmt.new(expr: node)])
+          end
+
+        transform_block(block_ast, require_value: false)
+      end
+
+      def within_loop_scope
+        @loop_depth ||= 0
+        @loop_depth += 1
+        yield
+      ensure
+        @loop_depth -= 1
+      end
+
       def transform_pattern(pattern)
         case pattern.kind
         when :wildcard
@@ -459,6 +700,13 @@ module Aurora
         # Check if this is a known variable from a let binding
         if @var_types.key?(name)
           return @var_types[name]
+        end
+
+        # Check for known functions
+        if @function_table.key?(name)
+          func = @function_table[name]
+          param_types = func.params.map { |param| {name: param.name, type: param.type} }
+          return CoreIR::Builder.function_type(param_types, func.ret_type)
         end
 
         # Simple type inference - in real implementation would be more sophisticated
@@ -488,21 +736,67 @@ module Aurora
           left_type
         end
       end
+
+      def infer_unary_type(op, operand_type)
+        case op
+        when "!"
+          CoreIR::Builder.primitive_type("bool")
+        when "-", "+"
+          operand_type
+        else
+          operand_type
+        end
+      end
       
       def infer_call_type(callee, args)
-        # Simple inference - in real implementation would check function signatures
         case callee
         when CoreIR::VarExpr
-          # Simple function call like sqrt(x)
-          if callee.name == "sqrt"
+          if @function_table.key?(callee.name)
+            @function_table[callee.name].ret_type
+          elsif callee.name == "sqrt"
             CoreIR::Builder.primitive_type("f32")
           else
             CoreIR::Builder.primitive_type("i32")
           end
         when CoreIR::MemberExpr
-          # Method call like (expr).sqrt()
-          if callee.member == "sqrt"
-            CoreIR::Builder.primitive_type("f32")
+          object_type = callee.object&.type
+          member = callee.member
+
+          if object_type.is_a?(CoreIR::ArrayType)
+            case member
+            when "length", "size"
+              CoreIR::Builder.primitive_type("i32")
+            when "is_empty"
+              CoreIR::Builder.primitive_type("bool")
+            when "map"
+              element_type = lambda_return_type(args.first) || object_type.element_type || CoreIR::Builder.primitive_type("auto")
+              CoreIR::ArrayType.new(
+                element_type: element_type
+              )
+            when "filter"
+              CoreIR::ArrayType.new(
+                element_type: object_type.element_type
+              )
+            when "fold"
+              args.first ? args.first.type : CoreIR::Builder.primitive_type("i32")
+            else
+              CoreIR::Builder.primitive_type("i32")
+            end
+          elsif object_type && %w[string str].include?(object_type.name)
+            case member
+            when "split"
+              CoreIR::ArrayType.new(
+                element_type: CoreIR::Builder.primitive_type("string")
+              )
+            when "trim", "trim_start", "trim_end", "upper", "lower"
+              CoreIR::Builder.primitive_type("string")
+            when "is_empty"
+              CoreIR::Builder.primitive_type("bool")
+            when "length"
+              CoreIR::Builder.primitive_type("i32")
+            else
+              CoreIR::Builder.primitive_type("string")
+            end
           else
             CoreIR::Builder.primitive_type("i32")
           end
@@ -541,17 +835,33 @@ module Aurora
           true
         when CoreIR::BinaryExpr
           is_pure_expression(expr.left) && is_pure_expression(expr.right)
+        when CoreIR::UnaryExpr
+          is_pure_expression(expr.operand)
         when CoreIR::CallExpr
           # Assume all calls are pure for now
           true
         when CoreIR::MemberExpr
           is_pure_expression(expr.object)
-        when CoreIR::LetExpr
-          is_pure_expression(expr.value) && is_pure_expression(expr.body)
         when CoreIR::RecordExpr
           expr.fields.values.all? { |field| is_pure_expression(field) }
+        when CoreIR::BlockExpr
+          false
         else
           false
+        end
+      end
+
+      def fresh_temp_name
+        name = "__tmp#{@temp_counter}"
+        @temp_counter += 1
+        name
+      end
+
+      def infer_iterable_type(iterable_ir)
+        if iterable_ir.type.is_a?(CoreIR::ArrayType)
+          iterable_ir.type.element_type
+        else
+          CoreIR::Builder.primitive_type("i32")
         end
       end
     end

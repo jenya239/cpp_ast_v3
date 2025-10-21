@@ -219,8 +219,8 @@ class FunctionBuilderTest < Test::Unit::TestCase
     assert_equal "int", node.return_type
     assert_equal "add", node.name
     assert_equal 2, node.parameters.size
-    assert_equal "constexpr", node.prefix_modifiers
-    assert_equal "noexcept", node.modifiers_text
+    assert_equal "constexpr ", node.prefix_modifiers
+    assert_equal " noexcept", node.modifiers_text
   end
 
   def test_constructor_to_node_conversion
@@ -238,8 +238,8 @@ class FunctionBuilderTest < Test::Unit::TestCase
     assert_equal "", node.return_type
     assert_equal "", node.name
     assert_equal 2, node.parameters.size
-    assert_equal "constexpr", node.prefix_modifiers
-    assert_equal "noexcept", node.modifiers_text
+    assert_equal "constexpr ", node.prefix_modifiers
+    assert_equal " noexcept", node.modifiers_text
   end
 
   def test_destructor_to_node_conversion
@@ -255,7 +255,7 @@ class FunctionBuilderTest < Test::Unit::TestCase
     assert_equal "~", node.name
     assert_equal 0, node.parameters.size
     assert_equal "", node.prefix_modifiers
-    assert_equal "noexcept", node.modifiers_text
+    assert_equal " noexcept", node.modifiers_text
   end
 
   def test_method_to_node_conversion
@@ -275,7 +275,7 @@ class FunctionBuilderTest < Test::Unit::TestCase
     assert_equal "length", node.name
     assert_equal 0, node.parameters.size
     assert_equal "", node.prefix_modifiers
-    assert_equal "const noexcept", node.modifiers_text
+    assert_equal " const noexcept", node.modifiers_text
   end
 
   def test_function_with_complex_body

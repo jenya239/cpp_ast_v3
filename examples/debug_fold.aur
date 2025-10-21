@@ -1,0 +1,25 @@
+type Totals = { todo: i32, doing: i32, done: i32 }
+
+fn parse_status(line: str) -> str = line
+
+fn bump(stats: Totals, status: str) -> Totals =
+  if status == "TODO" then
+    Totals { todo: stats.todo + 1, doing: stats.doing, done: stats.done }
+  else if status == "DOING" then
+    Totals { todo: stats.todo, doing: stats.doing + 1, done: stats.done }
+  else if status == "DONE" then
+    Totals { todo: stats.todo, doing: stats.doing, done: stats.done + 1 }
+  else
+    stats
+
+fn show(stats: Totals) -> str =
+  "todo=" + stats.todo + ", doing=" + stats.doing + ", done=" + stats.done
+
+fn main() -> i32 =
+  let items = ["TODO", "DOING", "DONE"]
+  let stats = items.fold(
+    Totals { todo: 0, doing: 0, done: 0 },
+    (acc: Totals, status: str) => bump(acc, status)
+  )
+  println(show(stats))
+  0

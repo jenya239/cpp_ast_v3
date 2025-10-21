@@ -69,9 +69,10 @@ class AuroraRoundtripTest < Minitest::Test
     # Write to temporary file
     temp_file = "/tmp/aurora_test.cpp"
     File.write(temp_file, full_cpp)
+    runtime_dir = File.expand_path("../../runtime", __dir__)
     
     # Compile
-    compile_result = system("g++ -std=c++20 -o /tmp/aurora_test #{temp_file}")
+    compile_result = system("g++ -std=c++20 -I #{runtime_dir} -o /tmp/aurora_test #{temp_file}")
     assert compile_result, "Compilation failed"
     
     # Run and check result

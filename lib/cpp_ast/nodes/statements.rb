@@ -20,14 +20,18 @@ module CppAst
     class ReturnStatement < Statement
       attr_accessor :expression, :keyword_suffix
       
-      def initialize(leading_trivia: "", expression:, keyword_suffix: " ")
+      def initialize(leading_trivia: "", expression: nil, keyword_suffix: " ")
         super(leading_trivia: leading_trivia)
         @expression = expression
         @keyword_suffix = keyword_suffix
       end
       
       def to_source
-        "#{leading_trivia}return#{keyword_suffix}#{expression.to_source};"
+        if expression
+          "#{leading_trivia}return#{keyword_suffix}#{expression.to_source};"
+        else
+          "#{leading_trivia}return;"
+        end
       end
     end
     

@@ -1,0 +1,23 @@
+fn main() -> i32 =
+  let mut index = 1
+  let mut sum = 0
+  let mut even = 0
+  let mut odd = 0
+
+  while index <= 10 do {
+    sum = sum + index;
+    if index % 2 == 0 then {
+      even = even + 1;
+      0
+    } else {
+      odd = odd + 1;
+      0
+    };
+    index = index + 1;
+    0
+  }
+
+  let _ = println(format("sum={}", sum))
+  let _ = println(format("even={}", even))
+  let _ = println(format("odd={}", odd))
+  0

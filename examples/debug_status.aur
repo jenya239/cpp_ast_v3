@@ -1,0 +1,18 @@
+fn normalize(line: str) -> str = line.trim()
+
+fn parse_status(line: str) -> str =
+  let trimmed = normalize(line).upper()
+  if trimmed.starts_with("TODO") then
+    "TODO"
+  else if trimmed.starts_with("DOING") then
+    "DOING"
+  else if trimmed.starts_with("DONE") then
+    "DONE"
+  else
+    "OTHER"
+
+fn main() -> i32 =
+  let _ = println(parse_status("TODO: something"))
+  let _ = println(parse_status("DOING: now"))
+  let _ = println(parse_status("DONE: done"))
+  0

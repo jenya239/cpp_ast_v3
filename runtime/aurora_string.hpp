@@ -5,6 +5,8 @@
 #include <vector>
 #include <cstdint>
 #include <stdexcept>
+#include <sstream>
+#include <utility>
 
 namespace aurora {
 
@@ -189,6 +191,103 @@ inline Bytes String::to_bytes() const {
 
 inline String String::from_bytes(const Bytes& bytes) {
     return bytes.to_string();
+}
+
+inline String to_string(int value) {
+    return String(std::to_string(value));
+}
+
+inline String to_string(long value) {
+    return String(std::to_string(value));
+}
+
+inline String to_string(long long value) {
+    return String(std::to_string(value));
+}
+
+inline String to_string(unsigned value) {
+    return String(std::to_string(value));
+}
+
+inline String to_string(unsigned long value) {
+    return String(std::to_string(value));
+}
+
+inline String to_string(unsigned long long value) {
+    return String(std::to_string(value));
+}
+
+inline String to_string(float value) {
+    std::ostringstream oss;
+    oss << value;
+    return String(oss.str());
+}
+
+inline String to_string(double value) {
+    std::ostringstream oss;
+    oss << value;
+    return String(oss.str());
+}
+
+inline String to_string(long double value) {
+    std::ostringstream oss;
+    oss << value;
+    return String(oss.str());
+}
+
+inline String to_string(bool value) {
+    return String(value ? "true" : "false");
+}
+
+inline String to_string(const String& value) {
+    return value;
+}
+
+inline String to_string(const char* value) {
+    return String(value);
+}
+
+inline String to_string(const std::string& value) {
+    return String(value);
+}
+
+inline String format(const String& fmt, const std::vector<String>& parts) {
+    const std::string& pattern = fmt.as_std_string();
+    std::string result;
+    result.reserve(pattern.size() + parts.size() * 8);
+
+    size_t arg_index = 0;
+    for (size_t i = 0; i < pattern.size(); ++i) {
+        char ch = pattern[i];
+        if (ch == '{') {
+            if (i + 1 < pattern.size() && pattern[i + 1] == '{') {
+                result.push_back('{');
+                ++i;
+            } else {
+                if (arg_index < parts.size()) {
+                    result += parts[arg_index++].as_std_string();
+                    if (i + 1 < pattern.size() && pattern[i + 1] == '}') {
+                        ++i;
+                    }
+                }
+            }
+        } else if (ch == '}' && i + 1 < pattern.size() && pattern[i + 1] == '}') {
+            result.push_back('}');
+            ++i;
+        } else {
+            result.push_back(ch);
+        }
+    }
+
+    return String(result);
+}
+
+template <typename... Args>
+inline String format(const String& fmt, Args&&... args) {
+    std::vector<String> parts;
+    parts.reserve(sizeof...(Args));
+    (parts.push_back(to_string(std::forward<Args>(args))), ...);
+    return format(fmt, parts);
 }
 
 } // namespace aurora

@@ -65,6 +65,7 @@ module Aurora
         # Standard includes
         lines << "#include <variant>"
         lines << "#include <string>"
+        lines << "#include \"aurora_match.hpp\""
         lines << ""
 
         # Module imports -> #include statements

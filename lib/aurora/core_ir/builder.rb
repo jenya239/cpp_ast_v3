@@ -56,6 +56,14 @@ module Aurora
         binary(op, left, right, type, origin: origin)
       end
 
+      def self.unary(op, operand, type, origin: nil)
+        UnaryExpr.new(op: op, operand: operand, type: type, origin: origin)
+      end
+
+      def self.unary_expr(op, operand, type, origin: nil)
+        unary(op, operand, type, origin: origin)
+      end
+
       def self.call(callee, args, type, origin: nil)
         CallExpr.new(callee: callee, args: args, type: type, origin: origin)
       end
@@ -67,15 +75,6 @@ module Aurora
       
       def self.member(object, member, type, origin: nil)
         MemberExpr.new(object: object, member: member, type: type, origin: origin)
-      end
-      
-      def self.let(name, value, body, type, origin: nil)
-        LetExpr.new(name: name, value: value, body: body, type: type, origin: origin)
-      end
-
-      # Alias for let
-      def self.let_expr(name, value, body, type, origin: nil)
-        let(name, value, body, type, origin: origin)
       end
       
       def self.record(type_name, fields, type, origin: nil)
@@ -94,8 +93,48 @@ module Aurora
         Block.new(stmts: stmts, origin: origin)
       end
       
-      def self.return_stmt(expr, origin: nil)
+      def self.return_stmt(expr = nil, origin: nil)
         Return.new(expr: expr, origin: origin)
+      end
+
+      def self.expr_statement(expression, origin: nil)
+        ExprStatement.new(expression: expression, origin: origin)
+      end
+
+      def self.variable_decl_stmt(name, type, value, mutable: false, origin: nil)
+        VariableDeclStmt.new(name: name, type: type, value: value, mutable: mutable, origin: origin)
+      end
+
+      def self.assignment_stmt(target, value, origin: nil)
+        AssignmentStmt.new(target: target, value: value, origin: origin)
+      end
+
+      def self.for_stmt(var_name, var_type, iterable, body, origin: nil)
+        ForStmt.new(var_name: var_name, var_type: var_type, iterable: iterable, body: body, origin: origin)
+      end
+
+      def self.if_stmt(condition, then_body, else_body = nil, origin: nil)
+        IfStmt.new(condition: condition, then_body: then_body, else_body: else_body, origin: origin)
+      end
+
+      def self.while_stmt(condition, body, origin: nil)
+        WhileStmt.new(condition: condition, body: body, origin: origin)
+      end
+
+      def self.break_stmt(origin: nil)
+        BreakStmt.new(origin: origin)
+      end
+
+      def self.continue_stmt(origin: nil)
+        ContinueStmt.new(origin: origin)
+      end
+
+      def self.for_loop_expr(var_name, var_type, iterable, body, origin: nil)
+        ForLoopExpr.new(var_name: var_name, var_type: var_type, iterable: iterable, body: body, origin: origin)
+      end
+
+      def self.while_loop_expr(condition, body, origin: nil)
+        WhileLoopExpr.new(condition: condition, body: body, origin: origin)
       end
       
       def self.type_decl(name, type, origin: nil)
@@ -104,6 +143,10 @@ module Aurora
 
       def self.module_node(items, name: nil, imports: [], origin: nil)
         Module.new(name: name, items: items, imports: imports, origin: origin)
+      end
+
+      def self.block_expr(statements, result, type, origin: nil)
+        BlockExpr.new(statements: statements, result: result, type: type, origin: origin)
       end
     end
   end

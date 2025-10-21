@@ -91,7 +91,7 @@ module CppAst
             if param.is_a?(Array) && param.size == 2
               # [type, name] format
               type, name = param
-              type_str = type.respond_to?(:to_cpp_type) ? type.to_cpp_type : type.to_s
+              type_str = normalize_type(type)
               Nodes::Parameter.new(
                 type: type_str,
                 name: name.to_s
@@ -99,7 +99,7 @@ module CppAst
             elsif param.is_a?(Hash)
               # {type: type, name: name, default: value} format
               Nodes::Parameter.new(
-                type: param[:type].to_cpp_type,
+                type: normalize_type(param[:type]),
                 name: param[:name].to_s,
                 default_value: param[:default]&.node
               )
@@ -112,8 +112,17 @@ module CppAst
           modifiers_text = build_modifiers_text
           
           # Build function declaration
+          return_type_str = normalize_type(@ret_type)
+          if return_type_str.empty?
+            if @name == "~"
+              return_type_str = ""
+            elsif !@name.to_s.empty?
+              return_type_str = "void"
+            end
+          end
+
           Nodes::FunctionDeclaration.new(
-            return_type: @ret_type&.to_cpp_type || (@name == "~" ? "" : (@name.empty? ? "" : "void")),
+            return_type: return_type_str,
             name: @name.to_s,
             parameters: param_nodes,
             body: @body,
@@ -137,7 +146,7 @@ module CppAst
           modifiers << "final" if @modifiers[:final]
           modifiers << "= 0" if @modifiers[:pure_virtual]
           
-          modifiers.join(" ")
+          modifiers.empty? ? "" : " " + modifiers.join(" ")
         end
         
         def build_prefix_modifiers
@@ -148,7 +157,17 @@ module CppAst
           modifiers << "constexpr" if @modifiers[:constexpr]
           modifiers << "inline" if @modifiers[:inline]
           
-          modifiers.join(" ")
+          modifiers.empty? ? "" : "#{modifiers.join(' ')} "
+        end
+
+        def normalize_type(type)
+          return "" if type.nil?
+
+          if type.respond_to?(:to_cpp_type)
+            type.to_cpp_type.to_s
+          else
+            type.to_s
+          end
         end
       end
       

@@ -19,7 +19,7 @@ module Aurora
     
     class Lexer
       KEYWORDS = %w[
-        fn type let return if then else while for in do match
+        fn type let mut return break continue if then else while for in do match
         i32 f32 bool void str module export import enum from as
       ].freeze
       
@@ -111,14 +111,45 @@ module Aurora
       end
 
       def skip_comments
-        # Skip single-line comments //
-        if @pos < @source.length - 1 && @source[@pos] == '/' && @source[@pos + 1] == '/'
-          # Skip until end of line
-          while @pos < @source.length && @source[@pos] != "\n"
-            @pos += 1
-            @column += 1
+        loop do
+          break if @pos >= @source.length - 1
+
+          if @source[@pos] == '/' && @source[@pos + 1] == '/'
+            # Skip single-line comment (// or ///)
+            @pos += 2
+            @column += 2
+            while @pos < @source.length && @source[@pos] != "\n"
+              @pos += 1
+              @column += 1
+            end
+          elsif @source[@pos] == '/' && @source[@pos + 1] == '*'
+            # Skip block comment /* ... */
+            @pos += 2
+            @column += 2
+            while @pos < @source.length - 1
+              if @source[@pos] == '*' && @source[@pos + 1] == '/'
+                @pos += 2
+                @column += 2
+                break
+              else
+                advance_char
+              end
+            end
+          else
+            break
           end
+          skip_whitespace
         end
+      end
+
+      def advance_char
+        if @source[@pos] == "\n"
+          @line += 1
+          @column = 1
+        else
+          @column += 1
+        end
+        @pos += 1
       end
       
       def tokenize_identifier_or_keyword

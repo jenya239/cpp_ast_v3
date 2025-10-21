@@ -271,15 +271,17 @@ module Aurora
     
     # Let binding (sugar)
     class Let < Expr
-      attr_reader :name, :value, :body
+      attr_reader :name, :value, :body, :mutable
 
-      def initialize(name:, value:, body:, origin: nil)
+      def initialize(name:, value:, body:, mutable: false, origin: nil)
         super(kind: :let, data: {name: name, value: value, body: body}, origin: origin)
         @name = name
         @value = value
         @body = body
+        @mutable = mutable
       end
     end
+
 
     # Record literal
     class RecordLit < Expr
@@ -344,9 +346,46 @@ module Aurora
     class Return < Stmt
       attr_reader :expr
 
-      def initialize(expr:, origin: nil)
+      def initialize(expr: nil, origin: nil)
         super(origin: origin)
         @expr = expr
+      end
+    end
+
+    # Break statement
+    class Break < Stmt
+      def initialize(origin: nil)
+        super(origin: origin)
+      end
+    end
+
+    # Continue statement
+    class Continue < Stmt
+      def initialize(origin: nil)
+        super(origin: origin)
+      end
+    end
+
+    # Variable declaration statement
+    class VariableDecl < Stmt
+      attr_reader :name, :value, :mutable
+
+      def initialize(name:, value:, mutable: false, origin: nil)
+        super(origin: origin)
+        @name = name
+        @value = value
+        @mutable = mutable
+      end
+    end
+
+    # Assignment statement
+    class Assignment < Stmt
+      attr_reader :target, :value
+
+      def initialize(target:, value:, origin: nil)
+        super(origin: origin)
+        @target = target
+        @value = value
       end
     end
 
@@ -357,6 +396,29 @@ module Aurora
       def initialize(expr:, origin: nil)
         super(origin: origin)
         @expr = expr
+      end
+    end
+
+    # If statement
+    class IfStmt < Stmt
+      attr_reader :condition, :then_branch, :else_branch
+
+      def initialize(condition:, then_branch:, else_branch: nil, origin: nil)
+        super(origin: origin)
+        @condition = condition
+        @then_branch = then_branch
+        @else_branch = else_branch
+      end
+    end
+
+    # While statement
+    class WhileStmt < Stmt
+      attr_reader :condition, :body
+
+      def initialize(condition:, body:, origin: nil)
+        super(origin: origin)
+        @condition = condition
+        @body = body
       end
     end
 
@@ -392,6 +454,17 @@ module Aurora
         @var_name = var_name   # String
         @iterable = iterable   # Expr (array, range, etc.)
         @body = body           # Expr or Block
+      end
+    end
+
+    # While loop expression
+    class WhileLoop < Expr
+      attr_reader :condition, :body
+
+      def initialize(condition:, body:, origin: nil)
+        super(kind: :while_loop, data: {condition: condition, body: body}, origin: origin)
+        @condition = condition  # Expr
+        @body = body            # Expr or Block
       end
     end
 

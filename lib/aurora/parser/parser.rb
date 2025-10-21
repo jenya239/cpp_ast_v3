@@ -513,39 +513,67 @@ module Aurora
       end
       
       def parse_let_expression
-        if current.type == :LET
-          consume(:LET)
-          name = consume(:IDENTIFIER).value
-          consume(:EQUAL)
-          value = parse_if_expression
-          # Skip newline if present
-          if current.type == :SEMICOLON
-            consume(:SEMICOLON)
-          end
-          body = parse_expression
+        return parse_if_expression unless current.type == :LET
 
-          AST::Let.new(name: name, value: value, body: body)
-        else
-          parse_if_expression
+        consume(:LET)
+        mutable = false
+        if current.type == :MUT
+          consume(:MUT)
+          mutable = true
         end
+
+        name = consume(:IDENTIFIER).value
+        consume(:EQUAL)
+        value = parse_if_expression
+
+        unless current.type == :SEMICOLON
+          body = parse_expression
+          return AST::Let.new(name: name, value: value, body: body, mutable: mutable)
+        end
+
+        consume(:SEMICOLON)
+        statements = [AST::VariableDecl.new(name: name, value: value, mutable: mutable)]
+        block = parse_statement_sequence(statements)
+        ensure_block_has_result(block, require_value: false)
+        block
+      end
+
+      def parse_block_expression
+        consume(:LBRACE)
+        statements = []
+
+        until current.type == :RBRACE
+          statements << parse_statement
+        end
+
+        consume(:RBRACE)
+        AST::Block.new(stmts: statements)
       end
 
       def parse_if_expression
         if current.type == :IF
           consume(:IF)
-          condition = parse_equality
+          condition = parse_logical_or
           consume(:THEN) if current.type == :THEN
-          then_branch = parse_if_expression
+          then_branch = parse_if_branch_expression
 
           else_branch = nil
           if current.type == :ELSE
             consume(:ELSE)
-            else_branch = parse_if_expression
+            else_branch = parse_if_branch_expression
           end
 
           AST::IfExpr.new(condition: condition, then_branch: then_branch, else_branch: else_branch)
         else
-          parse_equality
+          parse_logical_or
+        end
+      end
+
+      def parse_if_branch_expression
+        if current.type == :LBRACE
+          parse_block_expression
+        else
+          parse_if_expression
         end
       end
 
@@ -775,6 +803,30 @@ module Aurora
         end
       end
       
+      def parse_logical_or
+        left = parse_logical_and
+
+        while current.type == :OPERATOR && current.value == "||"
+          consume(:OPERATOR)
+          right = parse_logical_and
+          left = AST::BinaryOp.new(op: "||", left: left, right: right)
+        end
+
+        left
+      end
+
+      def parse_logical_and
+        left = parse_equality
+
+        while current.type == :OPERATOR && current.value == "&&"
+          consume(:OPERATOR)
+          right = parse_equality
+          left = AST::BinaryOp.new(op: "&&", left: left, right: right)
+        end
+
+        left
+      end
+
       def parse_equality
         left = parse_pipe
 
@@ -893,6 +945,8 @@ module Aurora
         case current.type
         when :FOR
           parse_for_loop
+        when :WHILE
+          parse_while_loop
         when :INT_LITERAL
           value = consume(:INT_LITERAL).value
           AST::IntLit.new(value: value)
@@ -960,11 +1014,31 @@ module Aurora
         consume(:IN)
         iterable = parse_if_expression
         consume(:DO)
-        body = parse_expression
+        body = if current.type == :LBRACE
+                 parse_block_expression
+               else
+                 parse_expression
+               end
 
         AST::ForLoop.new(
           var_name: var_name,
           iterable: iterable,
+          body: body
+        )
+      end
+
+      def parse_while_loop
+        consume(:WHILE)
+        condition = parse_if_expression
+        consume(:DO)
+        body = if current.type == :LBRACE
+                 parse_block_expression
+               else
+                 parse_expression
+               end
+
+        AST::WhileLoop.new(
+          condition: condition,
           body: body
         )
       end
@@ -1013,6 +1087,96 @@ module Aurora
         end
 
         params
+      end
+
+      def parse_statement
+        case current.type
+        when :LET
+          parse_variable_decl_statement
+        when :RETURN
+          parse_return_statement
+        when :BREAK
+          consume(:BREAK)
+          consume(:SEMICOLON) if current.type == :SEMICOLON
+          AST::Break.new
+        when :CONTINUE
+          consume(:CONTINUE)
+          consume(:SEMICOLON) if current.type == :SEMICOLON
+          AST::Continue.new
+        when :IDENTIFIER
+          if peek && peek.type == :EQUAL
+            parse_assignment_statement
+          else
+            expr = parse_expression
+            consume(:SEMICOLON) if current.type == :SEMICOLON
+            AST::ExprStmt.new(expr: expr)
+          end
+        when :LBRACE
+          parse_block_expression
+        else
+          expr = parse_expression
+          consume(:SEMICOLON) if current.type == :SEMICOLON
+          AST::ExprStmt.new(expr: expr)
+        end
+      end
+
+      def parse_variable_decl_statement
+        consume(:LET)
+        mutable = false
+        if current.type == :MUT
+          consume(:MUT)
+          mutable = true
+        end
+
+        name = consume(:IDENTIFIER).value
+        consume(:EQUAL)
+        value = parse_expression
+        consume(:SEMICOLON) if current.type == :SEMICOLON
+
+        AST::VariableDecl.new(name: name, value: value, mutable: mutable)
+      end
+
+      def parse_assignment_statement
+        target_name = consume(:IDENTIFIER).value
+        consume(:EQUAL)
+        value = parse_expression
+        consume(:SEMICOLON) if current.type == :SEMICOLON
+
+        AST::Assignment.new(target: AST::VarRef.new(name: target_name), value: value)
+      end
+
+      def parse_return_statement
+        consume(:RETURN)
+        expr = nil
+        unless current.type == :SEMICOLON || current.type == :RBRACE || current.type == :EOF
+          expr = parse_expression
+        end
+        consume(:SEMICOLON) if current.type == :SEMICOLON
+
+        AST::Return.new(expr: expr)
+      end
+
+      def parse_statement_sequence(statements)
+        loop do
+          break if current.type == :EOF || current.type == :RBRACE
+
+          stmt = parse_statement
+          statements << stmt
+
+          if current.type == :SEMICOLON
+            consume(:SEMICOLON)
+            next
+          end
+        end
+
+        AST::Block.new(stmts: statements)
+      end
+
+      def ensure_block_has_result(block, require_value: true)
+        return unless require_value
+        return if block.stmts.last.is_a?(AST::ExprStmt)
+
+        raise "Block must end with an expression"
       end
       def parse_lambda_body
         if current.type == :LBRACE

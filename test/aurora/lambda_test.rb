@@ -14,11 +14,13 @@ class AuroraLambdaTest < Minitest::Test
     ast = Aurora.parse(aurora_source)
     func = ast.declarations.first
 
-    # Body should be a let expression
-    assert_instance_of Aurora::AST::Let, func.body
+    # Body should be a block with variable declaration and usage
+    assert_instance_of Aurora::AST::Block, func.body
+    assert_equal 2, func.body.stmts.size
+    assert_instance_of Aurora::AST::VariableDecl, func.body.stmts.first
 
     # Value should be a lambda
-    lambda_expr = func.body.value
+    lambda_expr = func.body.stmts.first.value
     assert_instance_of Aurora::AST::Lambda, lambda_expr
     assert_equal 1, lambda_expr.params.length
     assert_instance_of Aurora::AST::LambdaParam, lambda_expr.params[0]
@@ -34,7 +36,9 @@ class AuroraLambdaTest < Minitest::Test
 
     ast = Aurora.parse(aurora_source)
     func = ast.declarations.first
-    lambda_expr = func.body.value
+    block = func.body
+    assert_instance_of Aurora::AST::Block, block
+    lambda_expr = block.stmts.first.value
 
     assert_instance_of Aurora::AST::Lambda, lambda_expr
     assert_equal 2, lambda_expr.params.length
@@ -50,7 +54,8 @@ class AuroraLambdaTest < Minitest::Test
 
     ast = Aurora.parse(aurora_source)
     func = ast.declarations.first
-    lambda_expr = func.body.value
+    block = func.body
+    lambda_expr = block.stmts.first.value
 
     assert_equal "i32", lambda_expr.params[0].type.name
   end

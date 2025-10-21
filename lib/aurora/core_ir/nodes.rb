@@ -171,6 +171,17 @@ module Aurora
         @right = right
       end
     end
+
+    # Unary operation
+    class UnaryExpr < Expr
+      attr_reader :op, :operand
+
+      def initialize(op:, operand:, type:, origin: nil)
+        super(kind: :unary, data: {op: op, operand: operand}, type: type, origin: origin)
+        @op = op
+        @operand = operand
+      end
+    end
     
     # Function call
     class CallExpr < Expr
@@ -205,18 +216,6 @@ module Aurora
       end
     end
 
-    # Let binding
-    class LetExpr < Expr
-      attr_reader :name, :value, :body
-      
-      def initialize(name:, value:, body:, type:, origin: nil)
-        super(kind: :let, data: {name: name, value: value, body: body}, type: type, origin: origin)
-        @name = name
-        @value = value
-        @body = body
-      end
-    end
-    
     # Record literal
     class RecordExpr < Expr
       attr_reader :type_name, :fields
@@ -268,10 +267,58 @@ module Aurora
     # Return statement
     class Return < Stmt
       attr_reader :expr
-      
-      def initialize(expr:, origin: nil)
+
+      def initialize(expr: nil, origin: nil)
         super(origin: origin)
         @expr = expr
+      end
+    end
+
+    # Expression used as statement
+    class ExprStatement < Stmt
+      attr_reader :expression
+
+      def initialize(expression:, origin: nil)
+        super(origin: origin)
+        @expression = expression
+      end
+    end
+
+    # Break statement
+    class BreakStmt < Stmt
+      def initialize(origin: nil)
+        super(origin: origin)
+      end
+    end
+
+    # Continue statement
+    class ContinueStmt < Stmt
+      def initialize(origin: nil)
+        super(origin: origin)
+      end
+    end
+
+    # Variable declaration statement
+    class VariableDeclStmt < Stmt
+      attr_reader :name, :type, :value, :mutable
+
+      def initialize(name:, type:, value:, mutable:, origin: nil)
+        super(origin: origin)
+        @name = name
+        @type = type
+        @value = value
+        @mutable = mutable
+      end
+    end
+
+    # Assignment statement
+    class AssignmentStmt < Stmt
+      attr_reader :target, :value
+
+      def initialize(target:, value:, origin: nil)
+        super(origin: origin)
+        @target = target
+        @value = value
       end
     end
     
@@ -311,7 +358,20 @@ module Aurora
       end
     end
 
-    # For loop (imperative)
+    # Block expression containing statements and final expression
+    class BlockExpr < Expr
+      attr_reader :statements, :result
+      attr_accessor :desugared_expr
+
+      def initialize(statements:, result:, type:, origin: nil)
+        super(kind: :block, data: {}, type: type, origin: origin)
+        @statements = statements
+        @result = result
+        @desugared_expr = nil
+      end
+    end
+
+    # For loop (imperative expression)
     class ForLoopExpr < Expr
       attr_reader :var_name, :var_type, :iterable, :body
 
@@ -320,6 +380,53 @@ module Aurora
         @var_name = var_name
         @var_type = var_type   # Inferred element type
         @iterable = iterable
+        @body = body
+      end
+    end
+
+    # While loop expression
+    class WhileLoopExpr < Expr
+      attr_reader :condition, :body
+
+      def initialize(condition:, body:, origin: nil)
+        super(kind: :while_loop, data: {}, type: Type.new(kind: :prim, name: "void"), origin: origin)
+        @condition = condition
+        @body = body
+      end
+    end
+
+    # For loop statement
+    class ForStmt < Stmt
+      attr_reader :var_name, :var_type, :iterable, :body
+
+      def initialize(var_name:, var_type:, iterable:, body:, origin: nil)
+        super(origin: origin)
+        @var_name = var_name
+        @var_type = var_type
+        @iterable = iterable
+        @body = body
+      end
+    end
+
+    # If statement
+    class IfStmt < Stmt
+      attr_reader :condition, :then_body, :else_body
+
+      def initialize(condition:, then_body:, else_body:, origin: nil)
+        super(origin: origin)
+        @condition = condition
+        @then_body = then_body
+        @else_body = else_body
+      end
+    end
+
+    # While statement
+    class WhileStmt < Stmt
+      attr_reader :condition, :body
+
+      def initialize(condition:, body:, origin: nil)
+        super(origin: origin)
+        @condition = condition
         @body = body
       end
     end
