@@ -11,13 +11,34 @@ require_relative "aurora/backend/header_generator"
 
 module Aurora
   class ParseError < StandardError; end
-  class CompileError < StandardError; end
+
+  class CompileError < StandardError
+    attr_reader :origin
+
+    def initialize(message = nil, origin: nil)
+      super(message)
+      @origin = origin
+    end
+
+    def message
+      base = super
+      origin_label = origin&.label
+      origin_label ? "#{origin_label}: #{base}" : base
+    end
+
+    def full_message(highlight: true, order: :top, trace: nil)
+      origin_label = origin&.label
+      base = super(highlight: highlight, order: order, trace: trace)
+      text = origin_label ? "#{origin_label}: #{base}" : base
+      highlight ? text : text
+    end
+  end
   
   class << self
     # Main entry point: Parse Aurora source and return C++ AST
-    def compile(source)
+    def compile(source, filename: nil)
       # 1. Parse Aurora source
-      ast = parse(source)
+      ast = parse(source, filename: filename)
       
       # 2. Transform to CoreIR
       core_ir = transform_to_core(ast)
@@ -29,8 +50,8 @@ module Aurora
     end
     
     # Parse Aurora source to AST
-    def parse(source)
-      parser = Parser::Parser.new(source)
+    def parse(source, filename: nil)
+      parser = Parser::Parser.new(source, filename: filename)
       parser.parse
     rescue => e
       raise ParseError, "Parse error: #{e.message}"
@@ -40,37 +61,47 @@ module Aurora
     def transform_to_core(ast)
       transformer = Passes::ToCore.new
       transformer.transform(ast)
+    rescue CompileError
+      raise
     rescue => e
-      raise CompileError, "Transform error: #{e.message}"
+      origin = e.respond_to?(:origin) ? e.origin : nil
+      raise CompileError.new("Transform error: #{e.message}", origin: origin)
     end
     
     # Lower CoreIR to C++ AST
     def lower_to_cpp(core_ir)
       lowerer = Backend::CppLowering.new
       lowerer.lower(core_ir)
+    rescue CompileError
+      raise
     rescue => e
-      raise CompileError, "Lowering error: #{e.message}"
+      origin = e.respond_to?(:origin) ? e.origin : nil
+      raise CompileError.new("Lowering error: #{e.message}", origin: origin)
     end
     
     # Full pipeline: Aurora source -> C++ source
-    def to_cpp(source)
-      cpp_ast = compile(source)
+    def to_cpp(source, filename: nil)
+      cpp_ast = compile(source, filename: filename)
       cpp_ast.to_source
     end
 
     # Generate header and implementation files for a module
     # Returns: { header: String, implementation: String }
-    def to_hpp_cpp(source)
+    def to_hpp_cpp(source, filename: nil)
       # Parse and transform to CoreIR
-      ast = parse(source)
+      ast = parse(source, filename: filename)
       core_ir = transform_to_core(ast)
 
       # Generate header and implementation
       lowering = Backend::CppLowering.new
       generator = Backend::HeaderGenerator.new(lowering)
       generator.generate(core_ir)
+    rescue CompileError
+      raise
     rescue => e
-      raise CompileError, "Header generation error: #{e.message}\n#{e.backtrace.join("\n")}"
+      origin = e.respond_to?(:origin) ? e.origin : nil
+      message = "Header generation error: #{e.message}\n#{e.backtrace.join("\n")}"
+      raise CompileError.new(message, origin: origin)
     end
   end
 end

@@ -6,10 +6,11 @@ require_relative "../ast/nodes"
 module Aurora
   module Parser
     class Parser
-      def initialize(source)
-        @lexer = Lexer.new(source)
+      def initialize(source, filename: nil)
+        @lexer = Lexer.new(source, filename: filename)
         @tokens = @lexer.tokenize
         @pos = 0
+        @last_token = nil
       end
       
       def parse
@@ -72,13 +73,13 @@ module Aurora
       end
 
       def parse_module_decl
-        consume(:MODULE)
+        module_token = consume(:MODULE)
         path = parse_module_path
-        AST::ModuleDecl.new(name: path)
+        with_origin(module_token) { AST::ModuleDecl.new(name: path) }
       end
 
       def parse_import_decl
-        consume(:IMPORT)
+        import_token = consume(:IMPORT)
 
         # Four syntaxes:
         # 1. import { add, subtract } from "./math"  (ESM with file path)
@@ -130,12 +131,14 @@ module Aurora
           end
         end
 
-        AST::ImportDecl.new(
-          path: path,
-          items: items,
-          import_all: import_all,
-          alias_name: alias_name
-        )
+        with_origin(import_token) do
+          AST::ImportDecl.new(
+            path: path,
+            items: items,
+            import_all: import_all,
+            alias_name: alias_name
+          )
+        end
       end
 
       def parse_import_path
@@ -175,7 +178,8 @@ module Aurora
       
       def parse_function
         consume(:FN)
-        name = consume(:IDENTIFIER).value
+        name_token = consume(:IDENTIFIER)
+        name = name_token.value
 
         # Parse optional type parameters: fn identity<T>(x: T) -> T
         type_params = []
@@ -195,24 +199,27 @@ module Aurora
         consume(:EQUAL)
         body = parse_expression
 
-        AST::FuncDecl.new(
-          name: name,
-          params: params,
-          ret_type: ret_type,
-          body: body,
-          type_params: type_params
-        )
+        with_origin(name_token) do
+          AST::FuncDecl.new(
+            name: name,
+            params: params,
+            ret_type: ret_type,
+            body: body,
+            type_params: type_params
+          )
+        end
       end
       
       def parse_params
         params = []
         
         while current.type != :RPAREN
-          name = consume(:IDENTIFIER).value
+          name_token = consume(:IDENTIFIER)
+          name = name_token.value
           consume(:COLON)
           type = parse_type
           
-          params << AST::Param.new(name: name, type: type)
+          params << with_origin(name_token) { AST::Param.new(name: name, type: type) }
           
           if current.type == :COMMA
             consume(:COMMA)
@@ -226,7 +233,8 @@ module Aurora
       
       def parse_type_decl
         consume(:TYPE)
-        name = consume(:IDENTIFIER).value
+        name_token = consume(:IDENTIFIER)
+        name = name_token.value
 
         # Parse optional type parameters: type Option<T> = ...
         type_params = []
@@ -257,14 +265,15 @@ module Aurora
                  parse_type
                end
 
-        AST::TypeDecl.new(name: name, type: type, type_params: type_params)
+        with_origin(name_token) { AST::TypeDecl.new(name: name, type: type, type_params: type_params) }
       end
 
       def parse_type_params
         # Parse comma-separated list of type parameters: T, E, R or T: Constraint
         params = []
         loop do
-          name = consume(:IDENTIFIER).value
+          name_token = consume(:IDENTIFIER)
+          name = name_token.value
           constraint = nil
 
           if current.type == :COLON
@@ -277,7 +286,7 @@ module Aurora
             end
           end
 
-          params << AST::TypeParam.new(name: name, constraint: constraint)
+          params << with_origin(name_token) { AST::TypeParam.new(name: name, constraint: constraint) }
 
           break unless current.type == :COMMA
           consume(:COMMA)
@@ -343,27 +352,31 @@ module Aurora
       end
       
       def parse_type
+        base_token = nil
         base_type = case current.type
                     when :I32
-                      consume(:I32)
-                      AST::PrimType.new(name: "i32")
+                      base_token = consume(:I32)
+                      with_origin(base_token) { AST::PrimType.new(name: "i32") }
                     when :F32
-                      consume(:F32)
-                      AST::PrimType.new(name: "f32")
+                      base_token = consume(:F32)
+                      with_origin(base_token) { AST::PrimType.new(name: "f32") }
                     when :BOOL
-                      consume(:BOOL)
-                      AST::PrimType.new(name: "bool")
+                      base_token = consume(:BOOL)
+                      with_origin(base_token) { AST::PrimType.new(name: "bool") }
                     when :VOID
-                      consume(:VOID)
-                      AST::PrimType.new(name: "void")
+                      base_token = consume(:VOID)
+                      with_origin(base_token) { AST::PrimType.new(name: "void") }
                     when :STR
-                      consume(:STR)
-                      AST::PrimType.new(name: "str")
+                      base_token = consume(:STR)
+                      with_origin(base_token) { AST::PrimType.new(name: "str") }
                     when :IDENTIFIER
-                      name = consume(:IDENTIFIER).value
-                      AST::PrimType.new(name: name)
+                      base_token = consume(:IDENTIFIER)
+                      name = base_token.value
+                      with_origin(base_token) { AST::PrimType.new(name: name) }
                     when :LBRACE
-                      parse_record_type
+                      base_type = parse_record_type
+                      base_token = @last_token
+                      base_type
                     else
                       raise "Unexpected token: #{current}"
                     end
@@ -381,17 +394,19 @@ module Aurora
 
           consume_operator(">")
 
-          base_type = AST::GenericType.new(
-            base_type: base_type,
-            type_params: type_params
-          )
+          base_type = with_origin(base_token) do
+            AST::GenericType.new(
+              base_type: base_type,
+              type_params: type_params
+            )
+          end
         end
 
         # Check for array type suffix []
         if current.type == :LBRACKET
-          consume(:LBRACKET)
+          lbracket_token = consume(:LBRACKET)
           consume(:RBRACKET)
-          AST::ArrayType.new(element_type: base_type)
+          with_origin(lbracket_token) { AST::ArrayType.new(element_type: base_type) }
         else
           base_type
         end
@@ -401,11 +416,14 @@ module Aurora
         if current.type != :OPERATOR || current.value != expected_value
           raise "Expected operator #{expected_value}, got #{current.type}:#{current.value}"
         end
+        token = current
         @pos += 1
+        @last_token = token
+        token
       end
       
       def parse_record_type
-        consume(:LBRACE)
+        lbrace_token = consume(:LBRACE)
         fields = []
 
         while current.type != :RBRACE
@@ -423,11 +441,11 @@ module Aurora
         end
 
         consume(:RBRACE)
-        AST::RecordType.new(name: "record", fields: fields)
+        with_origin(lbrace_token) { AST::RecordType.new(name: "record", fields: fields) }
       end
 
       def parse_enum_type
-        consume(:ENUM)
+        enum_token = consume(:ENUM)
         consume(:LBRACE)
         variants = []
 
@@ -443,11 +461,12 @@ module Aurora
         end
 
         consume(:RBRACE)
-        AST::EnumType.new(name: "enum", variants: variants)
+        with_origin(enum_token) { AST::EnumType.new(name: "enum", variants: variants) }
       end
 
       def parse_sum_type
         variants = []
+        sum_origin_token = nil
 
         # Parse first variant (may or may not have leading |)
         if current.type == :OPERATOR && current.value == "|"
@@ -455,7 +474,9 @@ module Aurora
         end
 
         loop do
-          variant_name = consume(:IDENTIFIER).value
+          name_token = consume(:IDENTIFIER)
+          sum_origin_token ||= name_token
+          variant_name = name_token.value
           variant_fields = []
 
           # Check if variant has fields
@@ -501,7 +522,7 @@ module Aurora
           consume(:OPERATOR)  # consume |
         end
 
-        AST::SumType.new(name: "sum", variants: variants)
+        with_origin(sum_origin_token) { AST::SumType.new(name: "sum", variants: variants) }
       end
       
       def parse_expression
@@ -522,24 +543,25 @@ module Aurora
           mutable = true
         end
 
-        name = consume(:IDENTIFIER).value
+        name_token = consume(:IDENTIFIER)
+        name = name_token.value
         consume(:EQUAL)
         value = parse_if_expression
 
         unless current.type == :SEMICOLON
           body = parse_expression
-          return AST::Let.new(name: name, value: value, body: body, mutable: mutable)
+          return with_origin(name_token) { AST::Let.new(name: name, value: value, body: body, mutable: mutable) }
         end
 
         consume(:SEMICOLON)
-        statements = [AST::VariableDecl.new(name: name, value: value, mutable: mutable)]
+        statements = [with_origin(name_token) { AST::VariableDecl.new(name: name, value: value, mutable: mutable) }]
         block = parse_statement_sequence(statements)
         ensure_block_has_result(block, require_value: false)
         block
       end
 
       def parse_block_expression
-        consume(:LBRACE)
+        lbrace_token = consume(:LBRACE)
         statements = []
 
         until current.type == :RBRACE
@@ -547,12 +569,12 @@ module Aurora
         end
 
         consume(:RBRACE)
-        AST::Block.new(stmts: statements)
+        with_origin(lbrace_token) { AST::Block.new(stmts: statements) }
       end
 
       def parse_if_expression
         if current.type == :IF
-          consume(:IF)
+          if_token = consume(:IF)
           condition = parse_logical_or
           consume(:THEN) if current.type == :THEN
           then_branch = parse_if_branch_expression
@@ -563,7 +585,7 @@ module Aurora
             else_branch = parse_if_branch_expression
           end
 
-          AST::IfExpr.new(condition: condition, then_branch: then_branch, else_branch: else_branch)
+          with_origin(if_token) { AST::IfExpr.new(condition: condition, then_branch: then_branch, else_branch: else_branch) }
         else
           parse_logical_or
         end
@@ -590,7 +612,7 @@ module Aurora
       end
 
       def parse_match_expression
-        consume(:MATCH)
+        match_token = consume(:MATCH)
         scrutinee = parse_match_scrutinee
 
         arms = []
@@ -664,28 +686,26 @@ module Aurora
           end
         end
 
-        AST::MatchExpr.new(scrutinee: scrutinee, arms: arms)
+        with_origin(match_token) { AST::MatchExpr.new(scrutinee: scrutinee, arms: arms) }
       end
 
       def parse_pattern
         case current.type
         when :UNDERSCORE, :OPERATOR
-          # Wildcard pattern: _
           if current.type == :UNDERSCORE || (current.type == :OPERATOR && current.value == "_")
+            token = current
             consume(current.type)
-            return AST::Pattern.new(kind: :wildcard, data: {})
+            return with_origin(token) { AST::Pattern.new(kind: :wildcard, data: {}) }
           end
           raise "Unexpected operator in pattern: #{current.value}"
         when :REGEX
-          # Regex pattern: /pattern/flags
-          regex_data = consume(:REGEX).value
+          regex_token = consume(:REGEX)
+          regex_data = regex_token.value
           bindings = []
 
-          # Check for 'as' clause to capture groups
           if current.type == :AS
-            consume(:AS) # consume 'as'
+            consume(:AS)
 
-            # Expect array of binding names: as [_, username, domain]
             if current.type == :LBRACKET
               consume(:LBRACKET)
 
@@ -710,28 +730,29 @@ module Aurora
             end
           end
 
-          AST::Pattern.new(
-            kind: :regex,
-            data: {
-              pattern: regex_data[:pattern],
-              flags: regex_data[:flags],
-              bindings: bindings
-            }
-          )
+          return with_origin(regex_token) do
+            AST::Pattern.new(
+              kind: :regex,
+              data: {
+                pattern: regex_data[:pattern],
+                flags: regex_data[:flags],
+                bindings: bindings
+              }
+            )
+          end
         when :INT_LITERAL
-          # Literal pattern: 0, 1, 42
-          value = consume(:INT_LITERAL).value.to_i
-          AST::Pattern.new(kind: :literal, data: {value: value})
+          token = consume(:INT_LITERAL)
+          value = token.value.to_i
+          return with_origin(token) { AST::Pattern.new(kind: :literal, data: {value: value}) }
         when :FLOAT_LITERAL
-          # Float literal pattern
-          value = consume(:FLOAT_LITERAL).value.to_f
-          AST::Pattern.new(kind: :literal, data: {value: value})
+          token = consume(:FLOAT_LITERAL)
+          value = token.value.to_f
+          return with_origin(token) { AST::Pattern.new(kind: :literal, data: {value: value}) }
         when :IDENTIFIER
-          constructor = consume(:IDENTIFIER).value
+          constructor_token = consume(:IDENTIFIER)
+          constructor = constructor_token.value
 
-          # Check for constructor pattern with fields
           if current.type == :LPAREN
-            # Tuple-like constructor: Circle(r) or Rect(w, h)
             consume(:LPAREN)
             fields = []
 
@@ -740,7 +761,6 @@ module Aurora
                 field_name = consume(:IDENTIFIER).value
                 fields << field_name
               elsif current.type == :UNDERSCORE || (current.type == :OPERATOR && current.value == "_")
-                # Wildcard field binding
                 consume(current.type)
                 fields << "_"
               else
@@ -756,12 +776,13 @@ module Aurora
 
             consume(:RPAREN)
 
-            AST::Pattern.new(
-              kind: :constructor,
-              data: {name: constructor, fields: fields}
-            )
+            return with_origin(constructor_token) do
+              AST::Pattern.new(
+                kind: :constructor,
+                data: {name: constructor, fields: fields}
+              )
+            end
           elsif current.type == :LBRACE
-            # Named fields constructor: Ok { value }
             consume(:LBRACE)
             bindings = []
 
@@ -778,24 +799,24 @@ module Aurora
 
             consume(:RBRACE)
 
-            AST::Pattern.new(
-              kind: :constructor,
-              data: {name: constructor, fields: bindings}
-            )
-          else
-            # Constructor without fields (like Point), wildcard, or variable pattern
-            if constructor == "_"
-              # Wildcard pattern
-              AST::Pattern.new(kind: :wildcard, data: {})
-            elsif constructor[0] == constructor[0].upcase
-              # Constructor without fields (like Point)
+            return with_origin(constructor_token) do
               AST::Pattern.new(
                 kind: :constructor,
-                data: {name: constructor, fields: []}
+                data: {name: constructor, fields: bindings}
               )
-            else
-              # Variable pattern
-              AST::Pattern.new(kind: :var, data: {name: constructor})
+            end
+          else
+            return with_origin(constructor_token) do
+              if constructor == "_"
+                AST::Pattern.new(kind: :wildcard, data: {})
+              elsif constructor[0] == constructor[0].upcase
+                AST::Pattern.new(
+                  kind: :constructor,
+                  data: {name: constructor, fields: []}
+                )
+              else
+                AST::Pattern.new(kind: :var, data: {name: constructor})
+              end
             end
           end
         else
@@ -807,9 +828,10 @@ module Aurora
         left = parse_logical_and
 
         while current.type == :OPERATOR && current.value == "||"
-          consume(:OPERATOR)
+          token = consume(:OPERATOR)
           right = parse_logical_and
-          left = AST::BinaryOp.new(op: "||", left: left, right: right)
+          node = AST::BinaryOp.new(op: "||", left: left, right: right)
+          left = attach_origin(node, token)
         end
 
         left
@@ -819,9 +841,10 @@ module Aurora
         left = parse_equality
 
         while current.type == :OPERATOR && current.value == "&&"
-          consume(:OPERATOR)
+          token = consume(:OPERATOR)
           right = parse_equality
-          left = AST::BinaryOp.new(op: "&&", left: left, right: right)
+          node = AST::BinaryOp.new(op: "&&", left: left, right: right)
+          left = attach_origin(node, token)
         end
 
         left
@@ -831,9 +854,11 @@ module Aurora
         left = parse_pipe
 
         while current.type == :OPERATOR && %w[== !=].include?(current.value)
-          op = consume(:OPERATOR).value
+          token = consume(:OPERATOR)
+          op = token.value
           right = parse_pipe
-          left = AST::BinaryOp.new(op: op, left: left, right: right)
+          node = AST::BinaryOp.new(op: op, left: left, right: right)
+          left = attach_origin(node, token)
         end
 
         left
@@ -843,9 +868,10 @@ module Aurora
         left = parse_comparison
 
         while current.type == :PIPE || (current.type == :OPERATOR && current.value == "|>")
-          consume(current.type)  # Consume PIPE or OPERATOR
+          token = consume(current.type)  # Consume PIPE or OPERATOR
           right = parse_comparison
-          left = AST::BinaryOp.new(op: "|>", left: left, right: right)
+          node = AST::BinaryOp.new(op: "|>", left: left, right: right)
+          left = attach_origin(node, token)
         end
 
         left
@@ -855,9 +881,11 @@ module Aurora
         left = parse_addition
         
         while current.type == :OPERATOR && %w[< > <= >=].include?(current.value)
-          op = consume(:OPERATOR).value
+          token = consume(:OPERATOR)
+          op = token.value
           right = parse_addition
-          left = AST::BinaryOp.new(op: op, left: left, right: right)
+          node = AST::BinaryOp.new(op: op, left: left, right: right)
+          left = attach_origin(node, token)
         end
         
         left
@@ -867,9 +895,11 @@ module Aurora
         left = parse_multiplication
         
         while current.type == :OPERATOR && %w[+ -].include?(current.value)
-          op = consume(:OPERATOR).value
+          token = consume(:OPERATOR)
+          op = token.value
           right = parse_multiplication
-          left = AST::BinaryOp.new(op: op, left: left, right: right)
+          node = AST::BinaryOp.new(op: op, left: left, right: right)
+          left = attach_origin(node, token)
         end
         
         left
@@ -879,9 +909,11 @@ module Aurora
         left = parse_unary
 
         while current.type == :OPERATOR && %w[* / %].include?(current.value)
-          op = consume(:OPERATOR).value
+          token = consume(:OPERATOR)
+          op = token.value
           right = parse_unary
-          left = AST::BinaryOp.new(op: op, left: left, right: right)
+          node = AST::BinaryOp.new(op: op, left: left, right: right)
+          left = attach_origin(node, token)
         end
 
         left
@@ -890,9 +922,10 @@ module Aurora
       def parse_unary
         # Check for unary operators: !, -, +
         if current.type == :OPERATOR && %w[! - +].include?(current.value)
-          op = consume(:OPERATOR).value
+          token = consume(:OPERATOR)
+          op = token.value
           operand = parse_unary  # Right-associative
-          AST::UnaryOp.new(op: op, operand: operand)
+          attach_origin(AST::UnaryOp.new(op: op, operand: operand), token)
         else
           parse_postfix
         end
@@ -900,6 +933,7 @@ module Aurora
 
       def parse_postfix
         expr = parse_primary
+        expr_line = last_token&.line
 
         # Handle member access, method calls, and array indexing
         loop do
@@ -918,21 +952,31 @@ module Aurora
                 args = parse_args
                 consume(:RPAREN)
                 # Create a call with member access as callee
-                member_access = AST::MemberAccess.new(object: expr, member: member)
-                expr = AST::Call.new(callee: member_access, args: args)
+                member_access = attach_origin(AST::MemberAccess.new(object: expr, member: member), member_token)
+                expr = attach_origin(AST::Call.new(callee: member_access, args: args), member_token)
               else
                 # Just member access: obj.field
-                expr = AST::MemberAccess.new(object: expr, member: member)
+                expr = attach_origin(AST::MemberAccess.new(object: expr, member: member), member_token)
               end
+              expr_line = last_token&.line
             else
               break
             end
           when :LBRACKET
             # Array indexing: expr[index]
-            consume(:LBRACKET)
+            lbracket_token = consume(:LBRACKET)
             index = parse_expression
             consume(:RBRACKET)
-            expr = AST::IndexAccess.new(object: expr, index: index)
+            expr = attach_origin(AST::IndexAccess.new(object: expr, index: index), lbracket_token)
+            expr_line = last_token&.line
+          when :LPAREN
+            paren_line = current.line
+            break unless expr_line && paren_line == expr_line
+            lparen_token = consume(:LPAREN)
+            args = parse_args
+            consume(:RPAREN)
+            expr = attach_origin(AST::Call.new(callee: expr, args: args), lparen_token)
+            expr_line = last_token&.line
           else
             break
           end
@@ -948,39 +992,45 @@ module Aurora
         when :WHILE
           parse_while_loop
         when :INT_LITERAL
-          value = consume(:INT_LITERAL).value
-          AST::IntLit.new(value: value)
+          token = consume(:INT_LITERAL)
+          value = token.value
+          attach_origin(AST::IntLit.new(value: value), token)
         when :FLOAT_LITERAL
-          value = consume(:FLOAT_LITERAL).value
-          AST::FloatLit.new(value: value)
+          token = consume(:FLOAT_LITERAL)
+          value = token.value
+          attach_origin(AST::FloatLit.new(value: value), token)
         when :STRING_LITERAL
-          value = consume(:STRING_LITERAL).value
-          AST::StringLit.new(value: value)
+          token = consume(:STRING_LITERAL)
+          value = token.value
+          attach_origin(AST::StringLit.new(value: value), token)
         when :REGEX
-          regex_data = consume(:REGEX).value
-          AST::RegexLit.new(pattern: regex_data[:pattern], flags: regex_data[:flags])
+          token = consume(:REGEX)
+          regex_data = token.value
+          attach_origin(AST::RegexLit.new(pattern: regex_data[:pattern], flags: regex_data[:flags]), token)
         when :IDENTIFIER
           # Check for lambda: x => expr
           if peek && peek.type == :FAT_ARROW
             parse_lambda
           else
-            name = consume(:IDENTIFIER).value
+            name_token = consume(:IDENTIFIER)
+            name = name_token.value
 
             if current.type == :LPAREN
               # Function call
-              consume(:LPAREN)
+              lparen_token = consume(:LPAREN)
               args = parse_args
               consume(:RPAREN)
-              AST::Call.new(callee: AST::VarRef.new(name: name), args: args)
+              callee = attach_origin(AST::VarRef.new(name: name), name_token)
+              attach_origin(AST::Call.new(callee: callee, args: args), lparen_token)
             elsif current.type == :LBRACE && !looks_like_match_arms?
               # Record literal (but not match arms)
-              consume(:LBRACE)
+              lbrace_token = consume(:LBRACE)
               fields = parse_record_fields
               consume(:RBRACE)
-              AST::RecordLit.new(type_name: name, fields: fields)
+              attach_origin(AST::RecordLit.new(type_name: name, fields: fields), lbrace_token)
             else
               # Variable reference
-              AST::VarRef.new(name: name)
+              attach_origin(AST::VarRef.new(name: name), name_token)
             end
           end
         when :LPAREN
@@ -996,10 +1046,10 @@ module Aurora
           end
         when :LBRACE
           # Anonymous record literal
-          consume(:LBRACE)
+          lbrace_token = consume(:LBRACE)
           fields = parse_record_fields
           consume(:RBRACE)
-          AST::RecordLit.new(type_name: "record", fields: fields)
+          attach_origin(AST::RecordLit.new(type_name: "record", fields: fields), lbrace_token)
         when :LBRACKET
           parse_array_literal_or_comprehension
         else
@@ -1009,8 +1059,9 @@ module Aurora
 
       # Parse for loops
       def parse_for_loop
-        consume(:FOR)
-        var_name = consume(:IDENTIFIER).value
+        for_token = consume(:FOR)
+        var_token = consume(:IDENTIFIER)
+        var_name = var_token.value
         consume(:IN)
         iterable = parse_if_expression
         consume(:DO)
@@ -1020,15 +1071,17 @@ module Aurora
                  parse_expression
                end
 
-        AST::ForLoop.new(
-          var_name: var_name,
-          iterable: iterable,
-          body: body
-        )
+        with_origin(for_token) do
+          AST::ForLoop.new(
+            var_name: var_name,
+            iterable: iterable,
+            body: body
+          )
+        end
       end
 
       def parse_while_loop
-        consume(:WHILE)
+        while_token = consume(:WHILE)
         condition = parse_if_expression
         consume(:DO)
         body = if current.type == :LBRACE
@@ -1037,32 +1090,35 @@ module Aurora
                  parse_expression
                end
 
-        AST::WhileLoop.new(
-          condition: condition,
-          body: body
-        )
+        with_origin(while_token) do
+          AST::WhileLoop.new(
+            condition: condition,
+            body: body
+          )
+        end
       end
 
       # Parse lambda expressions
       def parse_lambda
         if current.type == :IDENTIFIER && peek && peek.type == :FAT_ARROW
           # Single parameter: x => expr
-          param_name = consume(:IDENTIFIER).value
+          param_token = consume(:IDENTIFIER)
+          param_name = param_token.value
           consume(:FAT_ARROW)
           body = parse_if_expression
 
-          param = AST::LambdaParam.new(name: param_name)
-          AST::Lambda.new(params: [param], body: body)
+          param = with_origin(param_token) { AST::LambdaParam.new(name: param_name) }
+          with_origin(param_token) { AST::Lambda.new(params: [param], body: body) }
 
         elsif current.type == :LPAREN
           # Multiple parameters: (x, y) => expr or (x: i32, y: i32) => expr
-          consume(:LPAREN)
+          lparen_token = consume(:LPAREN)
           params = parse_lambda_params
           consume(:RPAREN)
           consume(:FAT_ARROW)
           body = parse_lambda_body
 
-          AST::Lambda.new(params: params, body: body)
+          with_origin(lparen_token) { AST::Lambda.new(params: params, body: body) }
         else
           raise "Expected lambda expression"
         end
@@ -1072,7 +1128,8 @@ module Aurora
         params = []
 
         while current.type != :RPAREN
-          name = consume(:IDENTIFIER).value
+          name_token = consume(:IDENTIFIER)
+          name = name_token.value
           param_type = nil
 
           if current.type == :COLON
@@ -1080,7 +1137,7 @@ module Aurora
             param_type = parse_type
           end
 
-          params << AST::LambdaParam.new(name: name, type: param_type)
+          params << with_origin(name_token) { AST::LambdaParam.new(name: name, type: param_type) }
 
           break unless current.type == :COMMA
           consume(:COMMA)
@@ -1096,27 +1153,27 @@ module Aurora
         when :RETURN
           parse_return_statement
         when :BREAK
-          consume(:BREAK)
+          break_token = consume(:BREAK)
           consume(:SEMICOLON) if current.type == :SEMICOLON
-          AST::Break.new
+          attach_origin(AST::Break.new, break_token)
         when :CONTINUE
-          consume(:CONTINUE)
+          continue_token = consume(:CONTINUE)
           consume(:SEMICOLON) if current.type == :SEMICOLON
-          AST::Continue.new
+          attach_origin(AST::Continue.new, continue_token)
         when :IDENTIFIER
           if peek && peek.type == :EQUAL
             parse_assignment_statement
           else
             expr = parse_expression
             consume(:SEMICOLON) if current.type == :SEMICOLON
-            AST::ExprStmt.new(expr: expr)
+            attach_origin(AST::ExprStmt.new(expr: expr), expr.origin)
           end
         when :LBRACE
           parse_block_expression
         else
           expr = parse_expression
           consume(:SEMICOLON) if current.type == :SEMICOLON
-          AST::ExprStmt.new(expr: expr)
+          attach_origin(AST::ExprStmt.new(expr: expr), expr.origin)
         end
       end
 
@@ -1128,32 +1185,35 @@ module Aurora
           mutable = true
         end
 
-        name = consume(:IDENTIFIER).value
+        name_token = consume(:IDENTIFIER)
+        name = name_token.value
         consume(:EQUAL)
         value = parse_expression
         consume(:SEMICOLON) if current.type == :SEMICOLON
 
-        AST::VariableDecl.new(name: name, value: value, mutable: mutable)
+        with_origin(name_token) { AST::VariableDecl.new(name: name, value: value, mutable: mutable) }
       end
 
       def parse_assignment_statement
-        target_name = consume(:IDENTIFIER).value
+        target_token = consume(:IDENTIFIER)
+        target_name = target_token.value
         consume(:EQUAL)
         value = parse_expression
         consume(:SEMICOLON) if current.type == :SEMICOLON
 
-        AST::Assignment.new(target: AST::VarRef.new(name: target_name), value: value)
+        target = attach_origin(AST::VarRef.new(name: target_name), target_token)
+        with_origin(target_token) { AST::Assignment.new(target: target, value: value) }
       end
 
       def parse_return_statement
-        consume(:RETURN)
+        return_token = consume(:RETURN)
         expr = nil
         unless current.type == :SEMICOLON || current.type == :RBRACE || current.type == :EOF
           expr = parse_expression
         end
         consume(:SEMICOLON) if current.type == :SEMICOLON
 
-        AST::Return.new(expr: expr)
+        with_origin(return_token) { AST::Return.new(expr: expr) }
       end
 
       def parse_statement_sequence(statements)
@@ -1169,7 +1229,9 @@ module Aurora
           end
         end
 
-        AST::Block.new(stmts: statements)
+        block = AST::Block.new(stmts: statements)
+        first_origin = statements.first&.origin
+        attach_origin(block, first_origin)
       end
 
       def ensure_block_has_result(block, require_value: true)
@@ -1219,12 +1281,12 @@ module Aurora
 
       # Parse array literal or list comprehension
       def parse_array_literal_or_comprehension
-        consume(:LBRACKET)
+        lbracket_token = consume(:LBRACKET)
 
         # Empty array
         if current.type == :RBRACKET
           consume(:RBRACKET)
-          return AST::ArrayLiteral.new(elements: [])
+          return with_origin(lbracket_token) { AST::ArrayLiteral.new(elements: []) }
         end
 
         # Parse first expression
@@ -1236,15 +1298,18 @@ module Aurora
           filters = []
 
           while current.type == :FOR
-            consume(:FOR)
-            var_name = consume(:IDENTIFIER).value
+            for_token = consume(:FOR)
+            var_token = consume(:IDENTIFIER)
+            var_name = var_token.value
             consume(:IN)
             iterable = parse_if_expression
 
-            generators << AST::Generator.new(
-              var_name: var_name,
-              iterable: iterable
-            )
+            generators << with_origin(for_token) do
+              AST::Generator.new(
+                var_name: var_name,
+                iterable: iterable
+              )
+            end
 
             # Check for filter
             if current.type == :IF
@@ -1255,11 +1320,13 @@ module Aurora
 
           consume(:RBRACKET)
 
-          AST::ListComprehension.new(
-            output_expr: first_expr,
-            generators: generators,
-            filters: filters
-          )
+          with_origin(lbracket_token) do
+            AST::ListComprehension.new(
+              output_expr: first_expr,
+              generators: generators,
+              filters: filters
+            )
+          end
         else
           # Regular array literal
           elements = [first_expr]
@@ -1272,7 +1339,7 @@ module Aurora
 
           consume(:RBRACKET)
 
-          AST::ArrayLiteral.new(elements: elements)
+          with_origin(lbracket_token) { AST::ArrayLiteral.new(elements: elements) }
         end
       end
       
@@ -1364,7 +1431,40 @@ module Aurora
         end
 
         @pos += 1
+        @last_token = token
         token
+      end
+
+      def last_token
+        @last_token
+      end
+
+      def origin_from(token)
+        return nil unless token
+
+        SourceOrigin.new(
+          file: token.file,
+          line: token.line,
+          column: token.column
+        )
+      end
+
+      def attach_origin(node, token)
+        return node unless node.is_a?(Aurora::AST::Node)
+        origin = case token
+                 when SourceOrigin
+                   token
+                 else
+                   origin_from(token)
+                 end
+        return node unless origin
+        node.instance_variable_set(:@origin, origin)
+        node
+      end
+
+      def with_origin(token)
+        node = yield
+        attach_origin(node, token)
       end
     end
   end

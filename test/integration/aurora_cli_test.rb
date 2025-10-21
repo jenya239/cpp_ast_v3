@@ -64,6 +64,21 @@ class AuroraCLITest < Minitest::Test
     assert_includes stdout, "int main()"
   end
 
+  def test_compile_error_includes_filename
+    Dir.mktmpdir do |dir|
+      source = File.join(dir, "invalid.aur")
+      File.write(source, <<~AUR)
+        fn main() -> void =
+          if true then 1 else 2
+      AUR
+
+      _stdout, stderr, status = Open3.capture3(CLI, source)
+
+      refute status.success?, "Expected compilation failure"
+      assert_match(/#{Regexp.escape(source)}:\d+:\d+: function 'main' should not return a value/, stderr)
+    end
+  end
+
   def test_pass_arguments
     skip_unless_compiler_available
 

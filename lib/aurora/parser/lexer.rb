@@ -3,13 +3,14 @@
 module Aurora
   module Parser
     class Token
-      attr_reader :type, :value, :line, :column
+      attr_reader :type, :value, :line, :column, :file
       
-      def initialize(type:, value:, line: 1, column: 1)
+      def initialize(type:, value:, line: 1, column: 1, file: nil)
         @type = type
         @value = value
         @line = line
         @column = column
+        @file = file
       end
       
       def to_s
@@ -28,12 +29,13 @@ module Aurora
         . , ; : ( ) { } [ ]
       ].freeze
       
-      def initialize(source)
+      def initialize(source, filename: nil)
         @source = source
         @pos = 0
         @line = 1
         @column = 1
         @tokens = []
+        @filename = filename
       end
       
       def tokenize
@@ -153,6 +155,8 @@ module Aurora
       end
       
       def tokenize_identifier_or_keyword
+        start_line = @line
+        start_column = @column
         start = @pos
         while @pos < @source.length && @source[@pos] =~ /[a-zA-Z0-9_]/
           @pos += 1
@@ -162,10 +166,12 @@ module Aurora
         @column += value.length
         
         type = KEYWORDS.include?(value) ? value.upcase.to_sym : :IDENTIFIER
-        add_token(type, value)
+        add_token(type, value, line: start_line, column: start_column)
       end
       
       def tokenize_number
+        start_line = @line
+        start_column = @column
         start = @pos
         while @pos < @source.length && @source[@pos] =~ /[0-9]/
           @pos += 1
@@ -179,15 +185,17 @@ module Aurora
           end
           value = @source[start...@pos]
           @column += value.length
-          add_token(:FLOAT_LITERAL, value.to_f)
+          add_token(:FLOAT_LITERAL, value.to_f, line: start_line, column: start_column)
         else
           value = @source[start...@pos]
           @column += value.length
-          add_token(:INT_LITERAL, value.to_i)
+          add_token(:INT_LITERAL, value.to_i, line: start_line, column: start_column)
         end
       end
       
       def tokenize_string
+        start_line = @line
+        start_column = @column
         @pos += 1 # Skip opening quote
         start = @pos
         @column += 1
@@ -206,7 +214,7 @@ module Aurora
         @pos += 1 # Skip closing quote
         @column += 1
         
-        add_token(:STRING_LITERAL, value)
+        add_token(:STRING_LITERAL, value, line: start_line, column: start_column)
       end
       
       def regex_context?
@@ -226,7 +234,7 @@ module Aurora
 
       def tokenize_regex
         # Regex format: /pattern/flags
-        start_pos = @pos
+        start_line = @line
         start_column = @column
 
         # Skip opening /
@@ -277,17 +285,19 @@ module Aurora
         end
 
         # Store both pattern and flags in the token value
-        add_token(:REGEX, {pattern: pattern, flags: flags})
+        add_token(:REGEX, {pattern: pattern, flags: flags}, line: start_line, column: start_column)
       end
 
       def tokenize_operator
+        start_line = @line
+        start_column = @column
         char = @source[@pos]
 
         # Handle arrow operator ->
         if char == '-' && @pos + 1 < @source.length && @source[@pos + 1] == '>'
           @pos += 2
           @column += 2
-          add_token(:ARROW, "->")
+          add_token(:ARROW, "->", line: start_line, column: start_column)
           return
         end
 
@@ -295,7 +305,7 @@ module Aurora
         if char == '=' && @pos + 1 < @source.length && @source[@pos + 1] == '>'
           @pos += 2
           @column += 2
-          add_token(:FAT_ARROW, "=>")
+          add_token(:FAT_ARROW, "=>", line: start_line, column: start_column)
           return
         end
 
@@ -303,7 +313,7 @@ module Aurora
         if char == '|' && @pos + 1 < @source.length && @source[@pos + 1] == '>'
           @pos += 2
           @column += 2
-          add_token(:PIPE, "|>")
+          add_token(:PIPE, "|>", line: start_line, column: start_column)
           return
         end
 
@@ -315,7 +325,7 @@ module Aurora
           if %w[== != <= >= && ||].include?(two_char)
             @pos += 2
             @column += 2
-            add_token(:OPERATOR, two_char)
+            add_token(:OPERATOR, two_char, line: start_line, column: start_column)
             return
           end
         end
@@ -324,17 +334,23 @@ module Aurora
         if char == '='
           @pos += 1
           @column += 1
-          add_token(:EQUAL, char)
+          add_token(:EQUAL, char, line: start_line, column: start_column)
           return
         end
 
         @pos += 1
         @column += 1
-        add_token(:OPERATOR, char)
+        add_token(:OPERATOR, char, line: start_line, column: start_column)
       end
       
-      def add_token(type, value)
-        @tokens << Token.new(type: type, value: value, line: @line, column: @column)
+      def add_token(type, value, line: @line, column: @column)
+        @tokens << Token.new(
+          type: type,
+          value: value,
+          line: line,
+          column: column,
+          file: @filename
+        )
       end
       
       def advance

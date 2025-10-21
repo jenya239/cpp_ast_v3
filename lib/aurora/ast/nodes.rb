@@ -1,6 +1,17 @@
 # frozen_string_literal: true
 
 module Aurora
+  SourceOrigin = Struct.new(:file, :line, :column, keyword_init: true) do
+    def label
+      return nil unless line
+      parts = []
+      parts << (file || "<input>")
+      parts << line.to_s
+      parts << column.to_s if column
+      parts.join(":")
+    end
+  end
+
   module AST
     # Base node with origin tracking
     class Node

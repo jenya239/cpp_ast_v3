@@ -1128,7 +1128,7 @@ module Aurora
         when :constructor
           # Generate MatchArm with constructor pattern
           case_name = pattern[:name]
-          bindings = pattern[:fields] || []
+          bindings = pattern[:bindings] || pattern[:fields] || []
 
           CppAst::Nodes::MatchArm.new(
             case_name: case_name,

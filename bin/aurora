@@ -128,11 +128,11 @@ def read_source(input_path)
       warn "No input file provided. Pass a file path or pipe source code via STDIN."
       exit 1
     end
-    STDIN.read
+    [STDIN.read, "<stdin>"]
   elsif input_path == "-"
-    STDIN.read
+    [STDIN.read, "<stdin>"]
   else
-    File.read(input_path)
+    [File.read(input_path), input_path]
   end
 rescue Errno::ENOENT
   warn "Input file not found: #{input_path}"
@@ -210,10 +210,10 @@ def main
   program_args = parsed[:program_args]
   input_path = parsed[:input_path]
 
-  source_code = read_source(input_path)
+  source_code, source_name = read_source(input_path)
 
   begin
-    generated_cpp = Aurora.to_cpp(source_code)
+    generated_cpp = Aurora.to_cpp(source_code, filename: source_name)
   rescue Aurora::ParseError, Aurora::CompileError => e
     warn e.message
     exit 1

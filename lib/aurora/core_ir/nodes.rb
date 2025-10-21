@@ -376,7 +376,8 @@ module Aurora
       attr_reader :var_name, :var_type, :iterable, :body
 
       def initialize(var_name:, var_type:, iterable:, body:, origin: nil)
-        super(kind: :for_loop, data: {}, type: Type.new(kind: :prim, name: "void"), origin: origin)
+        result_type = body&.type || Type.new(kind: :prim, name: "void")
+        super(kind: :for_loop, data: {}, type: result_type, origin: origin)
         @var_name = var_name
         @var_type = var_type   # Inferred element type
         @iterable = iterable
