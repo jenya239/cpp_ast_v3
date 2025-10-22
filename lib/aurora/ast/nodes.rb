@@ -355,6 +355,16 @@ module Aurora
       end
     end
 
+    # Do expression - block of statements returning the last expression
+    class DoExpr < Expr
+      attr_reader :body
+
+      def initialize(body:, origin: nil)
+        super(kind: :do, data: {body: body}, origin: origin)
+        @body = body  # Array of expressions
+      end
+    end
+
     # Match expression
     class MatchExpr < Expr
       attr_reader :scrutinee, :arms

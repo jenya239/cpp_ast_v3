@@ -349,6 +349,8 @@ module Aurora
             transform_while_loop(expr)
           when AST::ListComprehension
             transform_list_comprehension(expr)
+          when AST::DoExpr
+            transform_do_expr(expr)
           else
             raise "Unknown expression: #{expr.class}"
           end
@@ -1317,6 +1319,21 @@ module Aurora
             @var_types[binding] = CoreIR::Builder.primitive_type("string")
           end
         end
+      end
+
+      def transform_do_expr(expr)
+        # Transform do-block: do expr1; expr2; ...; exprN end
+        # Returns the value of the last expression
+        return CoreIR::Builder.literal(nil, CoreIR::Builder.primitive_type("void")) if expr.body.empty?
+
+        statements = []
+        expr.body[0..-2].each do |e|
+          statements << CoreIR::Builder.expr_statement(transform_expression(e))
+        end
+
+        # Last expression is the result value
+        result_expr = transform_expression(expr.body.last)
+        CoreIR::Builder.block_expr(statements, result_expr, result_expr.type)
       end
     end
   end

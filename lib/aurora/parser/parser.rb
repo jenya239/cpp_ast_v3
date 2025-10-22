@@ -557,6 +557,8 @@ module Aurora
       def parse_expression
         if current.type == :MATCH
           parse_match_expression
+        elsif current.type == :DO
+          parse_do_expression
         else
           parse_let_expression
         end
@@ -716,6 +718,38 @@ module Aurora
         end
 
         with_origin(match_token) { AST::MatchExpr.new(scrutinee: scrutinee, arms: arms) }
+      end
+
+      def parse_do_expression
+        do_token = consume(:DO)
+        body = []
+
+        # Parse expressions until we hit END
+        #  Each line/statement in a do block is a full expression
+        until current.type == :END
+          if eof?
+            raise "Unexpected EOF in do block, expected 'end'"
+          end
+
+          # Check what kind of expression starts here
+          case current.type
+          when :LET
+            body << parse_let_expression
+          when :IF
+            body << parse_if_expression
+          when :MATCH
+            body << parse_match_expression
+          when :DO
+            body << parse_do_expression
+          else
+            # Parse a simple expression (not let/if/match/do)
+            body << parse_if_expression
+          end
+        end
+
+        consume(:END)
+
+        with_origin(do_token) { AST::DoExpr.new(body: body) }
       end
 
       def parse_pattern

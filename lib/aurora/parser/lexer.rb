@@ -27,7 +27,7 @@ module Aurora
     
     class Lexer
       KEYWORDS = %w[
-        fn type let mut return break continue if then else while for in do match
+        fn type let mut return break continue if then else while for in do end match
         i32 f32 bool void str module export import enum from as extern
       ].freeze
       
