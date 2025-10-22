@@ -3,14 +3,21 @@
 module Aurora
   module Parser
     class Token
-      attr_reader :type, :value, :line, :column, :file
+      attr_reader :type, :value, :line, :column, :file,
+                  :end_line, :end_column, :text, :line_text
       
-      def initialize(type:, value:, line: 1, column: 1, file: nil)
+      def initialize(type:, value:, line: 1, column: 1, file: nil,
+                     end_line: line, end_column: column,
+                     text: nil, line_text: nil)
         @type = type
         @value = value
         @line = line
         @column = column
         @file = file
+        @end_line = end_line
+        @end_column = end_column
+        @text = text
+        @line_text = line_text
       end
       
       def to_s

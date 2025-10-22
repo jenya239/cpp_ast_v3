@@ -222,7 +222,7 @@ module CppAst
         def to_source
           @node.to_source
         end
-    end
+      end
     
     # Expression DSL methods
     module Expressions

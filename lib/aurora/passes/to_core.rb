@@ -203,50 +203,50 @@ module Aurora
       def transform_expression(expr)
         with_current_node(expr) do
           case expr
-        when AST::IntLit
-          type = CoreIR::Builder.primitive_type("i32")
-          CoreIR::Builder.literal(expr.value, type)
-        when AST::FloatLit
-          type = CoreIR::Builder.primitive_type("f32")
-          CoreIR::Builder.literal(expr.value, type)
-        when AST::StringLit
-          type = CoreIR::Builder.primitive_type("string")
-          CoreIR::Builder.literal(expr.value, type)
-        when AST::RegexLit
-          type = CoreIR::Builder.primitive_type("regex")
-          CoreIR::Builder.regex(expr.pattern, expr.flags, type)
-        when AST::VarRef
-          type = infer_type(expr.name)
-          CoreIR::Builder.var(expr.name, type)
-        when AST::BinaryOp
-          # Check if this is a pipe operator - desugar it
-          if expr.op == "|>"
-            transform_pipe(expr)
-          else
-            left = transform_expression(expr.left)
-            right = transform_expression(expr.right)
-            type = infer_binary_type(expr.op, left.type, right.type)
-            CoreIR::Builder.binary(expr.op, left, right, type)
-          end
-        when AST::UnaryOp
-          operand = transform_expression(expr.operand)
-          type = infer_unary_type(expr.op, operand.type)
-          CoreIR::Builder.unary(expr.op, operand, type)
-        when AST::Call
-          if expr.callee.is_a?(AST::VarRef) && IO_RETURN_TYPES.key?(expr.callee.name)
-            callee = transform_expression(expr.callee)
-            args = expr.args.map { |arg| transform_expression(arg) }
-            type = io_return_type(expr.callee.name)
-            CoreIR::Builder.call(callee, args, type)
-          else
-            callee_ast = expr.callee
-            object_ir = nil
-            member_name = nil
+          when AST::IntLit
+            type = CoreIR::Builder.primitive_type("i32")
+            CoreIR::Builder.literal(expr.value, type)
+          when AST::FloatLit
+            type = CoreIR::Builder.primitive_type("f32")
+            CoreIR::Builder.literal(expr.value, type)
+          when AST::StringLit
+            type = CoreIR::Builder.primitive_type("string")
+            CoreIR::Builder.literal(expr.value, type)
+          when AST::RegexLit
+            type = CoreIR::Builder.primitive_type("regex")
+            CoreIR::Builder.regex(expr.pattern, expr.flags, type)
+          when AST::VarRef
+            type = infer_type(expr.name)
+            CoreIR::Builder.var(expr.name, type)
+          when AST::BinaryOp
+            # Check if this is a pipe operator - desugar it
+            if expr.op == "|>"
+              transform_pipe(expr)
+            else
+              left = transform_expression(expr.left)
+              right = transform_expression(expr.right)
+              type = infer_binary_type(expr.op, left.type, right.type)
+              CoreIR::Builder.binary(expr.op, left, right, type)
+            end
+          when AST::UnaryOp
+            operand = transform_expression(expr.operand)
+            type = infer_unary_type(expr.op, operand.type)
+            CoreIR::Builder.unary(expr.op, operand, type)
+          when AST::Call
+            if expr.callee.is_a?(AST::VarRef) && IO_RETURN_TYPES.key?(expr.callee.name)
+              callee = transform_expression(expr.callee)
+              args = expr.args.map { |arg| transform_expression(arg) }
+              type = io_return_type(expr.callee.name)
+              CoreIR::Builder.call(callee, args, type)
+            else
+              callee_ast = expr.callee
+              object_ir = nil
+              member_name = nil
 
-            if callee_ast.is_a?(AST::MemberAccess)
-              object_ir = transform_expression(callee_ast.object)
-              member_name = callee_ast.member
-              callee = CoreIR::Builder.member(object_ir, member_name, infer_member_type(object_ir.type, member_name))
+              if callee_ast.is_a?(AST::MemberAccess)
+                object_ir = transform_expression(callee_ast.object)
+                member_name = callee_ast.member
+                callee = CoreIR::Builder.member(object_ir, member_name, infer_member_type(object_ir.type, member_name))
             elsif callee_ast.is_a?(AST::VarRef)
               var_type = function_placeholder_type(callee_ast.name)
               callee = CoreIR::Builder.var(callee_ast.name, var_type)
@@ -270,68 +270,68 @@ module Aurora
             type = infer_call_type(callee, args)
             CoreIR::Builder.call(callee, args, type)
           end
-        when AST::MemberAccess
-          object = transform_expression(expr.object)
-          type = infer_member_type(object.type, expr.member)
-          CoreIR::Builder.member(object, expr.member, type)
-        when AST::Let
-          value = transform_expression(expr.value)
-          previous = @var_types[expr.name]
-          @var_types[expr.name] = value.type
-          body = transform_expression(expr.body)
-          statements = [
-            CoreIR::Builder.variable_decl_stmt(expr.name, value.type, value, mutable: expr.mutable)
-          ]
-          result = CoreIR::Builder.block_expr(statements, body, body.type)
-          if previous
-            @var_types[expr.name] = previous
+          when AST::MemberAccess
+            object = transform_expression(expr.object)
+            type = infer_member_type(object.type, expr.member)
+            CoreIR::Builder.member(object, expr.member, type)
+          when AST::Let
+            value = transform_expression(expr.value)
+            previous_type = @var_types[expr.name]
+            @var_types[expr.name] = value.type
+            body = transform_expression(expr.body)
+            statements = [
+              CoreIR::Builder.variable_decl_stmt(expr.name, value.type, value, mutable: expr.mutable)
+            ]
+            result = CoreIR::Builder.block_expr(statements, body, body.type)
+            if previous_type
+              @var_types[expr.name] = previous_type
+            else
+              @var_types.delete(expr.name)
+            end
+            result
+          when AST::RecordLit
+            fields = expr.fields.transform_values { |value| transform_expression(value) }
+            type = @type_table[expr.type_name]
+
+            unless type
+              inferred_fields = fields.map { |name, value| {name: name, type: value.type} }
+              type = CoreIR::Builder.record_type(expr.type_name, inferred_fields)
+            end
+
+            CoreIR::Builder.record(expr.type_name, fields, type)
+          when AST::IfExpr
+            condition = transform_expression(expr.condition)
+            then_branch = transform_expression(expr.then_branch)
+            else_branch = expr.else_branch ? transform_expression(expr.else_branch) : nil
+            if else_branch
+              ensure_compatible_type(else_branch.type, then_branch.type, "if expression branches")
+            end
+            type = then_branch.type
+            CoreIR::Builder.if_expr(condition, then_branch, else_branch, type)
+          when AST::MatchExpr
+            scrutinee = transform_expression(expr.scrutinee)
+            arms = expr.arms.map { |arm| transform_match_arm(scrutinee.type, arm) }
+            type = arms.first[:body].type
+            arms.each_with_index do |arm, index|
+              ensure_compatible_type(arm[:body].type, type, "match arm #{index + 1}")
+            end
+            CoreIR::Builder.match_expr(scrutinee, arms, type)
+          when AST::Lambda
+            transform_lambda(expr)
+          when AST::Block
+            transform_block(expr)
+          when AST::ArrayLiteral
+            transform_array_literal(expr)
+          when AST::IndexAccess
+            transform_index_access(expr)
+          when AST::ForLoop
+            transform_for_loop(expr)
+          when AST::WhileLoop
+            transform_while_loop(expr)
+          when AST::ListComprehension
+            transform_list_comprehension(expr)
           else
-            @var_types.delete(expr.name)
-          end
-          result
-        when AST::RecordLit
-          fields = expr.fields.transform_values { |value| transform_expression(value) }
-          type = @type_table[expr.type_name]
-
-          unless type
-            inferred_fields = fields.map { |name, value| {name: name, type: value.type} }
-            type = CoreIR::Builder.record_type(expr.type_name, inferred_fields)
-          end
-
-          CoreIR::Builder.record(expr.type_name, fields, type)
-        when AST::IfExpr
-          condition = transform_expression(expr.condition)
-          then_branch = transform_expression(expr.then_branch)
-          else_branch = expr.else_branch ? transform_expression(expr.else_branch) : nil
-          if else_branch
-            ensure_compatible_type(else_branch.type, then_branch.type, "if expression branches")
-          end
-          type = then_branch.type
-          CoreIR::Builder.if_expr(condition, then_branch, else_branch, type)
-        when AST::MatchExpr
-          scrutinee = transform_expression(expr.scrutinee)
-          arms = expr.arms.map { |arm| transform_match_arm(scrutinee.type, arm) }
-          type = arms.first[:body].type
-          arms.each_with_index do |arm, index|
-            ensure_compatible_type(arm[:body].type, type, "match arm #{index + 1}")
-          end
-          CoreIR::Builder.match_expr(scrutinee, arms, type)
-        when AST::Lambda
-          transform_lambda(expr)
-        when AST::Block
-          transform_block(expr)
-        when AST::ArrayLiteral
-          transform_array_literal(expr)
-        when AST::IndexAccess
-          transform_index_access(expr)
-        when AST::ForLoop
-          transform_for_loop(expr)
-        when AST::WhileLoop
-          transform_while_loop(expr)
-        when AST::ListComprehension
-          transform_list_comprehension(expr)
-        else
-          raise "Unknown expression: #{expr.class}"
+            raise "Unknown expression: #{expr.class}"
           end
         end
       end
@@ -464,7 +464,7 @@ module Aurora
               acc.concat(transform_expr_statement(stmt))
             when AST::VariableDecl
               value_ir = transform_expression(stmt.value)
-              previous = @var_types[stmt.name]
+              previous_type = @var_types[stmt.name]
               @var_types[stmt.name] = value_ir.type
               acc << CoreIR::Builder.variable_decl_stmt(
                 stmt.name,

@@ -456,11 +456,6 @@ module CppAst
         ExprBuilder::ExprNode.new(Nodes::Identifier.new(name: "ok"))
       end
       
-      def err(value)
-        require_relative "expr_builder"
-        ExprBuilder::ExprNode.new(Nodes::Identifier.new(name: "err"))
-      end
-      
       # Concept helper
       def concept(name, *params, &block)
         require_relative "types_dsl"

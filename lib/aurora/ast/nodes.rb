@@ -1,7 +1,23 @@
 # frozen_string_literal: true
 
 module Aurora
-  SourceOrigin = Struct.new(:file, :line, :column, keyword_init: true) do
+  SourceOrigin = Struct.new(
+    :file,
+    :line,
+    :column,
+    :end_line,
+    :end_column,
+    :line_text,
+    keyword_init: true
+  ) do
+    def start_line
+      line
+    end
+
+    def start_column
+      column
+    end
+
     def label
       return nil unless line
       parts = []
@@ -9,6 +25,27 @@ module Aurora
       parts << line.to_s
       parts << column.to_s if column
       parts.join(":")
+    end
+
+    def highlight
+      return nil unless line_text && start_column
+      indicator = highlight_indicator
+      return line_text if indicator.nil?
+      "#{line_text}\n#{indicator}"
+    end
+
+    private
+
+    def highlight_indicator
+      start_col = [start_column, 1].max
+      finish_col = if end_column && end_column >= start_column.to_i
+                     end_column
+                   else
+                     start_column
+                   end
+      width = finish_col - start_col + 1
+      width = 1 if width <= 0
+      " " * (start_col - 1) + "^" * width
     end
   end
 

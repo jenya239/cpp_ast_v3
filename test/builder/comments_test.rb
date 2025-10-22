@@ -63,7 +63,7 @@ class CommentsTest < Minitest::Test
       )
     )
     
-    expected = <<~CPP.strip
+    <<~CPP.strip
       /** This class represents a point in 2D space */
       class Point {
       public:

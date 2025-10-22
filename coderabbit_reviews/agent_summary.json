@@ -1,0 +1,197 @@
+{
+  "project": "cpp_ast_v3",
+  "total_reviews": 2,
+  "total_files": 52,
+  "total_comments": 72,
+  "reviews": [
+    {
+      "id": "f3149645-42a2-4ff8-9418-9730abe14a7e",
+      "status": "cancelled",
+      "title": "Add enhanced error handling and parser performance optimizations",
+      "files_with_issues": [
+        {
+          "filename": "experimental/cpp_ast_v3/CODE_IMPROVEMENTS.md",
+          "comment_count": 2,
+          "critical_issues": 0,
+          "major_issues": 1,
+          "actionable_items": 2
+        },
+        {
+          "filename": "experimental/cpp_ast_v3/ERROR_HANDLING_IMPROVEMENTS.md",
+          "comment_count": 2,
+          "critical_issues": 0,
+          "major_issues": 1,
+          "actionable_items": 2
+        },
+        {
+          "filename": "experimental/cpp_ast_v3/TESTING_IMPROVEMENTS.md",
+          "comment_count": 1,
+          "critical_issues": 0,
+          "major_issues": 1,
+          "actionable_items": 1
+        },
+        {
+          "filename": "experimental/cpp_ast_v3/docs/API_REFERENCE.md",
+          "comment_count": 2,
+          "critical_issues": 0,
+          "major_issues": 0,
+          "actionable_items": 2
+        },
+        {
+          "filename": "experimental/cpp_ast_v3/docs/USER_GUIDE.md",
+          "comment_count": 1,
+          "critical_issues": 1,
+          "major_issues": 0,
+          "actionable_items": 1
+        },
+        {
+          "filename": "experimental/cpp_ast_v3/lib/aurora/error_handling/enhanced_errors.rb",
+          "comment_count": 1,
+          "critical_issues": 0,
+          "major_issues": 1,
+          "actionable_items": 1
+        },
+        {
+          "filename": "experimental/cpp_ast_v3/lib/aurora/parser/error_recovery_parser.rb",
+          "comment_count": 7,
+          "critical_issues": 0,
+          "major_issues": 5,
+          "actionable_items": 7
+        },
+        {
+          "filename": "experimental/cpp_ast_v3/lib/aurora/parser/optimized_parser.rb",
+          "comment_count": 2,
+          "critical_issues": 1,
+          "major_issues": 1,
+          "actionable_items": 2
+        },
+        {
+          "filename": "experimental/cpp_ast_v3/lib/cpp_ast/builder/optimized_generator.rb",
+          "comment_count": 3,
+          "critical_issues": 3,
+          "major_issues": 0,
+          "actionable_items": 3
+        },
+        {
+          "filename": "experimental/cpp_ast_v3/test/aurora/enhanced_error_handling_test.rb",
+          "comment_count": 1,
+          "critical_issues": 0,
+          "major_issues": 0,
+          "actionable_items": 1
+        },
+        {
+          "filename": "experimental/cpp_ast_v3/test/integration/optimization_integration_test.rb",
+          "comment_count": 2,
+          "critical_issues": 0,
+          "major_issues": 2,
+          "actionable_items": 2
+        },
+        {
+          "filename": "experimental/cpp_ast_v3/test/performance/performance_benchmark.rb",
+          "comment_count": 1,
+          "critical_issues": 0,
+          "major_issues": 1,
+          "actionable_items": 1
+        },
+        {
+          "filename": "experimental/cpp_ast_v3/test/performance/simple_benchmark.rb",
+          "comment_count": 2,
+          "critical_issues": 0,
+          "major_issues": 2,
+          "actionable_items": 2
+        }
+      ]
+    },
+    {
+      "id": "7226d781-dbf7-4aea-a03d-125fcabf7add",
+      "status": "completed",
+      "title": "Add error handling system, optimized parsing, and comprehensive docs",
+      "files_with_issues": [
+        {
+          "filename": "experimental/cpp_ast_v3/lib/aurora/ast/nodes.rb",
+          "comment_count": 1,
+          "critical_issues": 0,
+          "major_issues": 1,
+          "actionable_items": 1
+        },
+        {
+          "filename": "experimental/cpp_ast_v3/PERFORMANCE_IMPROVEMENTS.md",
+          "comment_count": 2,
+          "critical_issues": 1,
+          "major_issues": 1,
+          "actionable_items": 2
+        },
+        {
+          "filename": "experimental/cpp_ast_v3/docs/API_REFERENCE.md",
+          "comment_count": 4,
+          "critical_issues": 0,
+          "major_issues": 4,
+          "actionable_items": 4
+        },
+        {
+          "filename": "experimental/cpp_ast_v3/docs/ARCHITECTURE.md",
+          "comment_count": 3,
+          "critical_issues": 0,
+          "major_issues": 0,
+          "actionable_items": 3
+        },
+        {
+          "filename": "experimental/cpp_ast_v3/docs/USER_GUIDE.md",
+          "comment_count": 3,
+          "critical_issues": 0,
+          "major_issues": 1,
+          "actionable_items": 3
+        },
+        {
+          "filename": "experimental/cpp_ast_v3/lib/aurora/parser/error_recovery_parser.rb",
+          "comment_count": 5,
+          "critical_issues": 0,
+          "major_issues": 4,
+          "actionable_items": 5
+        },
+        {
+          "filename": "experimental/cpp_ast_v3/lib/aurora/parser/optimized_parser.rb",
+          "comment_count": 3,
+          "critical_issues": 1,
+          "major_issues": 1,
+          "actionable_items": 3
+        },
+        {
+          "filename": "experimental/cpp_ast_v3/lib/cpp_ast/builder/optimized_generator.rb",
+          "comment_count": 7,
+          "critical_issues": 6,
+          "major_issues": 1,
+          "actionable_items": 7
+        },
+        {
+          "filename": "experimental/cpp_ast_v3/test/aurora/enhanced_error_handling_test.rb",
+          "comment_count": 3,
+          "critical_issues": 0,
+          "major_issues": 3,
+          "actionable_items": 3
+        },
+        {
+          "filename": "experimental/cpp_ast_v3/test/integration/optimization_integration_test.rb",
+          "comment_count": 3,
+          "critical_issues": 1,
+          "major_issues": 2,
+          "actionable_items": 3
+        },
+        {
+          "filename": "experimental/cpp_ast_v3/test/performance/performance_benchmark.rb",
+          "comment_count": 5,
+          "critical_issues": 0,
+          "major_issues": 0,
+          "actionable_items": 5
+        },
+        {
+          "filename": "experimental/cpp_ast_v3/test/performance/simple_benchmark.rb",
+          "comment_count": 6,
+          "critical_issues": 0,
+          "major_issues": 1,
+          "actionable_items": 6
+        }
+      ]
+    }
+  ]
+}

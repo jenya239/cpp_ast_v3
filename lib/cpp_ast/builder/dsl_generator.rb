@@ -112,6 +112,8 @@ module CppAst
           generate_co_yield_expression(node)
         when Nodes::CoReturnStatement
           generate_co_return_statement(node)
+        when Aurora::AST::Program
+          generate_aurora_program(node)
         else
           raise "Unsupported node type: #{node.class}"
         end
@@ -1008,6 +1010,84 @@ module CppAst
         end
         
         result
+      end
+      
+      def generate_aurora_program(program)
+        result = "#include <iostream>\n"
+        result += "#include <memory>\n"
+        result += "#include <vector>\n\n"
+        
+        # Generate imports
+        program.imports.each do |import|
+          result += "#include \"#{import.path}.hpp\"\n"
+        end
+        
+        if program.imports.any?
+          result += "\n"
+        end
+        
+        # Generate module declaration
+        if program.module_decl
+          result += "namespace #{program.module_decl.name} {\n"
+        end
+        
+        # Generate declarations
+        program.declarations.each do |decl|
+          result += generate_aurora_declaration(decl)
+          result += "\n"
+        end
+        
+        if program.module_decl
+          result += "}\n"
+        end
+        
+        result
+      end
+      
+      def generate_aurora_declaration(decl)
+        case decl
+        when Aurora::AST::FuncDecl
+          generate_aurora_function(decl)
+        when Aurora::AST::TypeDecl
+          generate_aurora_type(decl)
+        else
+          "// Unsupported declaration type: #{decl.class}"
+        end
+      end
+      
+      def generate_aurora_function(func)
+        result = ""
+        result += "int #{func.name}("
+        result += func.params.map { |p| "int #{p.name}" }.join(", ")
+        result += ") {\n"
+        if func.body
+          result += "  return #{generate_aurora_expression(func.body)};\n"
+        else
+          result += "  return 0;\n"
+        end
+        result += "}"
+        result
+      end
+      
+      def generate_aurora_expression(expr)
+        case expr
+        when Aurora::AST::IntLit
+          expr.value.to_s
+        when Aurora::AST::FloatLit
+          expr.value.to_s
+        when Aurora::AST::VarRef
+          expr.name
+        when Aurora::AST::BinaryOp
+          left = generate_aurora_expression(expr.left)
+          right = generate_aurora_expression(expr.right)
+          "#{left} #{expr.op} #{right}"
+        else
+          "0" # fallback
+        end
+      end
+      
+      def generate_aurora_type(type)
+        "// Type declaration: #{type.name}"
       end
     end
   end

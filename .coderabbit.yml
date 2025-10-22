@@ -1,0 +1,120 @@
+# CodeRabbit Configuration для cpp_ast_v3
+
+# Общие настройки
+language: ruby
+framework: minitest
+
+# Приоритеты ревью
+review_priorities:
+  - critical
+  - major
+  - minor
+
+# Игнорируемые файлы
+ignore:
+  - "*.md"
+  - "docs/**"
+  - "test/**/test_helper.rb"
+  - "Gemfile*"
+  - "Rakefile"
+
+# Специальные настройки для компонентов
+components:
+  # C++ AST DSL
+  - path: "lib/cpp_ast/**"
+    focus:
+      - "code_generation_correctness"
+      - "performance"
+      - "roundtrip_tests"
+    
+  # Aurora Language
+  - path: "lib/aurora/**"
+    focus:
+      - "parsing_correctness"
+      - "type_safety"
+      - "error_handling"
+    
+  # Тесты
+  - path: "test/**"
+    focus:
+      - "test_coverage"
+      - "test_quality"
+      - "integration_tests"
+
+# Специфические проверки
+checks:
+  # Критические
+  critical:
+    - "memory_safety"
+    - "parsing_correctness"
+    - "code_generation_correctness"
+    - "security_vulnerabilities"
+  
+  # Серьезные
+  major:
+    - "performance_issues"
+    - "error_handling"
+    - "test_coverage"
+    - "architecture_violations"
+  
+  # Средние
+  minor:
+    - "code_style"
+    - "documentation"
+    - "naming_conventions"
+
+# Настройки для Ruby
+ruby:
+  style_guide: "ruby_style_guide"
+  linting: true
+  formatting: true
+
+# Настройки для тестов
+testing:
+  framework: "minitest"
+  coverage_threshold: 80
+  integration_tests_required: true
+
+# Настройки производительности
+performance:
+  check_complexity: true
+  max_complexity: 10
+  check_memory_usage: true
+  check_string_concatenation: true
+
+# Настройки безопасности
+security:
+  check_sql_injection: false  # Не применимо для этого проекта
+  check_xss: false           # Не применимо для этого проекта
+  check_path_traversal: true
+  check_code_injection: true
+
+# Специфичные настройки для проекта
+project_specific:
+  # Проверка корректности генерируемого C++
+  cpp_generation:
+    syntax_check: true
+    compilation_check: false  # Требует C++ компилятор
+    
+  # Проверка roundtrip
+  roundtrip:
+    cpp_to_ast_to_cpp: true
+    
+  # Проверка производительности
+  performance:
+    check_o_n_squared: true
+    check_memory_allocation: true
+    check_string_builder_usage: true
+
+# Исключения
+exceptions:
+  # Разрешить длинные методы для парсера
+  - path: "lib/aurora/parser/parser.rb"
+    rules:
+      - "method_length"
+      - "complexity"
+  
+  # Разрешить длинные тесты для интеграционных тестов
+  - path: "test/integration/**"
+    rules:
+      - "method_length"

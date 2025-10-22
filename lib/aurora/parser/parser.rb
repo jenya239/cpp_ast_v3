@@ -17,6 +17,12 @@ module Aurora
         parse_program
       end
       
+      protected
+      
+      def skip_token
+        @pos += 1
+      end
+      
       private
       
       def parse_program

@@ -111,7 +111,7 @@ class AuroraMultiFileModulesTest < Minitest::Test
     AURORA
 
     # Compile both
-    utils_result = compile_aurora_file(utils_file)
+    compile_aurora_file(utils_file)
     main_result = compile_aurora_file(main_file)
 
     # Verify parent path import

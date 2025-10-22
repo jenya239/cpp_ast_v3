@@ -1,0 +1,1206 @@
+[
+  {
+    "id": "f3149645-42a2-4ff8-9418-9730abe14a7e",
+    "status": "cancelled",
+    "started_at": "2025-10-22T11:23:19.856Z",
+    "ended_at": null,
+    "title": "Add enhanced error handling and parser performance optimizations",
+    "files": [
+      {
+        "filename": "experimental/cpp_ast_v3/Gemfile",
+        "comments": [],
+        "comment_count": 0
+      },
+      {
+        "filename": "experimental/cpp_ast_v3/lib/aurora/ast/nodes.rb",
+        "comments": [],
+        "comment_count": 0
+      },
+      {
+        "filename": "experimental/cpp_ast_v3/lib/aurora/parser/lexer.rb",
+        "comments": [],
+        "comment_count": 0
+      },
+      {
+        "filename": "experimental/cpp_ast_v3/lib/aurora/passes/to_core.rb",
+        "comments": [],
+        "comment_count": 0
+      },
+      {
+        "filename": "experimental/cpp_ast_v3/lib/cpp_ast/builder/dsl_v2_improved.rb",
+        "comments": [],
+        "comment_count": 0
+      },
+      {
+        "filename": "experimental/cpp_ast_v3/lib/cpp_ast/builder/expr_builder.rb",
+        "comments": [],
+        "comment_count": 0
+      },
+      {
+        "filename": "experimental/cpp_ast_v3/test/aurora/multi_file_modules_test.rb",
+        "comments": [],
+        "comment_count": 0
+      },
+      {
+        "filename": "experimental/cpp_ast_v3/test/builder/comments_test.rb",
+        "comments": [],
+        "comment_count": 0
+      },
+      {
+        "filename": "experimental/cpp_ast_v3/CODE_IMPROVEMENTS.md",
+        "comments": [
+          {
+            "filename": "experimental/cpp_ast_v3/CODE_IMPROVEMENTS.md",
+            "start_line": 86,
+            "end_line": 97,
+            "type": "actionable",
+            "severity": "major",
+            "comment": "**Potential array bounds issue in build_context.**\n\nLine 93 slices `@tokens[@pos..@pos+5]` without checking if `@pos+5` exceeds the array bounds. This could raise an error in edge cases or return a partial/nil result at the end of the token stream.\n\nApply a bounds-safe slice:\n\n```diff\n  def build_context\n    {\n      current_token: current,\n      previous_token: @last_token,\n      position: @pos,\n-     remaining_tokens: @tokens[@pos..@pos+5]\n+     remaining_tokens: @tokens[@pos...[@pos+6, @tokens.length].min]\n    }\n  end\n```",
+            "codegen_instructions": "experimental/cpp_ast_v3/CODE_IMPROVEMENTS.md around lines 86 to 97: the slice @tokens[@pos..@pos+5] can exceed the array bounds at the end of the token stream; change it to a bounds-safe slice by computing a safe end index (min(@pos+5, @tokens.length - 1)) before taking the range, or use a length-based slice (e.g. start, count) which returns fewer elements instead of raising — update the build_context method to use one of these safe approaches so remaining_tokens never indexes past the array.",
+            "suggestions": [],
+            "analysis": null,
+            "tool_outputs": {}
+          },
+          {
+            "filename": "experimental/cpp_ast_v3/CODE_IMPROVEMENTS.md",
+            "start_line": 37,
+            "end_line": 45,
+            "type": "actionable",
+            "severity": "minor",
+            "comment": "**Incomplete code example in Phase 1.**\n\nThe `parse_function` example lacks a return statement, making it unclear what the function should return. This could confuse developers implementing the actual fix.\n\nRevise the example to show a complete, working implementation:\n\n```diff\n  def parse_function\n    return_type = parse_type\n    name = parse_identifier\n    params = parse_parameters\n    body = parse_expression\n    \n    # Remove unused variable\n    # previous = @last_token  # <-- Remove this line\n+   \n+   Function.new(return_type, name, params, body)\n  end\n```",
+            "codegen_instructions": "In experimental/cpp_ast_v3/CODE_IMPROVEMENTS.md around lines 37 to 45, the parse_function example is incomplete because it never returns a value and leaves an unused commented variable; update the snippet to construct and return a function AST node (e.g., build a hash/object or language-specific AST node containing return_type, name, params, and body) and remove the unused previous variable line so the example clearly shows the final returned value and usable implementation.",
+            "suggestions": [
+              "def parse_function\n  return_type = parse_type\n  name = parse_identifier\n  params = parse_parameters\n  body = parse_expression\n  \n  # Remove unused variable\n  # previous = @last_token  # <-- Remove this line\n  \n  Function.new(return_type, name, params, body)\nend"
+            ],
+            "analysis": null,
+            "tool_outputs": {}
+          }
+        ],
+        "comment_count": 2
+      },
+      {
+        "filename": "experimental/cpp_ast_v3/DOCUMENTATION_IMPROVEMENTS.md",
+        "comments": [],
+        "comment_count": 0
+      },
+      {
+        "filename": "experimental/cpp_ast_v3/ERROR_HANDLING_IMPROVEMENTS.md",
+        "comments": [
+          {
+            "filename": "experimental/cpp_ast_v3/ERROR_HANDLING_IMPROVEMENTS.md",
+            "start_line": 71,
+            "end_line": 85,
+            "type": "actionable",
+            "severity": "minor",
+            "comment": "**Inconsistent error type inheritance across phases.**\n\nPhase 1 defines `AuroraError` as the custom error class, but Phase 3 raises `TypeError` instead. Either `TypeError` should inherit from `AuroraError`, or Phase 3 should raise `AuroraError` (or a subclass like `AuroraTypeError`).\n\nClarify the error class hierarchy and ensure consistency. For example:\n\n```ruby\nclass AuroraTypeError < AuroraError\n  # Type-specific error logic\nend\n```\n\nThen use `raise AuroraTypeError.new(...)` in Phase 3 instead of `raise TypeError.new(...)`.",
+            "codegen_instructions": "In experimental/cpp_ast_v3/ERROR_HANDLING_IMPROVEMENTS.md around lines 71 to 85, Phase 3 currently raises Ruby's TypeError which is inconsistent with Phase 1's custom AuroraError; define a subclass (e.g. AuroraTypeError) that inherits from AuroraError and contains any type-specific fields/logic, then replace the raise TypeError.new(...) in Phase 3 with raise AuroraTypeError.new(...) (and update any constructor arguments or handlers to accept the new class); also update any documentation/comments to reflect the clarified error hierarchy.",
+            "suggestions": [],
+            "analysis": null,
+            "tool_outputs": {}
+          },
+          {
+            "filename": "experimental/cpp_ast_v3/ERROR_HANDLING_IMPROVEMENTS.md",
+            "start_line": 41,
+            "end_line": 69,
+            "type": "actionable",
+            "severity": "major",
+            "comment": "**Missing edge case handling in error recovery.**\n\nThe `recover_from_error` method (line 62-67) skips to the next declaration boundary, but doesn't handle the case where EOF is reached without finding a boundary token. Additionally, advancing `@pos` directly bypasses token validation and may leave the parser in an inconsistent state if tokens between boundaries are malformed.\n\nConsider safeguarding the recovery:\n\n```ruby\ndef recover_from_error\n  # Skip to next declaration boundary\n  while !eof? && current.type != :FN && current.type != :TYPE\n    @pos += 1\n  end\n  \n  # If no boundary found before EOF, reset to a safe state\n  @pos = tokens.length if eof?\nend\n```\n\nAlso clarify whether internal token consumption (lines 64-65) needs validation or error callbacks.",
+            "codegen_instructions": "In experimental/cpp_ast_v3/ERROR_HANDLING_IMPROVEMENTS.md around lines 41 to 69, the recover_from_error implementation fails to handle reaching EOF and advances @pos directly which can leave the parser in an inconsistent state; change recovery so that when the loop exits you explicitly clamp @pos to tokens.length (or an equivalent safe sentinel) if eof? was reached, and replace direct @pos increments with a validated token-consumption helper (or call the parser's existing consume/advance method) that performs bounds checks and optional error callbacks so internal token state remains consistent.",
+            "suggestions": [],
+            "analysis": null,
+            "tool_outputs": {}
+          }
+        ],
+        "comment_count": 2
+      },
+      {
+        "filename": "experimental/cpp_ast_v3/IMPROVEMENTS_SUMMARY.md",
+        "comments": [],
+        "comment_count": 0
+      },
+      {
+        "filename": "experimental/cpp_ast_v3/NEW_FEATURES.md",
+        "comments": [],
+        "comment_count": 0
+      },
+      {
+        "filename": "experimental/cpp_ast_v3/PERFORMANCE_IMPROVEMENTS.md",
+        "comments": [],
+        "comment_count": 0
+      },
+      {
+        "filename": "experimental/cpp_ast_v3/TESTING_IMPROVEMENTS.md",
+        "comments": [
+          {
+            "filename": "experimental/cpp_ast_v3/TESTING_IMPROVEMENTS.md",
+            "start_line": 48,
+            "end_line": 73,
+            "type": "actionable",
+            "severity": "major",
+            "comment": "**Establish baseline metrics before setting performance thresholds.**\n\nThe performance thresholds (1.0s parser time, 50MB memory) appear arbitrary without baseline measurements or justification. Before finalizing Phase 2, recommend:\n\n1. Running benchmarks on the current implementation to establish baseline metrics\n2. Documenting the test environment (CPU, RAM, OS)\n3. Setting thresholds based on acceptable degradation (e.g., \"no more than 10% slower than baseline\")\n\nAdditionally, the memory measurement approach using `get_memory_usage()` is fragile and OS-dependent. Consider using a proper memory profiling library or tool (e.g., Valgrind, system profilers) for reliable measurements.\n\n\nI can help design a baseline measurement and thresholding strategy if needed.",
+            "codegen_instructions": "experimental/cpp_ast_v3/TESTING_IMPROVEMENTS.md around lines 48 to 73: The current Phase 2 test hardcodes thresholds (1.0s, 50MB) without baselines or environment details and uses a fragile get_memory_usage approach; update the document and tests to first run and record baseline metrics for the current implementation (parser time and peak memory), record the test environment (CPU, RAM, OS, compiler/build flags), and store baselines in a versioned baseline file or CI artifact; change thresholding to be relative (e.g., fail if >10% slower or >10% more memory than baseline) and update the sample test to read thresholds from that baseline/config rather than hardcoded values; replace or augment get_memory_usage with a recommended cross-platform profiler or tool (or instruct CI to run Valgrind/heap profiler on Linux/macOS equivalents) and document how to reproduce baseline measurements locally and in CI.",
+            "suggestions": [],
+            "analysis": null,
+            "tool_outputs": {}
+          }
+        ],
+        "comment_count": 1
+      },
+      {
+        "filename": "experimental/cpp_ast_v3/docs/API_REFERENCE.md",
+        "comments": [
+          {
+            "filename": "experimental/cpp_ast_v3/docs/API_REFERENCE.md",
+            "start_line": 263,
+            "end_line": 321,
+            "type": "actionable",
+            "severity": "minor",
+            "comment": "**Document missing DSL functions and methods used in examples.**\n\nThe examples section uses several functions and methods not documented in the API reference:\n\n1. **Line 274**: `namespace()` - used but not documented in the C++ AST DSL section\n2. **Line 294**: `expr_stmt()` - used but not documented in the Statement DSL section  \n3. **Line 301, 319**: `.to_source()` - method called on AST/program objects but not documented as an available method\n4. **Line 316**: `Aurora.lower_to_cpp()` - used but not documented in Core Functions section\n\nThese omissions make the examples difficult to follow for users trying to learn from them.\n\n\nAdd these missing functions to the appropriate sections, or if they are not yet implemented, use different examples that only reference documented APIs.",
+            "codegen_instructions": "In experimental/cpp_ast_v3/docs/API_REFERENCE.md around lines 263 to 321, the examples reference undocumented APIs (namespace(), expr_stmt(), .to_source(), Aurora.lower_to_cpp()); update the docs so the examples only use documented APIs or add entries for these missing DSL functions/methods in the correct sections: add namespace() to the C++ AST DSL section, add expr_stmt() to the Statement DSL section, document the .to_source() method on AST/program objects in the API common methods section, and add Aurora.lower_to_cpp() to the Core Functions section (or replace the example with equivalent code that uses only documented functions) so the examples and reference are consistent.",
+            "suggestions": [],
+            "analysis": null,
+            "tool_outputs": {}
+          },
+          {
+            "filename": "experimental/cpp_ast_v3/docs/API_REFERENCE.md",
+            "start_line": 140,
+            "end_line": 161,
+            "type": "actionable",
+            "severity": "minor",
+            "comment": "**Document advanced DSL function signatures.**\n\nThe Advanced Features section uses several functions and builder methods not documented earlier:\n\n- `template_function()` (line 144)\n- `class_with_inheritance()` (line 158)\n- `.noexcept()` method chaining (line 153)\n- `.override()` method chaining (line 159)\n\nAdd formal API documentation for these advanced DSL functions and their signatures.",
+            "codegen_instructions": "In experimental/cpp_ast_v3/docs/API_REFERENCE.md around lines 140 to 161, the Advanced Features examples use undocumented DSL functions and chaining methods (template_function at line 144, .noexcept() at line 153, class_with_inheritance and .override() at lines 158–159); add API entries for each: document template_function(name_type_param, function_name, type_params_array, param_name, body_ast) describing parameters and return AST node; document class_with_inheritance(class_name, base_list, body_ast) with base spec formats and returned class node; document the .noexcept() chainable modifier on function_decl including effect on AST and signature; document the .override() chainable modifier for methods explaining AST flag; include short usage examples and parameter types for each entry to match the style of the rest of the reference.",
+            "suggestions": [],
+            "analysis": null,
+            "tool_outputs": {}
+          }
+        ],
+        "comment_count": 2
+      },
+      {
+        "filename": "experimental/cpp_ast_v3/docs/ARCHITECTURE.md",
+        "comments": [],
+        "comment_count": 0
+      },
+      {
+        "filename": "experimental/cpp_ast_v3/docs/USER_GUIDE.md",
+        "comments": [
+          {
+            "filename": "experimental/cpp_ast_v3/docs/USER_GUIDE.md",
+            "start_line": 6,
+            "end_line": 9,
+            "type": "actionable",
+            "severity": "critical",
+            "comment": "**Fill in the placeholder repository URL.**\n\nLine 8 contains `<repository-url>` which is a placeholder that users cannot clone. Replace this with the actual repository URL before merging.",
+            "codegen_instructions": "In experimental/cpp_ast_v3/docs/USER_GUIDE.md around lines 6 to 9, the clone command contains the placeholder `<repository-url>` which cannot be used by users; replace that placeholder with the actual repository HTTPS or SSH clone URL (e.g., the project's GitHub/GitLab repo URL) so the instructions work as-is, and verify the URL is correct and accessible before merging.",
+            "suggestions": [],
+            "analysis": null,
+            "tool_outputs": {}
+          }
+        ],
+        "comment_count": 1
+      },
+      {
+        "filename": "experimental/cpp_ast_v3/lib/aurora/error_handling/enhanced_errors.rb",
+        "comments": [
+          {
+            "filename": "experimental/cpp_ast_v3/lib/aurora/error_handling/enhanced_errors.rb",
+            "start_line": 60,
+            "end_line": 86,
+            "type": "actionable",
+            "severity": "major",
+            "comment": "**Naming conflict with Ruby's built-in error classes.**\n\nDefining `Aurora::SyntaxError`, `Aurora::TypeError`, and `Aurora::ImportError` creates risky naming conflicts with Ruby's built-in `::SyntaxError`, `::TypeError`, and `::ImportError` classes. If code includes the `Aurora` module (`include Aurora`), these custom classes shadow Ruby's standard exceptions, which can break rescue clauses and cause subtle bugs.\n\nConsider renaming these classes to avoid conflicts:\n\n\n```diff\n-  class SyntaxError < EnhancedError\n+  class AuroraSyntaxError < EnhancedError\n     def initialize(message, location: nil, suggestion: nil, context: nil)\n       super(message, location: location, suggestion: suggestion, context: context, error_type: :syntax)\n     end\n   end\n   \n-  class TypeError < EnhancedError\n+  class AuroraTypeError < EnhancedError\n     def initialize(message, location: nil, suggestion: nil, context: nil)\n       super(message, location: location, suggestion: suggestion, context: context, error_type: :type)\n     end\n   end\n   \n-  class ScopeError < EnhancedError\n+  class AuroraScopeError < EnhancedError\n     def initialize(message, location: nil, suggestion: nil, context: nil)\n       super(message, location: location, suggestion: suggestion, context: context, error_type: :scope)\n     end\n   end\n   \n-  class ImportError < EnhancedError\n+  class AuroraImportError < EnhancedError\n     def initialize(message, location: nil, suggestion: nil, context: nil)\n       super(message, location: location, suggestion: suggestion, context: context, error_type: :import)\n     end\n   end\n```\n\nAlternatively, use more distinctive names like `ParseError`, `TypeCheckError`, `ScopeResolutionError`, and `ModuleImportError`.",
+            "codegen_instructions": "experimental/cpp_ast_v3/lib/aurora/error_handling/enhanced_errors.rb lines 60-86: the custom exception class names conflict with Ruby core exceptions; rename them to non-conflicting, descriptive names (for example replace SyntaxError → ParseError, TypeError → TypeCheckError, ScopeError → ScopeResolutionError, ImportError → ModuleImportError), keep them inheriting from EnhancedError and preserve the location/suggestion/context parameters and error_type symbols (adjust error_type names if you prefer more descriptive symbols), then update all internal references, rescue clauses, tests and documentation to use the new class names.",
+            "suggestions": [],
+            "analysis": null,
+            "tool_outputs": {}
+          }
+        ],
+        "comment_count": 1
+      },
+      {
+        "filename": "experimental/cpp_ast_v3/lib/aurora/parser/error_recovery_parser.rb",
+        "comments": [
+          {
+            "filename": "experimental/cpp_ast_v3/lib/aurora/parser/error_recovery_parser.rb",
+            "start_line": 104,
+            "end_line": 109,
+            "type": "actionable",
+            "severity": "major",
+            "comment": "**Avoid direct manipulation of parent class instance variables.**\n\nDirectly incrementing `@pos` breaks encapsulation and assumes implementation details of the parent `Parser` class. If the parent changes its position tracking mechanism, this will break.\n\n\n\nConsider adding a protected method to the parent `Parser` class:\n\n```ruby\n# In parser.rb\nprotected\n\ndef skip_token\n  @pos += 1\nend\n```\n\nThen update this method:\n\n```diff\n def recover_to_next_declaration\n   # Skip tokens until we find a declaration boundary\n   while !eof? && !declaration_start?\n-    @pos += 1\n+    skip_token\n   end\n end\n```",
+            "codegen_instructions": "In experimental/cpp_ast_v3/lib/aurora/parser/error_recovery_parser.rb around lines 104 to 109, avoid directly manipulating the parent Parser's @pos; instead add a protected advancement method in the parent Parser (e.g. protected def skip_token; @pos += 1; end) and then replace direct @pos increments in recover_to_next_declaration with calls to that method (or an existing public/protected advance/next_token method) so the subclass uses the parent's API for moving the parse position.",
+            "suggestions": [],
+            "analysis": null,
+            "tool_outputs": {}
+          },
+          {
+            "filename": "experimental/cpp_ast_v3/lib/aurora/parser/error_recovery_parser.rb",
+            "start_line": 44,
+            "end_line": 49,
+            "type": "actionable",
+            "severity": "major",
+            "comment": "**Replace bare rescue with specific exception class.**\n\nBare `rescue` catches all exceptions including system signals. Use `rescue StandardError => e` to catch only standard errors.\n\n\n\nApply this diff:\n\n```diff\n begin\n   module_decl = parse_module_decl\n-rescue => e\n+rescue StandardError => e\n   add_error(e, \"Failed to parse module declaration\")\n   recover_to_next_declaration\n end\n```",
+            "codegen_instructions": "In experimental/cpp_ast_v3/lib/aurora/parser/error_recovery_parser.rb around lines 44 to 49, the current bare `rescue => e` should be replaced with `rescue StandardError => e` so only standard runtime errors are caught (not system signals or fatal exceptions); update the rescue clause accordingly and keep the existing body (call add_error with the exception and message, then call recover_to_next_declaration).",
+            "suggestions": [
+              "          begin\n            module_decl = parse_module_decl\n          rescue StandardError => e\n            add_error(e, \"Failed to parse module declaration\")\n            recover_to_next_declaration\n          end"
+            ],
+            "analysis": null,
+            "tool_outputs": {}
+          },
+          {
+            "filename": "experimental/cpp_ast_v3/lib/aurora/parser/error_recovery_parser.rb",
+            "start_line": 54,
+            "end_line": 59,
+            "type": "actionable",
+            "severity": "major",
+            "comment": "**Replace bare rescue with specific exception class.**\n\nBare `rescue` catches all exceptions including system signals. Use `rescue StandardError => e`.\n\n\n\nApply this diff:\n\n```diff\n begin\n   imports << parse_import_decl\n-rescue => e\n+rescue StandardError => e\n   add_error(e, \"Failed to parse import declaration\")\n   recover_to_next_declaration\n end\n```",
+            "codegen_instructions": "In experimental/cpp_ast_v3/lib/aurora/parser/error_recovery_parser.rb around lines 54 to 59, replace the bare `rescue => e` with `rescue StandardError => e` so that only standard runtime errors are caught (avoiding intercepting system interrupts and other exceptions); update the rescue clause to `rescue StandardError => e` and leave the body unchanged (call add_error and recover_to_next_declaration).",
+            "suggestions": [],
+            "analysis": null,
+            "tool_outputs": {}
+          },
+          {
+            "filename": "experimental/cpp_ast_v3/lib/aurora/parser/error_recovery_parser.rb",
+            "start_line": 26,
+            "end_line": 31,
+            "type": "actionable",
+            "severity": "major",
+            "comment": "**Replace bare rescue with specific exception class.**\n\nBare `rescue => e` catches all exceptions including system signals (e.g., `SignalException`, `SystemExit`), which should not be suppressed. Use `rescue StandardError => e` instead.\n\n\n\nApply this diff:\n\n```diff\n-rescue => e\n+rescue StandardError => e\n   if @errors.any?\n     raise MultipleErrors.new(@errors)\n   else\n     raise e\n   end\n end\n```",
+            "codegen_instructions": "In experimental/cpp_ast_v3/lib/aurora/parser/error_recovery_parser.rb around lines 26 to 31, the current bare `rescue => e` is too broad and may catch system-level exceptions; change the rescue to `rescue StandardError => e` so only standard runtime errors are caught, preserving SystemExit/SignalException, and leave the existing logic that raises MultipleErrors when @errors.any? or re-raises the caught exception otherwise.",
+            "suggestions": [
+              "        rescue StandardError => e\n          if @errors.any?\n            raise MultipleErrors.new(@errors)\n          else\n            raise e\n          end"
+            ],
+            "analysis": null,
+            "tool_outputs": {}
+          },
+          {
+            "filename": "experimental/cpp_ast_v3/lib/aurora/parser/error_recovery_parser.rb",
+            "start_line": 10,
+            "end_line": 14,
+            "type": "actionable",
+            "severity": "minor",
+            "comment": "**Remove unused instance variable.**\n\n`@recovery_points` is initialized and cleared but never used elsewhere in the implementation.\n\n\n\nApply this diff:\n\n```diff\n def initialize(source, filename: nil)\n   super(source, filename: filename)\n   @errors = []\n-  @recovery_points = []\n end\n```",
+            "codegen_instructions": "In experimental/cpp_ast_v3/lib/aurora/parser/error_recovery_parser.rb around lines 10 to 14, the instance variable @recovery_points is initialized but never used; remove the unused instance variable by deleting its initialization in the constructor and remove any other code that clears or references @recovery_points elsewhere in this class so there are no leftover no-op operations or dead variables.",
+            "suggestions": [
+              "      def initialize(source, filename: nil)\n        super(source, filename: filename)\n        @errors = []\n      end"
+            ],
+            "analysis": null,
+            "tool_outputs": {}
+          },
+          {
+            "filename": "experimental/cpp_ast_v3/lib/aurora/parser/error_recovery_parser.rb",
+            "start_line": 17,
+            "end_line": 18,
+            "type": "actionable",
+            "severity": "minor",
+            "comment": "**Remove dead code.**\n\nLine 18 clears `@recovery_points`, but this variable is never used.\n\n\n\nApply this diff:\n\n```diff\n def parse\n   @errors.clear\n-  @recovery_points.clear\n   \n   begin\n```",
+            "codegen_instructions": "In experimental/cpp_ast_v3/lib/aurora/parser/error_recovery_parser.rb around lines 17 to 18, the code clears @recovery_points which is unused; remove the line that calls @recovery_points.clear so only @errors.clear remains, and run tests/linters to confirm no references to @recovery_points remain elsewhere.",
+            "suggestions": [
+              "        @errors.clear\n        \n        begin"
+            ],
+            "analysis": null,
+            "tool_outputs": {}
+          },
+          {
+            "filename": "experimental/cpp_ast_v3/lib/aurora/parser/error_recovery_parser.rb",
+            "start_line": 115,
+            "end_line": 141,
+            "type": "actionable",
+            "severity": "major",
+            "comment": "**Qualify error class names to avoid catching Ruby built-in exceptions.**\n\nLines 117 and 124 check for `SyntaxError` and `TypeError` without namespace qualification. This will match Ruby's built-in `::SyntaxError` and `::TypeError` instead of Aurora's custom error classes, potentially mishandling Ruby-level errors.\n\n\n\nApply this diff to explicitly check for Aurora's error classes:\n\n```diff\n def add_error(original_error, context)\n   error = case original_error\n-  when SyntaxError\n+  when Aurora::SyntaxError\n     Aurora::SyntaxError.new(\n       original_error.message,\n       location: current_location,\n       suggestion: suggest_fix(original_error),\n       context: context\n     )\n-  when TypeError\n+  when Aurora::TypeError\n     Aurora::TypeError.new(\n       original_error.message,\n       location: current_location,\n       suggestion: suggest_type_fix(original_error),\n       context: context\n     )\n```",
+            "codegen_instructions": "In experimental/cpp_ast_v3/lib/aurora/parser/error_recovery_parser.rb around lines 115 to 141, the case statement is matching unqualified SyntaxError and TypeError (Ruby built-ins) instead of Aurora's custom error classes; update the when clauses to use Aurora::SyntaxError and Aurora::TypeError respectively so the branch dispatches to the intended custom error handling, then keep constructing Aurora::SyntaxError, Aurora::TypeError, and Aurora::EnhancedError as before and push the resulting error into @errors.",
+            "suggestions": [],
+            "analysis": null,
+            "tool_outputs": {}
+          }
+        ],
+        "comment_count": 7
+      },
+      {
+        "filename": "experimental/cpp_ast_v3/lib/aurora/parser/optimized_parser.rb",
+        "comments": [
+          {
+            "filename": "experimental/cpp_ast_v3/lib/aurora/parser/optimized_parser.rb",
+            "start_line": 120,
+            "end_line": 125,
+            "type": "actionable",
+            "severity": "major",
+            "comment": "**Cache clearing method is never called.**\n\n`clear_cache_if_needed` is defined but never invoked, so the caches (`@memo` and `@expression_cache`) grow unbounded throughout parsing. This could lead to memory issues on large files.\n\n\n\nCall this method after consuming tokens. Apply this diff:\n\n```diff\n def consume(expected_type)\n   if current.type == expected_type\n     @last_token = current\n     @pos += 1\n+    clear_cache_if_needed\n     @last_token\n   else\n     raise ParseError, \"Expected #{expected_type}, got #{current.type}\"\n   end\n end\n```",
+            "codegen_instructions": "In experimental/cpp_ast_v3/lib/aurora/parser/optimized_parser.rb around lines 120–125 the clear_cache_if_needed method is defined but never called, so @memo and @expression_cache grow unbounded; fix this by invoking clear_cache_if_needed immediately after any place that advances or consumes tokens (i.e., after any increment or assignment to @pos such as in methods like advance/consume/next_token or similar token-consumption helpers), ensuring each token-consuming code path calls it so the caches are periodically cleared every 100 positions.",
+            "suggestions": [],
+            "analysis": null,
+            "tool_outputs": {}
+          },
+          {
+            "filename": "experimental/cpp_ast_v3/lib/aurora/parser/optimized_parser.rb",
+            "start_line": 63,
+            "end_line": 70,
+            "type": "actionable",
+            "severity": "critical",
+            "comment": "**Critical: Cache key omits the `left` parameter.**\n\nThe cache key only includes `@pos` and `min_precedence`, but not the `left` operand. If `parse_binary_expression` is called with the same position and precedence but different `left` AST nodes, it will incorrectly return a cached result that doesn't account for the different left operand, producing an invalid AST.\n\n\n\nSince `left` is an AST node that can't be easily serialized into a cache key, this caching strategy is fundamentally flawed. Consider removing caching from this method:\n\n```diff\n-def parse_binary_expression(left, min_precedence = 0)\n-  cache_key = \"#{@pos}_binary_#{min_precedence}\"\n-  return @expression_cache[cache_key] if @expression_cache[cache_key]\n-  \n-  result = parse_binary_expression_impl(left, min_precedence)\n-  @expression_cache[cache_key] = result\n-  result\n-end\n-\n-def parse_binary_expression_impl(left, min_precedence)\n+def parse_binary_expression(left, min_precedence = 0)\n   while current.type == :OPERATOR && precedence(current.value) >= min_precedence\n     op = current.value\n     consume(:OPERATOR)\n```",
+            "codegen_instructions": "In experimental/cpp_ast_v3/lib/aurora/parser/optimized_parser.rb around lines 63 to 70, the current cache key for parse_binary_expression uses only @pos and min_precedence and omits the left AST node which makes cached results incorrect for different left operands; remove the caching from this method by deleting the cache_key generation, the early return that reads @expression_cache[cache_key], and the assignment that writes @expression_cache[cache_key] so the method simply calls and returns parse_binary_expression_impl(left, min_precedence); if caching is still desired later, redesign it to include a stable identity for left (e.g., object_id) and verify correctness across different left nodes.",
+            "suggestions": [],
+            "analysis": null,
+            "tool_outputs": {}
+          }
+        ],
+        "comment_count": 2
+      },
+      {
+        "filename": "experimental/cpp_ast_v3/lib/cpp_ast/builder/optimized_generator.rb",
+        "comments": [
+          {
+            "filename": "experimental/cpp_ast_v3/lib/cpp_ast/builder/optimized_generator.rb",
+            "start_line": 36,
+            "end_line": 37,
+            "type": "actionable",
+            "severity": "critical",
+            "comment": "**Implement missing `generate_namespace_optimized` method.**\n\nThe method `generate_namespace_optimized` is referenced but not defined in this class.\n\n\n\nAdd the implementation or remove the case branch:\n\n```ruby\ndef generate_namespace_optimized(namespace)\n  @string_builder.clear\n  @string_builder.append(\"namespace #{namespace.name} {\\n\")\n  namespace.declarations.each do |decl|\n    @string_builder.append(generate_optimized(decl))\n    @string_builder.append(\"\\n\")\n  end\n  @string_builder.append(\"}\\n\")\n  @string_builder.to_s\nend\n```",
+            "codegen_instructions": "In experimental/cpp_ast_v3/lib/cpp_ast/builder/optimized_generator.rb around lines 36-37, the when Nodes::Namespace branch calls generate_namespace_optimized but that method is missing; implement generate_namespace_optimized(namespace) to build and return the optimized namespace string by clearing @string_builder, appending \"namespace #{namespace.name} {\\n\", iterating namespace.declarations to append generate_optimized(decl) plus \"\\n\" for each, then appending \"}\\n\" and returning @string_builder.to_s (or remove the branch if namespaces should not be handled).",
+            "suggestions": [],
+            "analysis": null,
+            "tool_outputs": {}
+          },
+          {
+            "filename": "experimental/cpp_ast_v3/lib/cpp_ast/builder/optimized_generator.rb",
+            "start_line": 131,
+            "end_line": 132,
+            "type": "actionable",
+            "severity": "critical",
+            "comment": "**Implement missing `generate_access_specifier_optimized` method.**\n\nThe method `generate_access_specifier_optimized` is called but not defined.\n\n\n\nAdd the implementation:\n\n```ruby\ndef generate_access_specifier_optimized(access_spec)\n  \"#{access_spec.level}:\\n\"\nend\n```",
+            "codegen_instructions": "In experimental/cpp_ast_v3/lib/cpp_ast/builder/optimized_generator.rb around lines 131-132, the call to generate_access_specifier_optimized is failing because the method is missing; add a new method named generate_access_specifier_optimized that accepts an access_spec parameter and returns a string composed of the access_spec.level followed by a colon and a newline (i.e., \"<level>:\\n\") so access specifiers are rendered correctly.",
+            "suggestions": [],
+            "analysis": null,
+            "tool_outputs": {}
+          },
+          {
+            "filename": "experimental/cpp_ast_v3/lib/cpp_ast/builder/optimized_generator.rb",
+            "start_line": 219,
+            "end_line": 221,
+            "type": "actionable",
+            "severity": "critical",
+            "comment": "**Critical: Freezing the buffer breaks reusability.**\n\nCalling `@buffer.freeze` causes a critical bug. The `@string_builder` instance is shared across multiple `generate` calls, and after the first call to `to_s`, the frozen buffer cannot be modified by subsequent `append` operations, resulting in `FrozenError`.\n\n\n\nFix by returning a duplicate instead of freezing:\n```diff\n def to_s\n-  @buffer.freeze\n+  @buffer.dup\n end\n```\n\nOr if freezing is desired for safety:\n```diff\n def to_s\n-  @buffer.freeze\n+  @buffer.dup.freeze\n end\n```",
+            "codegen_instructions": "In experimental/cpp_ast_v3/lib/cpp_ast/builder/optimized_generator.rb around lines 219 to 221, the method to_s currently calls @buffer.freeze which makes the shared @string_builder unusable for later generate calls and causes FrozenError; change it to return a duplicate of the buffer (e.g., @buffer.dup) so callers get an immutable copy without freezing the shared instance, or if you really want immutability return a frozen duplicate (e.g., @buffer.dup.freeze) — do not call freeze on the @buffer instance variable itself.",
+            "suggestions": [
+              "      def to_s\n        @buffer.dup\n      end",
+              "      def to_s\n        @buffer.dup.freeze\n      end"
+            ],
+            "analysis": null,
+            "tool_outputs": {}
+          }
+        ],
+        "comment_count": 3
+      },
+      {
+        "filename": "experimental/cpp_ast_v3/test/aurora/enhanced_error_handling_test.rb",
+        "comments": [
+          {
+            "filename": "experimental/cpp_ast_v3/test/aurora/enhanced_error_handling_test.rb",
+            "start_line": 49,
+            "end_line": 67,
+            "type": "actionable",
+            "severity": "minor",
+            "comment": "**Clarify control flow: ambiguous test expectations.**\n\nThe test has confusing control flow with assertions in both the `begin` and `rescue` branches. If `MultipleErrors` is raised at line 60, `result` won't be assigned and line 62 won't execute. The test should clarify whether it expects the parser to:\n1. Return a result containing partial AST despite errors, OR\n2. Raise `MultipleErrors` with some parsed declarations accessible through the exception\n\n\n\nIf the parser raises exceptions but includes partial results in the exception object, consider this pattern:\n\n```diff\n-    begin\n-      result = parser.parse\n-      # Should still parse the working function despite the error\n-      assert result.declarations.any? { |decl| decl.name == \"working\" }\n-    rescue Aurora::Parser::MultipleErrors => e\n-      # Should have errors but still parse some declarations\n-      assert e.errors.length > 0\n-    end\n+    error = assert_raises(Aurora::Parser::MultipleErrors) do\n+      parser.parse\n+    end\n+    \n+    assert error.errors.length > 0, \"Should capture errors\"\n+    # If partial results are available on the exception:\n+    assert error.partial_ast.declarations.any? { |decl| decl.name == \"working\" }, \n+      \"Should parse working function despite errors\"\n```",
+            "codegen_instructions": "In experimental/cpp_ast_v3/test/aurora/enhanced_error_handling_test.rb around lines 49-67, the test mixes assertions in the normal and rescue paths causing ambiguity if Aurora::Parser::MultipleErrors is raised (result will be unassigned). Update the test to unambiguously express the expected behavior: either (A) assert parser.parse returns a result containing the partial AST and remove the rescue, or (B) expect a MultipleErrors exception and, inside the rescue, extract any partial result from the exception (e.g., e.partial_result or e.result) and assert the \"working\" declaration is present; if the exception class does not expose partial results, change the test to only assert that errors are raised and separately test successful partial AST behavior in another spec.",
+            "suggestions": [],
+            "analysis": null,
+            "tool_outputs": {}
+          }
+        ],
+        "comment_count": 1
+      },
+      {
+        "filename": "experimental/cpp_ast_v3/test/integration/optimization_integration_test.rb",
+        "comments": [
+          {
+            "filename": "experimental/cpp_ast_v3/test/integration/optimization_integration_test.rb",
+            "start_line": 109,
+            "end_line": 125,
+            "type": "actionable",
+            "severity": "major",
+            "comment": "**Close the module declaration.**\n\nLine 111 opens `module LargeTest` but the helper never closes it. This produces syntactically incomplete Aurora source, which may cause parsing errors in `test_large_file_performance`.\n\n\n\nApply this diff to close the module:\n\n```diff\n     function_count.times do |i|\n       source += <<~AURORA\n         fn function_#{i}(x: i32) -> i32 =\n           if x > 0 then x * 2\n           else 0\n       AURORA\n     end\n     \n+    source += \"end\\n\"\n     source\n   end\n```",
+            "codegen_instructions": "In experimental/cpp_ast_v3/test/integration/optimization_integration_test.rb around lines 109 to 125, the generated Aurora source opens \"module LargeTest\" but never closes it; update the helper to append the corresponding \"end\" (closing the module) after adding all function definitions so the generated source is syntactically complete, ensuring the module block is properly terminated before returning the source string.",
+            "suggestions": [],
+            "analysis": null,
+            "tool_outputs": {}
+          },
+          {
+            "filename": "experimental/cpp_ast_v3/test/integration/optimization_integration_test.rb",
+            "start_line": 25,
+            "end_line": 42,
+            "type": "actionable",
+            "severity": "major",
+            "comment": "**Compare both generator outputs to verify equivalence.**\n\n`original_cpp` is generated but never asserted. The comment states \"Both should produce equivalent C++ code,\" yet the test only validates that `optimized_cpp` contains expected strings. Either compare `original_cpp` with `optimized_cpp` or remove the unused variable.\n\n\n\nApply this diff to compare both outputs:\n\n```diff\n     original_cpp = original_generator.generate(ast)\n     optimized_cpp = optimized_generator.generate(ast)\n     \n-    # Both should produce equivalent C++ code\n+    # Both should produce equivalent C++ code\n+    assert_equal original_cpp, optimized_cpp\n     assert_includes optimized_cpp, \"int add(int a, int b)\"\n     assert_includes optimized_cpp, \"return a + b\"\n```",
+            "codegen_instructions": "In experimental/cpp_ast_v3/test/integration/optimization_integration_test.rb around lines 25 to 42, the test builds original_cpp but never asserts it; update the test to actually compare the two generator outputs to verify equivalence (or if intended, remove the unused original_generator/original_cpp). Fix by asserting that original_cpp and optimized_cpp are equivalent (e.g., compare strings or normalize and compare AST-equivalent output), or add matching assertions for original_cpp identical to those already checking optimized_cpp, ensuring no unused variable remains.",
+            "suggestions": [],
+            "analysis": null,
+            "tool_outputs": {}
+          }
+        ],
+        "comment_count": 2
+      },
+      {
+        "filename": "experimental/cpp_ast_v3/test/performance/performance_benchmark.rb",
+        "comments": [
+          {
+            "filename": "experimental/cpp_ast_v3/test/performance/performance_benchmark.rb",
+            "start_line": 55,
+            "end_line": 76,
+            "type": "actionable",
+            "severity": "major",
+            "comment": "**Guard against division by zero in memory reduction calculation.**\n\nLine 73 divides by `original_total.to_f`. While unlikely, if the original parser allocates zero memory (or MemoryProfiler reports zero), this will cause a division-by-zero error.\n\n\n\nApply this diff to add a guard:\n\n```diff\n-    puts \"Memory Reduction: #{((original_total - optimized_total) / original_total.to_f * 100).round(1)}%\"\n+    reduction = original_total > 0 ? ((original_total - optimized_total) / original_total.to_f * 100).round(1) : 0\n+    puts \"Memory Reduction: #{reduction}%\"\n```",
+            "codegen_instructions": "In experimental/cpp_ast_v3/test/performance/performance_benchmark.rb around lines 55-76, guard the memory reduction calculation and assertion against original_total being zero: compute reduction only if original_total > 0 (e.g., set reduction = ((original_total - optimized_total) / original_total.to_f * 100).round(1) when >0, otherwise set reduction to 0 or \"N/A\" for display), update the puts line to handle the zero case without dividing, and only run the assert optimized_total < original_total when original_total > 0 (skip or adjust the assertion when original_total is zero) to avoid division-by-zero and false failures.",
+            "suggestions": [
+              "  def test_memory_usage\n    puts \"\\n=== Memory Usage Benchmark ===\"\n    \n    # Test memory usage of original parser\n    original_memory = MemoryProfiler.report do\n      Aurora.parse(@large_aurora_source)\n    end\n    \n    original_total = original_memory.total_allocated_memsize\n    \n    # Test memory usage of optimized parser\n    optimized_memory = MemoryProfiler.report do\n      Aurora::Parser::OptimizedParser.new(@large_aurora_source).parse\n    end\n    optimized_total = optimized_memory.total_allocated_memsize\n    \n    puts \"Original Parser Memory: #{format_bytes(original_total)}\"\n    puts \"Optimized Parser Memory: #{format_bytes(optimized_total)}\"\n    reduction = original_total > 0 ? ((original_total - optimized_total) / original_total.to_f * 100).round(1) : 0\n    puts \"Memory Reduction: #{reduction}%\"\n    \n    assert optimized_total < original_total, \"Optimized parser should use less memory\"\n  end"
+            ],
+            "analysis": null,
+            "tool_outputs": {}
+          }
+        ],
+        "comment_count": 1
+      },
+      {
+        "filename": "experimental/cpp_ast_v3/test/performance/simple_benchmark.rb",
+        "comments": [
+          {
+            "filename": "experimental/cpp_ast_v3/test/performance/simple_benchmark.rb",
+            "start_line": 54,
+            "end_line": 54,
+            "type": "actionable",
+            "severity": "major",
+            "comment": "**Hard time assertions are flaky and environment-dependent.**\n\nThe assertion `parse_time.real < 1.0` will fail on slower CI machines, under system load, or in resource-constrained environments. Performance benchmarks should typically report metrics for trend analysis rather than enforcing hard time limits.\n\nConsider either:\n- Removing the assertion and using this purely for reporting\n- Making the threshold configurable via environment variable\n- Using a much more generous threshold that catches only catastrophic regressions",
+            "codegen_instructions": "In experimental/cpp_ast_v3/test/performance/simple_benchmark.rb around line 54, the hard assertion `assert parse_time.real < 1.0` is flaky and environment-dependent; replace it by either removing the assertion and logging/printing the measured time for reporting, or make the threshold configurable via an environment variable (e.g. read ENV['PARSE_TIME_THRESHOLD'] and only assert if set), or widen the threshold to a very generous value to only catch catastrophic regressions; pick one approach and update the test to either report the metric instead of failing CI or read a configurable threshold and document the env var in the test file.",
+            "suggestions": [],
+            "analysis": null,
+            "tool_outputs": {}
+          },
+          {
+            "filename": "experimental/cpp_ast_v3/test/performance/simple_benchmark.rb",
+            "start_line": 100,
+            "end_line": 106,
+            "type": "actionable",
+            "severity": "major",
+            "comment": "**Fix O(n²) string concatenation.**\n\nThis uses `source += ...` in a loop, which is the exact performance anti-pattern benchmarked in `test_string_builder_performance`. Each iteration creates a new string object, resulting in O(n²) time complexity.\n\n\n\nApply this diff to use the faster `<<` operator:\n\n```diff\n-    function_count.times do |i|\n-      source += <<~AURORA\n-        fn function_#{i}(x: i32) -> i32 =\n-          if x > 0 then x * 2\n-          else 0\n-      AURORA\n-    end\n+    function_count.times do |i|\n+      source << <<~AURORA\n+        fn function_#{i}(x: i32) -> i32 =\n+          if x > 0 then x * 2\n+          else 0\n+      AURORA\n+    end\n```",
+            "codegen_instructions": "In experimental/cpp_ast_v3/test/performance/simple_benchmark.rb around lines 100 to 106, the loop uses `source += <<~AURORA` which causes O(n²) string concatenation; change it to use the destructive append operator `source << <<~AURORA` (or accumulate fragments in an array and join once) so each iteration appends in-place and the loop runs in linear time.",
+            "suggestions": [
+              "    function_count.times do |i|\n      source << <<~AURORA\n        fn function_#{i}(x: i32) -> i32 =\n          if x > 0 then x * 2\n          else 0\n      AURORA\n    end"
+            ],
+            "analysis": null,
+            "tool_outputs": {}
+          }
+        ],
+        "comment_count": 2
+      }
+    ]
+  },
+  {
+    "id": "7226d781-dbf7-4aea-a03d-125fcabf7add",
+    "status": "completed",
+    "started_at": "2025-10-22T11:27:29.255Z",
+    "ended_at": "2025-10-22T11:30:36.674Z",
+    "title": "Add error handling system, optimized parsing, and comprehensive docs",
+    "files": [
+      {
+        "filename": "experimental/cpp_ast_v3/Gemfile",
+        "comments": [],
+        "comment_count": 0
+      },
+      {
+        "filename": "experimental/cpp_ast_v3/lib/aurora/ast/nodes.rb",
+        "comments": [
+          {
+            "filename": "experimental/cpp_ast_v3/lib/aurora/ast/nodes.rb",
+            "start_line": 30,
+            "end_line": 35,
+            "type": "actionable",
+            "severity": "major",
+            "comment": "**Remove dead code on line 33.**\n\nThe `highlight_indicator` method always returns a string (line 48), so `indicator` can never be `nil`. Line 33 is unreachable dead code.\n\n\n\nApply this diff to remove the dead code:\n\n```diff\n def highlight\n   return nil unless line_text && start_column\n   indicator = highlight_indicator\n-  return line_text if indicator.nil?\n   \"#{line_text}\\n#{indicator}\"\n end\n```",
+            "codegen_instructions": "In experimental/cpp_ast_v3/lib/aurora/ast/nodes.rb around lines 30 to 35, remove the unreachable nil-check on line 33: since highlight_indicator always returns a string, delete the `return line_text if indicator.nil?` branch and simplify the method to return the combined \"#{line_text}\\n#{indicator}\" after the existing guard that ensures line_text and start_column are present.",
+            "suggestions": [
+              "    def highlight\n      return nil unless line_text && start_column\n      indicator = highlight_indicator\n      \"#{line_text}\\n#{indicator}\"\n    end"
+            ],
+            "analysis": null,
+            "tool_outputs": {}
+          }
+        ],
+        "comment_count": 1
+      },
+      {
+        "filename": "experimental/cpp_ast_v3/lib/aurora/parser/lexer.rb",
+        "comments": [],
+        "comment_count": 0
+      },
+      {
+        "filename": "experimental/cpp_ast_v3/lib/aurora/passes/to_core.rb",
+        "comments": [],
+        "comment_count": 0
+      },
+      {
+        "filename": "experimental/cpp_ast_v3/lib/cpp_ast/builder/dsl_v2_improved.rb",
+        "comments": [],
+        "comment_count": 0
+      },
+      {
+        "filename": "experimental/cpp_ast_v3/lib/cpp_ast/builder/expr_builder.rb",
+        "comments": [],
+        "comment_count": 0
+      },
+      {
+        "filename": "experimental/cpp_ast_v3/test/aurora/multi_file_modules_test.rb",
+        "comments": [],
+        "comment_count": 0
+      },
+      {
+        "filename": "experimental/cpp_ast_v3/test/builder/comments_test.rb",
+        "comments": [],
+        "comment_count": 0
+      },
+      {
+        "filename": "experimental/cpp_ast_v3/CODE_IMPROVEMENTS.md",
+        "comments": [],
+        "comment_count": 0
+      },
+      {
+        "filename": "experimental/cpp_ast_v3/DOCUMENTATION_IMPROVEMENTS.md",
+        "comments": [],
+        "comment_count": 0
+      },
+      {
+        "filename": "experimental/cpp_ast_v3/ERROR_HANDLING_IMPROVEMENTS.md",
+        "comments": [],
+        "comment_count": 0
+      },
+      {
+        "filename": "experimental/cpp_ast_v3/IMPROVEMENTS_SUMMARY.md",
+        "comments": [],
+        "comment_count": 0
+      },
+      {
+        "filename": "experimental/cpp_ast_v3/NEW_FEATURES.md",
+        "comments": [],
+        "comment_count": 0
+      },
+      {
+        "filename": "experimental/cpp_ast_v3/PERFORMANCE_IMPROVEMENTS.md",
+        "comments": [
+          {
+            "filename": "experimental/cpp_ast_v3/PERFORMANCE_IMPROVEMENTS.md",
+            "start_line": 26,
+            "end_line": 37,
+            "type": "actionable",
+            "severity": "major",
+            "comment": "**Memoization cache lifecycle not managed; potential memory leak.**\n\nThe `@memo` dictionary is initialized in `initialize` but never cleared between parsing sessions. For long-running processes or when parsing multiple files, this cache will grow indefinitely and consume memory. Add a mechanism to clear or bound the cache (e.g., max entries, LRU eviction, or clear-on-parse).\n\n\nAdditionally, the memoization key (line 32) uses only position and operation type. Ensure that parser state mutations (e.g., changes to lookahead, mode flags) don't invalidate cached results.",
+            "codegen_instructions": "",
+            "suggestions": [],
+            "analysis": null,
+            "tool_outputs": {}
+          },
+          {
+            "filename": "experimental/cpp_ast_v3/PERFORMANCE_IMPROVEMENTS.md",
+            "start_line": 64,
+            "end_line": 64,
+            "type": "actionable",
+            "severity": "critical",
+            "comment": "**Invalid Ruby syntax: `String.new` does not accept a `capacity` parameter.**\n\nLine 64 uses `String.new(capacity: initial_capacity)`, but Ruby's String constructor does not support a capacity parameter. This looks like Python or Java syntax. The correct approach in Ruby is to allocate a buffer using a different pattern or use `String.new(initial_capacity)` (which allocates a string of that length, not capacity).\n\n\nConsider one of these alternatives:\n\n```ruby\n# Option 1: Pre-allocate using String multiplication (simplest for Ruby)\n@buffer = \"\"\n\n# Option 2: Use a StringBuilder pattern from a gem like 'stringio'\n@buffer = StringIO.new\n\n# Option 3: Use a simple String and let Ruby's dynamic sizing handle it\n@buffer = String.new\n```",
+            "codegen_instructions": "In experimental/cpp_ast_v3/PERFORMANCE_IMPROVEMENTS.md around line 64, the code uses the invalid Ruby call String.new(capacity: initial_capacity); replace that with a valid Ruby buffer initialization: either use an empty String, use a StringIO instance for buffer-like operations, or use plain String.new; if you truly need a pre-sized string for initial length use String.new with an integer length argument instead of a named capacity parameter.",
+            "suggestions": [],
+            "analysis": null,
+            "tool_outputs": {}
+          }
+        ],
+        "comment_count": 2
+      },
+      {
+        "filename": "experimental/cpp_ast_v3/TESTING_IMPROVEMENTS.md",
+        "comments": [],
+        "comment_count": 0
+      },
+      {
+        "filename": "experimental/cpp_ast_v3/docs/API_REFERENCE.md",
+        "comments": [
+          {
+            "filename": "experimental/cpp_ast_v3/docs/API_REFERENCE.md",
+            "start_line": 40,
+            "end_line": 77,
+            "type": "actionable",
+            "severity": "major",
+            "comment": "**Document missing core DSL functions used throughout examples.**\n\nThe examples use `include_directive()`, `param()`, `access_spec()`, `namespace()`, and `expr_stmt()` without documentation. These functions appear in lines 46, 58-59, 70, 274, 294, but are not described in the \"Basic DSL Functions\" section. Either add documentation for these functions or provide a link to their definition.\n\nUsers cannot replicate the \"Complete Program Generation\" example (lines 266–302) based on this API reference alone.",
+            "codegen_instructions": "In experimental/cpp_ast_v3/docs/API_REFERENCE.md around lines 40–77 (and referencing examples at 46, 58–59, 70, 266–302, 274, 294), the core DSL functions include_directive, param, access_spec, namespace, and expr_stmt are used in examples but not documented; add short API entries for each in the \"Basic DSL Functions\" section (or insert a direct link to their source/definition) that include the function signature, a one-line description, and a minimal usage example so readers can reproduce the \"Complete Program Generation\" example without needing external files.",
+            "suggestions": [],
+            "analysis": null,
+            "tool_outputs": {}
+          },
+          {
+            "filename": "experimental/cpp_ast_v3/docs/API_REFERENCE.md",
+            "start_line": 305,
+            "end_line": 321,
+            "type": "actionable",
+            "severity": "major",
+            "comment": "**Fix inconsistency: `Aurora.lower_to_cpp()` is not documented in the Aurora Language API.**\n\nThe Aurora to C++ Pipeline example on line 316 calls `Aurora.lower_to_cpp()`, but the documented Aurora Language API (lines 7–35) only lists `parse`, `compile`, `to_cpp`, and `to_hpp_cpp`. Either document `lower_to_cpp()` as a public function or update the example to use one of the documented functions.",
+            "codegen_instructions": "In experimental/cpp_ast_v3/docs/API_REFERENCE.md around lines 305–321, the example calls Aurora.lower_to_cpp() which is not listed in the Aurora Language API; either document lower_to_cpp as a public API (add its signature, description, args, return type and an example) or update the example to use one of the documented functions (e.g., call the documented to_cpp/to_hpp_cpp API with the parsed AST and adjust the surrounding text/variable names accordingly) so the example matches the declared API.",
+            "suggestions": [],
+            "analysis": null,
+            "tool_outputs": {}
+          },
+          {
+            "filename": "experimental/cpp_ast_v3/docs/API_REFERENCE.md",
+            "start_line": 200,
+            "end_line": 214,
+            "type": "actionable",
+            "severity": "major",
+            "comment": "**Document the `Aurora::Parser::MultipleErrors` exception class and error recovery mechanics.**\n\nThe error recovery example uses `Aurora::Parser::MultipleErrors` (line 209), but this exception is not documented. The relationship between individual error classes (lines 167–198) and `MultipleErrors` is unclear. Explicitly document what `MultipleErrors` represents, how errors are collected, and how to access them.",
+            "codegen_instructions": "In experimental/cpp_ast_v3/docs/API_REFERENCE.md around lines 200 to 214, the docs reference Aurora::Parser::MultipleErrors but do not define it or explain error-recovery mechanics; add a short subsection that (1) defines Aurora::Parser::MultipleErrors as an exception raised when the parser recovers from multiple parse errors during a single parse run, (2) states that it wraps an array-like .errors collection of individual error instances (instances of the error classes documented earlier) which are appended as the parser recovers, (3) documents the shape of each error (e.g., contains message, location and a formatted_message method) and how to iterate/access them, and (4) update the example to mention that .errors is an array you can iterate and call formatted_message on each entry so consumers know how to inspect collected errors.",
+            "suggestions": [],
+            "analysis": null,
+            "tool_outputs": {}
+          },
+          {
+            "filename": "experimental/cpp_ast_v3/docs/API_REFERENCE.md",
+            "start_line": 142,
+            "end_line": 161,
+            "type": "actionable",
+            "severity": "major",
+            "comment": "**Clarify method chaining and undocumented DSL functions in Advanced Features.**\n\nLines 153 and 159 use `.noexcept()` and `.override()` methods on DSL objects, but these are never documented as chainable methods. Additionally, `class_with_inheritance()` on line 158 is not documented anywhere; the earlier section only shows `class_decl()`. Clarify whether these are real public API methods or pseudo-code, and explain how method chaining works.",
+            "codegen_instructions": "",
+            "suggestions": [],
+            "analysis": null,
+            "tool_outputs": {}
+          }
+        ],
+        "comment_count": 4
+      },
+      {
+        "filename": "experimental/cpp_ast_v3/docs/ARCHITECTURE.md",
+        "comments": [
+          {
+            "filename": "experimental/cpp_ast_v3/docs/ARCHITECTURE.md",
+            "start_line": 247,
+            "end_line": 264,
+            "type": "actionable",
+            "severity": "minor",
+            "comment": "**Clarify benchmark code structure and purpose.**\n\nThe benchmark examples mix benchmarking with performance testing. The code uses `Benchmark.measure` with `assert` statements to test that execution time stays below thresholds. This is unconventional:\n- `Benchmark.measure` typically reports timing metrics rather than enforcing thresholds\n- The pattern shown (`assert time.real < X`) is a performance test, not a benchmark\n\nClarify whether these are:\n1. Performance regression tests (should use different structure/tooling)\n2. Example benchmarks (should focus on measurement/reporting without assertions)\n\nUpdate the examples to match the intended purpose or indicate this is pseudocode.",
+            "codegen_instructions": "In experimental/cpp_ast_v3/docs/ARCHITECTURE.md around lines 247 to 264, the benchmark examples conflate benchmarking and performance-testing by using Benchmark.measure together with assert thresholds; clarify intent and update examples accordingly: if these are meant as performance regression tests, replace the snippet with a structure that captures timings and asserts against thresholds using a test framework (e.g., record time in the test and assert within the test harness) and mention required CI/fixture stability; if they are meant as examples of benchmarking, remove the assert checks and show how to run and report Benchmark.measure results (or mark the snippets explicitly as pseudocode) so the example focuses on measurement and reporting rather than enforcing pass/fail criteria.",
+            "suggestions": [],
+            "analysis": null,
+            "tool_outputs": {}
+          },
+          {
+            "filename": "experimental/cpp_ast_v3/docs/ARCHITECTURE.md",
+            "start_line": 52,
+            "end_line": 101,
+            "type": "actionable",
+            "severity": "minor",
+            "comment": "**Clarify the relationship and use cases for the two pipelines.**\n\nThe document describes two separate pipelines (Aurora Compiler and C++ AST DSL) but doesn't explain:\n- When each pipeline should be used\n- Whether they can be combined or composed\n- How output from one could feed into the other (if at all)\n- Whether one is primary and the other is a convenience layer\n\nAdd a section explaining when to use the Aurora compiler pipeline versus the C++ AST DSL directly, and how (or why) they're kept separate.",
+            "codegen_instructions": "In experimental/cpp_ast_v3/docs/ARCHITECTURE.md around lines 52 to 101, add a brief section that explains the relationship and intended use-cases of the two pipelines: state when to use the Aurora compilation pipeline (source-first workflow, full language features, optimization and CoreIR passes) versus when to use the C++ AST DSL (direct C++ target construction, testing, and manual code generation), clarify whether outputs can be composed (describe how Aurora’s C++ lowering can produce CppAst nodes that feed into the DSL layer or conversely how DSL-produced AST can be consumed by the codegen step), and state which is primary vs convenience (Aurora is primary for compiling Aurora source; DSL is a convenience/interop layer), plus a short note on why they are kept separate (different abstraction levels and responsibilities).",
+            "suggestions": [],
+            "analysis": null,
+            "tool_outputs": {}
+          },
+          {
+            "filename": "experimental/cpp_ast_v3/docs/ARCHITECTURE.md",
+            "start_line": 11,
+            "end_line": 30,
+            "type": "actionable",
+            "severity": "minor",
+            "comment": "**Clarify file path references relative to project structure.**\n\nThe documentation references paths like `lib/aurora/parser/lexer.rb`, but this document is located in `experimental/cpp_ast_v3/docs/`. It's unclear whether these paths are:\n- Absolute from the repository root (implying a restructuring after this experimental phase)\n- Intended to be under `experimental/cpp_ast_v3/lib/`\n- Aspirational future structure\n\nExplicitly state the assumed project structure or prefix paths with `experimental/cpp_ast_v3/` for clarity.",
+            "codegen_instructions": "In experimental/cpp_ast_v3/docs/ARCHITECTURE.md around lines 11 to 30, the referenced file paths (e.g. lib/aurora/parser/lexer.rb) are ambiguous relative to the repo and this experimental doc; update the section to explicitly state the assumed project-root or experimental subdirectory context by prefixing each path with experimental/cpp_ast_v3/ (e.g. experimental/cpp_ast_v3/lib/aurora/...) or add one clear sentence at the top of the file stating \"All paths are relative to the repository root\" or \"All paths are relative to experimental/cpp_ast_v3/\"; ensure consistency across the listed components and keep the chosen convention documented for future readers.",
+            "suggestions": [],
+            "analysis": null,
+            "tool_outputs": {}
+          }
+        ],
+        "comment_count": 3
+      },
+      {
+        "filename": "experimental/cpp_ast_v3/docs/USER_GUIDE.md",
+        "comments": [
+          {
+            "filename": "experimental/cpp_ast_v3/docs/USER_GUIDE.md",
+            "start_line": 8,
+            "end_line": 8,
+            "type": "actionable",
+            "severity": "minor",
+            "comment": "**Fill in the placeholder repository URL.**\n\nThe `<repository-url>` placeholder needs to be replaced with the actual repository URL so users can clone the project.",
+            "codegen_instructions": "In experimental/cpp_ast_v3/docs/USER_GUIDE.md around line 8, replace the placeholder \"git clone <repository-url>\" with the project's actual repository URL (e.g., git clone https://github.com/your-org/your-repo.git or the repo's SSH URL), update the line to the full clone command, and commit the change so users can clone directly.",
+            "suggestions": [],
+            "analysis": null,
+            "tool_outputs": {}
+          },
+          {
+            "filename": "experimental/cpp_ast_v3/docs/USER_GUIDE.md",
+            "start_line": 162,
+            "end_line": 164,
+            "type": "actionable",
+            "severity": "minor",
+            "comment": "**Complete the stub code examples.**\n\nSeveral code examples contain only placeholder comments (`// Implementation`) instead of actual working code. Either provide complete implementations or, if these are intentionally left blank for the reader to exercise, add a note explaining that these are exercises.\n\n\n\nAlso applies to: 172-174, 180-182",
+            "codegen_instructions": "In experimental/cpp_ast_v3/docs/USER_GUIDE.md around lines 162-164 (and similarly 172-174, 180-182), the code examples are stubs with placeholder comments instead of runnable code; replace each stub with a complete, minimal working implementation that compiles and demonstrates the intended behavior (keeping types and names as shown), or if the omission is intentional, replace the comment with a single-line note stating \"Exercise: implement this example\" and optionally provide expected input/output or hints; ensure each example block is self-contained and consistent with surrounding text.",
+            "suggestions": [],
+            "analysis": null,
+            "tool_outputs": {}
+          },
+          {
+            "filename": "experimental/cpp_ast_v3/docs/USER_GUIDE.md",
+            "start_line": 18,
+            "end_line": 29,
+            "type": "actionable",
+            "severity": "major",
+            "comment": "**Clarify how to obtain the Aurora binary.**\n\nThe quick start assumes a working `bin/aurora` executable is available after installation, but the setup instructions only show `bundle install` and `bundle exec rake test`. It's unclear whether:\n- The executable is built during the installation process\n- Users need to run an additional build step (e.g., `rake build`)\n- The executable needs to be installed separately\n\nAdd explicit build/installation instructions so users can verify they have a working Aurora binary before proceeding with the example.",
+            "codegen_instructions": "In experimental/cpp_ast_v3/docs/USER_GUIDE.md around lines 18 to 29, the quick-start assumes a bin/aurora executable exists but the setup steps don't show how to build or install it; update the guide to add an explicit build/install step (e.g., run the project build task such as bundle exec rake build or bundle exec rake install or the appropriate rake target used by this repo), explain where the resulting executable will be placed (project/bin or system path) and add a verification step so users can confirm the binary is available before running the example (for example, check existence or run aurora --version).",
+            "suggestions": [],
+            "analysis": null,
+            "tool_outputs": {}
+          }
+        ],
+        "comment_count": 3
+      },
+      {
+        "filename": "experimental/cpp_ast_v3/lib/aurora/error_handling/enhanced_errors.rb",
+        "comments": [],
+        "comment_count": 0
+      },
+      {
+        "filename": "experimental/cpp_ast_v3/lib/aurora/parser/error_recovery_parser.rb",
+        "comments": [
+          {
+            "filename": "experimental/cpp_ast_v3/lib/aurora/parser/error_recovery_parser.rb",
+            "start_line": 66,
+            "end_line": 80,
+            "type": "actionable",
+            "severity": "major",
+            "comment": "**Avoid direct instance variable manipulation.**\n\nLines 71 and 75 use `instance_variable_set` to mark parsed objects as exported, which breaks encapsulation and is fragile. The parsed objects should either accept an `exported` parameter in their constructors or provide a proper setter method.\n\n\n\nConsider modifying the AST node classes to accept this information:\n\n```ruby\nwhen :FN\n  func = parse_function\n  func.exported = true  # Or pass during construction\n  declarations << func\nwhen :TYPE\n  type_decl = parse_type_decl\n  type_decl.exported = true  # Or pass during construction\n  declarations << type_decl\n```",
+            "codegen_instructions": "experimental/cpp_ast_v3/lib/aurora/parser/error_recovery_parser.rb lines 66-80: avoid using instance_variable_set to mark nodes exported; instead add a proper exported attribute or constructor parameter on the AST node classes and use that public API. Modify the FN and TYPE node classes (or their factory/parse_function and parse_type_decl methods) to accept an exported flag or expose an exported= setter (e.g., add attr_accessor :exported or initialize exported: false), then replace the instance_variable_set calls with either passing exported: true when constructing the node or calling node.exported = true before appending to declarations. Ensure tests/builds updated where nodes are constructed directly.",
+            "suggestions": [],
+            "analysis": null,
+            "tool_outputs": {}
+          },
+          {
+            "filename": "experimental/cpp_ast_v3/lib/aurora/parser/error_recovery_parser.rb",
+            "start_line": 43,
+            "end_line": 50,
+            "type": "actionable",
+            "severity": "major",
+            "comment": "**Use specific exception types in rescue clauses.**\n\nThe bare `rescue => e` catches all exceptions including system-level errors (NoMemoryError, SignalException, etc.), which should not be caught for error recovery. This pattern appears multiple times in this method (lines 46, 56, 91).\n\n\n\nApply this diff to catch only StandardError:\n\n```diff\n if current.type == :MODULE\n   begin\n     module_decl = parse_module_decl\n-  rescue => e\n+  rescue StandardError => e\n     add_error(e, \"Failed to parse module declaration\")\n     recover_to_next_declaration\n   end\n end\n```\n\nApply similar changes to lines 56 and 91.",
+            "codegen_instructions": "In experimental/cpp_ast_v3/lib/aurora/parser/error_recovery_parser.rb around lines 43 to 50 (and similarly at lines ~56 and ~91), replace the bare `rescue => e` with `rescue StandardError => e` so only application-level exceptions are caught; keep the existing calls to `add_error(e, \"...\")` and `recover_to_next_declaration` unchanged in each rescue block.",
+            "suggestions": [
+              "        if current.type == :MODULE\n          begin\n            module_decl = parse_module_decl\n          rescue StandardError => e\n            add_error(e, \"Failed to parse module declaration\")\n            recover_to_next_declaration\n          end\n        end"
+            ],
+            "analysis": null,
+            "tool_outputs": {}
+          },
+          {
+            "filename": "experimental/cpp_ast_v3/lib/aurora/parser/error_recovery_parser.rb",
+            "start_line": 85,
+            "end_line": 86,
+            "type": "actionable",
+            "severity": "major",
+            "comment": "**IMPORT declarations should not appear after other declarations.**\n\nAllowing IMPORT statements to be parsed after functions and types (line 86 in the main declaration loop) is unusual and likely indicates a logic error. Imports are typically only allowed at the beginning of a file, which is already handled by the dedicated import parsing loop (lines 53-60).\n\n\n\nConsider removing this case or adding validation:\n\n```diff\n when :TYPE\n   declarations << parse_type_decl\n-when :IMPORT\n-  imports << parse_import_decl\n else\n   add_syntax_error(\"Unexpected token: #{current.type}\")\n   recover_to_next_declaration\n```",
+            "codegen_instructions": "In experimental/cpp_ast_v3/lib/aurora/parser/error_recovery_parser.rb around lines 85–86, the main declaration loop still accepts :IMPORT tokens (imports << parse_import_decl) even after other declarations have been parsed; remove that branch or enforce validation so IMPORTs cannot appear after non-import declarations. Fix by either (a) deleting the when :IMPORT case from the main loop so imports are only handled by the dedicated import parsing loop earlier, or (b) add a simple check/flag that detects if any non-IMPORT declaration has already been parsed and, if an IMPORT is found afterwards, raise a parse/syntax error (with a helpful message) instead of accepting it.",
+            "suggestions": [],
+            "analysis": null,
+            "tool_outputs": {}
+          },
+          {
+            "filename": "experimental/cpp_ast_v3/lib/aurora/parser/error_recovery_parser.rb",
+            "start_line": 10,
+            "end_line": 14,
+            "type": "actionable",
+            "severity": "minor",
+            "comment": "**Remove unused `@recovery_points` instance variable.**\n\nThe `@recovery_points` array is initialized and cleared but never actually used throughout the implementation. This suggests either incomplete functionality or unnecessary code.\n\n\n\nApply this diff if recovery points are not needed:\n\n```diff\n def initialize(source, filename: nil)\n   super(source, filename: filename)\n   @errors = []\n-  @recovery_points = []\n end\n```",
+            "codegen_instructions": "In experimental/cpp_ast_v3/lib/aurora/parser/error_recovery_parser.rb around lines 10 to 14, remove the unused @recovery_points instance variable: delete its initialization in initialize and any code that clears or references it (if any) across the file; ensure no other code relies on @recovery_points (update or remove references if found) and run tests to confirm nothing breaks.",
+            "suggestions": [
+              "      def initialize(source, filename: nil)\n        super(source, filename: filename)\n        @errors = []\n      end"
+            ],
+            "analysis": null,
+            "tool_outputs": {}
+          },
+          {
+            "filename": "experimental/cpp_ast_v3/lib/aurora/parser/error_recovery_parser.rb",
+            "start_line": 16,
+            "end_line": 33,
+            "type": "actionable",
+            "severity": "major",
+            "comment": "**Refactor error handling logic.**\n\nThis method has several issues:\n\n1. **Broad exception handling**: Line 26 uses `rescue => e` which catches all exceptions including system errors (NoMemoryError, SignalException, etc.). This should catch only StandardError or specific parser exceptions.\n\n2. **Duplicate logic**: The MultipleErrors raising logic is duplicated (lines 23 and 28).\n\n3. **Unnecessary complexity**: The rescue block re-raises the original exception when @errors is empty, which could be simplified.\n\n\n\nApply this diff to improve the error handling:\n\n```diff\n def parse\n   @errors.clear\n-  @recovery_points.clear\n   \n-  begin\n-    result = parse_program_with_recovery\n-    if @errors.any?\n-      raise MultipleErrors.new(@errors)\n-    end\n-    result\n-  rescue => e\n-    if @errors.any?\n-      raise MultipleErrors.new(@errors)\n-    else\n-      raise e\n-    end\n+  result = parse_program_with_recovery\n+  raise MultipleErrors.new(@errors) if @errors.any?\n+  result\n+rescue StandardError => e\n+  raise @errors.any? ? MultipleErrors.new(@errors) : e\n-  end\n end\n```",
+            "codegen_instructions": "In experimental/cpp_ast_v3/lib/aurora/parser/error_recovery_parser.rb around lines 16 to 33, tighten and simplify error handling: call parse_program_with_recovery, then if @errors.any? raise MultipleErrors once; wrap only the call in a rescue StandardError => e (not a bare rescue) and in that rescue raise MultipleErrors.new(@errors) if @errors.any? else re-raise the caught StandardError (raise e), removing duplicated MultipleErrors logic and avoiding catching system/critical exceptions.",
+            "suggestions": [
+              "      def parse\n        @errors.clear\n        \n        result = parse_program_with_recovery\n        raise MultipleErrors.new(@errors) if @errors.any?\n        result\n      rescue StandardError => e\n        raise @errors.any? ? MultipleErrors.new(@errors) : e\n      end"
+            ],
+            "analysis": null,
+            "tool_outputs": {}
+          }
+        ],
+        "comment_count": 5
+      },
+      {
+        "filename": "experimental/cpp_ast_v3/lib/aurora/parser/optimized_parser.rb",
+        "comments": [
+          {
+            "filename": "experimental/cpp_ast_v3/lib/aurora/parser/optimized_parser.rb",
+            "start_line": 120,
+            "end_line": 125,
+            "type": "actionable",
+            "severity": "major",
+            "comment": "**Critical: Cache clearing method is never invoked.**\n\nThe `clear_cache_if_needed` method is defined but never called anywhere in this class. Without invoking it, the caches (`@memo` and `@expression_cache`) will grow unbounded during parsing, potentially causing memory issues on large files.\n\n\n\nYou should call this method at appropriate points in the parsing flow. Consider adding it to methods that advance the parser position:\n\n```ruby\ndef consume(expected_type)\n  if current.type == expected_type\n    @last_token = current\n    @pos += 1\n    clear_cache_if_needed  # Add this line\n    @last_token\n  else\n    raise ParseError, \"Expected #{expected_type}, got #{current.type}\"\n  end\nend\n```",
+            "codegen_instructions": "In experimental/cpp_ast_v3/lib/aurora/parser/optimized_parser.rb around lines 120-125, the clear_cache_if_needed method is never called so @memo and @expression_cache can grow unbounded; add calls to clear_cache_if_needed wherever the parser advances @pos (for example at the end of consume, advance, or any method that increments @pos or moves to the next token) so that after @pos is incremented you immediately invoke clear_cache_if_needed; ensure the call is placed after updating @pos and before returning, and add it to all code paths that change position so cache clearing triggers every 100 tokens.",
+            "suggestions": [],
+            "analysis": null,
+            "tool_outputs": {}
+          },
+          {
+            "filename": "experimental/cpp_ast_v3/lib/aurora/parser/optimized_parser.rb",
+            "start_line": 63,
+            "end_line": 70,
+            "type": "actionable",
+            "severity": "critical",
+            "comment": "**Critical: Cache key must include the `left` operand.**\n\nThe cache key only uses `@pos` and `min_precedence`, but the method also takes a `left` parameter that affects the result. Different left operands at the same position will incorrectly return the same cached result, producing wrong AST nodes.\n\nFor example, if parsing \"A + B + C\", when the method is called with different left operands at the same position, the cache will return incorrect results.\n\n\n\nThe correct fix is to avoid caching this method entirely, since the `left` parameter can vary:\n\n```diff\n-def parse_binary_expression(left, min_precedence = 0)\n-  cache_key = \"#{@pos}_binary_#{min_precedence}\"\n-  return @expression_cache[cache_key] if @expression_cache[cache_key]\n-  \n-  result = parse_binary_expression_impl(left, min_precedence)\n-  @expression_cache[cache_key] = result\n-  result\n-end\n-\n-def parse_binary_expression_impl(left, min_precedence)\n+def parse_binary_expression(left, min_precedence = 0)\n   while current.type == :OPERATOR && precedence(current.value) >= min_precedence\n     op = current.value\n     consume(:OPERATOR)\n```",
+            "codegen_instructions": "",
+            "suggestions": [],
+            "analysis": null,
+            "tool_outputs": {}
+          },
+          {
+            "filename": "experimental/cpp_ast_v3/lib/aurora/parser/optimized_parser.rb",
+            "start_line": 9,
+            "end_line": 14,
+            "type": "actionable",
+            "severity": "minor",
+            "comment": "**Remove unused `@parse_cache` initialization.**\n\nThe `@parse_cache` instance variable is initialized but never used anywhere in this class. This wastes memory and creates confusion about its intended purpose.\n\n\n\nApply this diff to remove the unused cache:\n\n```diff\n def initialize(source, filename: nil)\n   super(source, filename: filename)\n   @memo = {}\n-  @parse_cache = {}\n   @expression_cache = {}\n end\n```",
+            "codegen_instructions": "In experimental/cpp_ast_v3/lib/aurora/parser/optimized_parser.rb around lines 9 to 14, remove the unused @parse_cache initialization from the initialize method: delete the line that sets @parse_cache = {} so the instance variable is not allocated; leave @memo and @expression_cache intact and run tests/lint to confirm no other references to @parse_cache exist.",
+            "suggestions": [],
+            "analysis": null,
+            "tool_outputs": {}
+          }
+        ],
+        "comment_count": 3
+      },
+      {
+        "filename": "experimental/cpp_ast_v3/lib/cpp_ast/builder/optimized_generator.rb",
+        "comments": [
+          {
+            "filename": "experimental/cpp_ast_v3/lib/cpp_ast/builder/optimized_generator.rb",
+            "start_line": 125,
+            "end_line": 136,
+            "type": "actionable",
+            "severity": "critical",
+            "comment": "**Missing method definition: `generate_access_specifier_optimized`.**\n\nLine 132 calls `generate_access_specifier_optimized(member)`, but this method is not defined. This will cause a `NoMethodError` when generating access specifiers.\n\n\n\nDefine the missing method:\n\n```ruby\ndef generate_access_specifier_optimized(spec)\n  \"#{spec.level}:\\n\"\nend\n```",
+            "codegen_instructions": "In experimental/cpp_ast_v3/lib/cpp_ast/builder/optimized_generator.rb around lines 125 to 136, the call to generate_access_specifier_optimized(member) is to an undefined method which will raise NoMethodError; add a method definition named generate_access_specifier_optimized that accepts a spec argument and returns a string with the access level followed by a colon and newline (i.e., \"#{spec.level}:\\n\"), placing it in the same class/module as the other generate_*_optimized methods so it’s available when generate_member_optimized dispatches to it.",
+            "suggestions": [],
+            "analysis": null,
+            "tool_outputs": {}
+          },
+          {
+            "filename": "experimental/cpp_ast_v3/lib/cpp_ast/builder/optimized_generator.rb",
+            "start_line": 87,
+            "end_line": 123,
+            "type": "actionable",
+            "severity": "critical",
+            "comment": "**Missing method definition: `generate_parameter_optimized`.**\n\nLine 109 calls `generate_parameter_optimized(param)`, but this method is not defined in the class. This will cause a `NoMethodError` at runtime when generating functions with parameters.\n\n\n\nDefine the missing method or use the fallback from the superclass:\n\n```ruby\ndef generate_parameter_optimized(param)\n  \"#{param.type} #{param.name}\"\nend\n```",
+            "codegen_instructions": "In experimental/cpp_ast_v3/lib/cpp_ast/builder/optimized_generator.rb around lines 87 to 123, the call to generate_parameter_optimized(param) is missing its method definition which will raise a NoMethodError; add a generate_parameter_optimized method on this class that returns a parameter string (e.g. combines param.type and param.name) or delegates to the superclass implementation (call super) if available, and ensure it handles nil names and common parameter forms so the function-parameter generation works without errors.",
+            "suggestions": [],
+            "analysis": null,
+            "tool_outputs": {}
+          },
+          {
+            "filename": "experimental/cpp_ast_v3/lib/cpp_ast/builder/optimized_generator.rb",
+            "start_line": 28,
+            "end_line": 41,
+            "type": "actionable",
+            "severity": "critical",
+            "comment": "**Missing method definition: `generate_namespace_optimized`.**\n\nLine 37 routes `Nodes::Namespace` to `generate_namespace_optimized(ast)`, but this method is not defined. This will cause a `NoMethodError` when generating namespace nodes.\n\n\n\nDefine the missing method or remove the namespace case to fall back to the superclass implementation.",
+            "codegen_instructions": "",
+            "suggestions": [],
+            "analysis": null,
+            "tool_outputs": {}
+          },
+          {
+            "filename": "experimental/cpp_ast_v3/lib/cpp_ast/builder/optimized_generator.rb",
+            "start_line": 65,
+            "end_line": 85,
+            "type": "actionable",
+            "severity": "critical",
+            "comment": "**StringBuilder clearing pattern breaks nested generation.**\n\nMultiple generation methods clear `@string_builder` (lines 65, 88, 139), but these methods are called from within `generate_class_optimized` which builds up a class declaration incrementally. For example:\n\n1. Line 65: `generate_class_optimized` clears the buffer\n2. Line 77: Calls `generate_member_optimized` for each member\n3. Line 139: `generate_variable_optimized` clears the buffer again, destroying the class being built\n\n\n\nUse local StringBuilder instances for nested generation or remove the `clear` calls from nested methods (lines 65, 88, 139), keeping it only in the top-level `generate` method (line 20).",
+            "codegen_instructions": "experimental/cpp_ast_v3/lib/cpp_ast/builder/optimized_generator.rb lines 65–85 (and referenced clears at 88 and 139): nested generation methods currently call @string_builder.clear which breaks incremental class assembly in generate_class_optimized; remove the .clear calls from nested methods (lines 65, 88, 139) and instead have nested generators either (a) create and use a local StringBuilder and return a string, or (b) accept the top-level builder as a parameter and append to it without clearing; ensure only the top-level generate method (around line 20) clears @string_builder and that nested methods return their generated string or append to the passed-in builder so class construction remains intact.",
+            "suggestions": [],
+            "analysis": null,
+            "tool_outputs": {}
+          },
+          {
+            "filename": "experimental/cpp_ast_v3/lib/cpp_ast/builder/optimized_generator.rb",
+            "start_line": 16,
+            "end_line": 24,
+            "type": "actionable",
+            "severity": "major",
+            "comment": "**Caching by object_id may return stale results if AST nodes are mutated.**\n\nThe cache key uses `ast.object_id`, which identifies the object by reference rather than by content. If an AST node is mutated after its first generation, subsequent calls will return the original cached output instead of reflecting the changes.\n\n\n\nConsider one of these approaches:\n- If ASTs are immutable, document this assumption clearly\n- If ASTs can be mutated, implement a content-based cache key (e.g., hash of relevant attributes)\n- Add a cache invalidation mechanism",
+            "codegen_instructions": "In experimental/cpp_ast_v3/lib/cpp_ast/builder/optimized_generator.rb around lines 16–24, the current cache key uses ast.object_id which will return stale generated output when AST nodes are mutated; change the caching strategy: either (A) assert and document that ASTs must be immutable, or (B) derive a content-based cache key (for example call a stable ast.cache_key or compute a digest of the AST’s relevant attributes/structure via a deterministic serialization/hash) and use that as the key, or (C) add an explicit invalidation/versioning mechanism on AST mutations (e.g., bump ast.version and include it in the cache key); implement one of these approaches so cached results reflect AST content changes.",
+            "suggestions": [],
+            "analysis": null,
+            "tool_outputs": {}
+          },
+          {
+            "filename": "experimental/cpp_ast_v3/lib/cpp_ast/builder/optimized_generator.rb",
+            "start_line": 87,
+            "end_line": 123,
+            "type": "actionable",
+            "severity": "critical",
+            "comment": "**Missing method definition: `generate_body_optimized`.**\n\nLine 116 calls `generate_body_optimized(func.body)`, but this method is not defined. This will cause a `NoMethodError` when generating functions with bodies.\n\n\n\nDefine the missing method or delegate to the superclass for body generation.",
+            "codegen_instructions": "In experimental/cpp_ast_v3/lib/cpp_ast/builder/optimized_generator.rb around lines 87–123, the method generate_function_optimized calls generate_body_optimized but that method is missing; add a generate_body_optimized(body) method in this class that either delegates to the existing body-generation implementation (call the superclass body-generation method or the class's generate_body method) or implements the same logic as the non-optimized body generator (serialize statements, handle indentation/braces and return a string); ensure it accepts the body node and returns the body source as a string to avoid NoMethodError.",
+            "suggestions": [],
+            "analysis": null,
+            "tool_outputs": {}
+          },
+          {
+            "filename": "experimental/cpp_ast_v3/lib/cpp_ast/builder/optimized_generator.rb",
+            "start_line": 58,
+            "end_line": 85,
+            "type": "actionable",
+            "severity": "critical",
+            "comment": "**Template cache logic is broken - returns incorrect class names.**\n\nThe template cache has two critical issues:\n\n1. **Line 62 vs Line 66 mismatch**: Line 66 builds the template using the actual `klass.name`, but line 62 attempts to replace `\"CLASS_NAME\"` placeholder that was never inserted. The `gsub` will never match, causing cached templates to return the wrong class name for subsequent classes.\n\n2. **Insufficient cache key**: The key `\"#{klass.name}_#{klass.members.length}\"` (line 60) doesn't account for member types or content. Two classes with the same name and member count but different members will incorrectly share a cache entry.\n\n\n\nApply this diff to fix the placeholder issue:\n\n```diff\n       @string_builder.clear\n-      @string_builder.append(\"class #{klass.name}\")\n+      @string_builder.append(\"class CLASS_NAME\")\n```\n\nAdditionally, reconsider whether template caching provides value given the complexity of properly keying by all relevant class attributes (members, inheritance, etc.).",
+            "codegen_instructions": "In experimental/cpp_ast_v3/lib/cpp_ast/builder/optimized_generator.rb around lines 58 to 85, the template cache logic is broken: the cached template never contains the \"CLASS_NAME\" placeholder (so gsub at line 62 never matches) and the cache key only uses klass.name and member count so different classes collide. Fix by building and caching a template that includes a \"CLASS_NAME\" placeholder instead of inserting klass.name directly when composing the template, then on cache hit perform gsub(\"CLASS_NAME\", klass.name) to produce the final text; also expand the cache key to include deterministic summaries of members and inheritance (for example a joined string of member signatures and inheritance) so templates are only reused for truly identical class shapes, or remove caching if accurate keying is impractical.",
+            "suggestions": [
+              "      def generate_class_optimized(klass)\n        # Use template cache for common class patterns\n        template_key = \"#{klass.name}_#{klass.members.length}\"\n        if @template_cache[template_key]\n          return @template_cache[template_key].gsub(\"CLASS_NAME\", klass.name)\n        end\n        \n        @string_builder.clear\n        @string_builder.append(\"class CLASS_NAME\")\n        \n        if klass.inheritance && !klass.inheritance.empty?\n          @string_builder.append(\" : \")\n          @string_builder.append(klass.inheritance.join(\", \"))\n        end\n        \n        @string_builder.append(\" {\\n\")\n        \n        # Generate members with optimized formatting\n        klass.members.each do |member|\n          @string_builder.append(generate_member_optimized(member))\n        end\n        \n        @string_builder.append(\"};\\n\")\n        \n        result = @string_builder.to_s\n        @template_cache[template_key] = result\n        result\n      end"
+            ],
+            "analysis": null,
+            "tool_outputs": {}
+          }
+        ],
+        "comment_count": 7
+      },
+      {
+        "filename": "experimental/cpp_ast_v3/test/aurora/enhanced_error_handling_test.rb",
+        "comments": [
+          {
+            "filename": "experimental/cpp_ast_v3/test/aurora/enhanced_error_handling_test.rb",
+            "start_line": 108,
+            "end_line": 123,
+            "type": "actionable",
+            "severity": "major",
+            "comment": "**Test doesn't validate actual parser behavior.**\n\nThe test defines source code but never parses it, then manually creates a `ScopeError`. This only validates error formatting, not actual scope checking behavior.\n\nEither:\n- Remove the unused source and rename to `test_scope_error_formatting`\n- Or parse the source and verify that the parser detects the undefined variable",
+            "codegen_instructions": "In experimental/cpp_ast_v3/test/aurora/enhanced_error_handling_test.rb around lines 108–123 the test defines a source string but never parses it and instead manually constructs a ScopeError, so it only validates formatting not parser behavior; either remove the unused source and rename the test to test_scope_error_formatting (and keep assertions that formatted_message contains the expected strings), or actually exercise the parser by parsing the source and asserting that the parser raises an Aurora::ScopeError for the undefined variable and that the raised error.formatted_message contains \"Undefined variable\", \"💡 Suggestion:\", and \"📦 This is a scope error\".",
+            "suggestions": [],
+            "analysis": null,
+            "tool_outputs": {}
+          },
+          {
+            "filename": "experimental/cpp_ast_v3/test/aurora/enhanced_error_handling_test.rb",
+            "start_line": 86,
+            "end_line": 106,
+            "type": "actionable",
+            "severity": "major",
+            "comment": "**Test doesn't validate actual parser behavior.**\n\nThe test calls `Aurora.parse(source)` but ignores the result, then manually creates a `TypeError` to test formatting. This doesn't verify that the parser actually detects and reports type errors.\n\nEither:\n- Remove the unused parse call and rename the test to `test_type_error_formatting`\n- Or actually test that parsing the provided source generates the expected type error\n\n\n\nIf testing actual type error detection, apply this pattern:\n\n```diff\n-    # This should compile but we can test the error handling framework\n-    begin\n-      Aurora.parse(source)\n-    rescue => e\n-      # Test that we can create enhanced type errors\n-      error = Aurora::TypeError.new(\n-        \"Type mismatch: expected i32, got string\",\n-        location: \"line 1, column 20\",\n-        suggestion: \"Use a number instead of a string\"\n-      )\n-      \n-      assert_includes error.formatted_message, \"Type mismatch\"\n-      assert_includes error.formatted_message, \"💡 Suggestion:\"\n-      assert_includes error.formatted_message, \"🔍 This is a type error\"\n-    end\n+    error = assert_raises(Aurora::TypeError) do\n+      Aurora.type_check(Aurora.parse(source))\n+    end\n+    \n+    assert_includes error.formatted_message, \"Type mismatch\"\n+    assert_includes error.formatted_message, \"💡 Suggestion:\"\n+    assert_includes error.formatted_message, \"🔍 This is a type error\"\n```",
+            "codegen_instructions": "In experimental/cpp_ast_v3/test/aurora/enhanced_error_handling_test.rb around lines 86 to 106, the test calls Aurora.parse(source) but then ignores the parser output and manually constructs a TypeError, so it doesn't verify the parser actually reports type errors; either remove the parse call and rename the test to test_type_error_formatting, or (preferred) change the test to assert that Aurora.parse(source) raises Aurora::TypeError and capture that raised error, then run the existing assertions against that captured error.formatted_message to validate both detection and formatting.",
+            "suggestions": [],
+            "analysis": null,
+            "tool_outputs": {}
+          },
+          {
+            "filename": "experimental/cpp_ast_v3/test/aurora/enhanced_error_handling_test.rb",
+            "start_line": 49,
+            "end_line": 67,
+            "type": "actionable",
+            "severity": "major",
+            "comment": "**Clarify expected behavior and test logic.**\n\nThe test has ambiguous control flow with two possible paths (success at line 60 vs. exception at line 63), but doesn't clearly specify which should occur. This makes the test non-deterministic.\n\nDecide whether `ErrorRecoveryParser.parse` should:\n- Return a partial AST with errors stored separately (test the return value)\n- Raise `MultipleErrors` after recovery (test only in rescue block)\n\n\n\nConsider restructuring to explicitly test the expected behavior:\n\n```diff\n-    begin\n-      result = parser.parse\n-      # Should still parse the working function despite the error\n-      assert result.declarations.any? { |decl| decl.name == \"working\" }\n-    rescue Aurora::Parser::MultipleErrors => e\n-      # Should have errors but still parse some declarations\n-      assert e.errors.length > 0\n-    end\n+    # Option 1: If it should raise with partial results\n+    error = assert_raises(Aurora::Parser::MultipleErrors) do\n+      parser.parse\n+    end\n+    assert error.errors.length > 0\n+    assert error.partial_result&.declarations&.any? { |decl| decl.name == \"working\" }\n+\n+    # Option 2: If it should return partial results\n+    result = parser.parse\n+    assert result.declarations.any? { |decl| decl.name == \"working\" }\n+    assert result.errors.length > 0\n```",
+            "codegen_instructions": "In experimental/cpp_ast_v3/test/aurora/enhanced_error_handling_test.rb around lines 49–67, the test is ambiguous because it allows two mutually exclusive outcomes (successful return vs rescue raising MultipleErrors); pick one expected behavior and make the test explicit: either (A) expect parse to return a partial AST and surface errors separately — remove the rescue, call result = parser.parse, assert that result.declarations contains \"working\" and also assert that parser or result exposes collected errors (length > 0), or (B) expect parse to raise MultipleErrors after recovery — wrap the parse call in assert_raises(Aurora::Parser::MultipleErrors) and inside the rescue/assert block verify the exception.errors length > 0 and that the parsed declarations included \"working\"; then remove the alternate branch so the control flow is deterministic.",
+            "suggestions": [],
+            "analysis": null,
+            "tool_outputs": {}
+          }
+        ],
+        "comment_count": 3
+      },
+      {
+        "filename": "experimental/cpp_ast_v3/test/integration/optimization_integration_test.rb",
+        "comments": [
+          {
+            "filename": "experimental/cpp_ast_v3/test/integration/optimization_integration_test.rb",
+            "start_line": 79,
+            "end_line": 92,
+            "type": "actionable",
+            "severity": "major",
+            "comment": "**Meaningless assertion doesn't verify memory efficiency.**\n\nThe `assert true` on line 91 always passes and doesn't validate anything. The test only verifies that no exceptions are raised during parsing, which is already implicitly tested by the absence of test failures. Consider either:\n\n1. Measuring actual memory usage before/after and asserting it stays within bounds, or\n2. Removing this test if memory leak detection is better handled by external profiling tools\n\n\n\nExample improvement:\n\n```ruby\ndef test_memory_efficiency\n  source = <<~AURORA\n    fn test() -> i32 = 42\n  AURORA\n  \n  parser = Aurora::Parser::OptimizedParser.new(source)\n  \n  # Measure memory before and after\n  GC.start\n  before = GC.stat(:total_allocated_objects)\n  \n  100.times { parser.parse }\n  \n  GC.start\n  after = GC.stat(:total_allocated_objects)\n  \n  # Assert reasonable memory growth\n  growth = after - before\n  assert growth < 100_000, \"Memory allocation should be reasonable: #{growth} objects allocated\"\nend\n```",
+            "codegen_instructions": "",
+            "suggestions": [],
+            "analysis": null,
+            "tool_outputs": {}
+          },
+          {
+            "filename": "experimental/cpp_ast_v3/test/integration/optimization_integration_test.rb",
+            "start_line": 94,
+            "end_line": 105,
+            "type": "actionable",
+            "severity": "critical",
+            "comment": "**Missing require statement for Benchmark.**\n\nThe test uses `Benchmark.measure` on line 101, but there's no `require 'benchmark'` statement in the file. This will cause a `NameError` when the test runs.\n\n\n\nAdd this require at the top of the file:\n\n```ruby\n# frozen_string_literal: true\n\nrequire_relative \"../test_helper\"\nrequire \"benchmark\"\n```",
+            "codegen_instructions": "In experimental/cpp_ast_v3/test/integration/optimization_integration_test.rb around lines 94 to 105, the test calls Benchmark.measure but the file is missing require 'benchmark'; add a require \"benchmark\" near the top of the file (alongside the existing requires like require_relative \"../test_helper\") so Benchmark is available when the test runs and the NameError is avoided.",
+            "suggestions": [],
+            "analysis": null,
+            "tool_outputs": {}
+          },
+          {
+            "filename": "experimental/cpp_ast_v3/test/integration/optimization_integration_test.rb",
+            "start_line": 25,
+            "end_line": 42,
+            "type": "actionable",
+            "severity": "major",
+            "comment": "**Test doesn't verify generator parity.**\n\nThe `original_cpp` variable (line 36) is generated but never used. The test only validates that `optimized_cpp` contains certain strings, but doesn't compare it against `original_cpp` to ensure parity between the two generators. This means the test could pass even if the optimized generator produces completely different output.\n\n\n\nApply this diff to actually verify parity:\n\n```diff\n-    # Both should produce equivalent C++ code\n+    # Both should produce equivalent C++ code\n+    assert_equal original_cpp, optimized_cpp, \"Generators should produce identical output\"\n+    # Additional sanity checks\n     assert_includes optimized_cpp, \"int add(int a, int b)\"\n     assert_includes optimized_cpp, \"return a + b\"\n```",
+            "codegen_instructions": "experimental/cpp_ast_v3/test/integration/optimization_integration_test.rb lines 25-42: the test generates original_cpp but never compares it to optimized_cpp; update the test to assert parity by comparing the two outputs (preferably after normalizing whitespace/newlines to avoid insignificant formatting differences) — replace or add an assertion that original_cpp and optimized_cpp are equivalent (e.g., assert_equal normalized(original_cpp), normalized(optimized_cpp)) while keeping the existing checks for expected snippets.",
+            "suggestions": [],
+            "analysis": null,
+            "tool_outputs": {}
+          }
+        ],
+        "comment_count": 3
+      },
+      {
+        "filename": "experimental/cpp_ast_v3/test/performance/performance_benchmark.rb",
+        "comments": [
+          {
+            "filename": "experimental/cpp_ast_v3/test/performance/performance_benchmark.rb",
+            "start_line": 48,
+            "end_line": 50,
+            "type": "actionable",
+            "severity": "minor",
+            "comment": "**Guard against potential division by zero.**\n\nSame issue as in `test_parser_performance`: if `optimized_time.real` is zero, line 50 will raise a `ZeroDivisionError`.\n\n\n\nApply this diff:\n\n```diff\n puts \"Original Generator: #{original_time.real.round(3)}s\"\n puts \"Optimized Generator: #{optimized_time.real.round(3)}s\"\n-puts \"Speedup: #{(original_time.real / optimized_time.real).round(2)}x\"\n+speedup = optimized_time.real > 0 ? (original_time.real / optimized_time.real).round(2) : \"N/A\"\n+puts \"Speedup: #{speedup}x\"\n```",
+            "codegen_instructions": "In experimental/cpp_ast_v3/test/performance/performance_benchmark.rb around lines 48 to 50, the Speedup calculation can raise ZeroDivisionError if optimized_time.real is zero; guard by checking if optimized_time.real.nil? or zero before dividing and print a sensible fallback (e.g., \"Infinity\" or \"N/A\") or handle with a conditional: if optimized_time.real.to_f > 0 then compute and format the speedup else print the fallback message. Ensure numeric conversion (to_f) to avoid integer division issues and keep output formatting consistent with the other puts lines.",
+            "suggestions": [
+              "    puts \"Original Generator: #{original_time.real.round(3)}s\"\n    puts \"Optimized Generator: #{optimized_time.real.round(3)}s\"\n    speedup = optimized_time.real > 0 ? (original_time.real / optimized_time.real).round(2) : \"N/A\"\n    puts \"Speedup: #{speedup}x\""
+            ],
+            "analysis": null,
+            "tool_outputs": {}
+          },
+          {
+            "filename": "experimental/cpp_ast_v3/test/performance/performance_benchmark.rb",
+            "start_line": 26,
+            "end_line": 28,
+            "type": "actionable",
+            "severity": "minor",
+            "comment": "**Guard against potential division by zero.**\n\nIf `optimized_time.real` is zero (theoretically possible for very fast operations), line 28 will raise a `ZeroDivisionError`.\n\n\n\nApply this diff to add a guard:\n\n```diff\n puts \"Original Parser: #{original_time.real.round(3)}s\"\n puts \"Optimized Parser: #{optimized_time.real.round(3)}s\"\n-puts \"Speedup: #{(original_time.real / optimized_time.real).round(2)}x\"\n+speedup = optimized_time.real > 0 ? (original_time.real / optimized_time.real).round(2) : \"N/A\"\n+puts \"Speedup: #{speedup}x\"\n```",
+            "codegen_instructions": "In experimental/cpp_ast_v3/test/performance/performance_benchmark.rb around lines 26 to 28, the speedup calculation divides by optimized_time.real which can be zero and raise ZeroDivisionError; update the code to guard against zero by checking if optimized_time.real is zero (or extremely close to zero) and, if so, print a safe alternative (e.g., \"Infinity\", \"N/A\" or a message indicating the optimized time was 0s) instead of performing the division; otherwise compute and print the rounded speedup as before.",
+            "suggestions": [
+              "    puts \"Original Parser: #{original_time.real.round(3)}s\"\n    puts \"Optimized Parser: #{optimized_time.real.round(3)}s\"\n    speedup = optimized_time.real > 0 ? (original_time.real / optimized_time.real).round(2) : \"N/A\"\n    puts \"Speedup: #{speedup}x\""
+            ],
+            "analysis": null,
+            "tool_outputs": {}
+          },
+          {
+            "filename": "experimental/cpp_ast_v3/test/performance/performance_benchmark.rb",
+            "start_line": 117,
+            "end_line": 119,
+            "type": "actionable",
+            "severity": "minor",
+            "comment": "**Guard against potential division by zero.**\n\nIf `builder_time.real` is zero, line 119 will raise a `ZeroDivisionError`.\n\n\n\nApply this diff:\n\n```diff\n puts \"Regular String Concatenation: #{regular_time.real.round(4)}s\"\n puts \"StringBuilder: #{builder_time.real.round(4)}s\"\n-puts \"StringBuilder Speedup: #{(regular_time.real / builder_time.real).round(2)}x\"\n+speedup = builder_time.real > 0 ? (regular_time.real / builder_time.real).round(2) : \"N/A\"\n+puts \"StringBuilder Speedup: #{speedup}x\"\n```",
+            "codegen_instructions": "In experimental/cpp_ast_v3/test/performance/performance_benchmark.rb around lines 117 to 119, the division (regular_time.real / builder_time.real) can raise ZeroDivisionError if builder_time.real is zero; prevent this by checking builder_time.real (or abs(builder_time.real) < Float::EPSILON) before dividing and print a safe fallback (e.g., \"N/A\" or \"Infinity\") when zero/near-zero, otherwise perform the division and round as before so the benchmark output never triggers an exception.",
+            "suggestions": [
+              "    puts \"Regular String Concatenation: #{regular_time.real.round(4)}s\"\n    puts \"StringBuilder: #{builder_time.real.round(4)}s\"\n    speedup = builder_time.real > 0 ? (regular_time.real / builder_time.real).round(2) : \"N/A\"\n    puts \"StringBuilder Speedup: #{speedup}x\""
+            ],
+            "analysis": null,
+            "tool_outputs": {}
+          },
+          {
+            "filename": "experimental/cpp_ast_v3/test/performance/performance_benchmark.rb",
+            "start_line": 90,
+            "end_line": 92,
+            "type": "actionable",
+            "severity": "minor",
+            "comment": "**Guard against potential division by zero.**\n\nIf `second_time.real` is zero (possible for cached results), line 92 will raise a `ZeroDivisionError`.\n\n\n\nApply this diff:\n\n```diff\n puts \"First Parse: #{first_time.real.round(4)}s\"\n puts \"Second Parse: #{second_time.real.round(4)}s\"\n-puts \"Cache Speedup: #{(first_time.real / second_time.real).round(2)}x\"\n+speedup = second_time.real > 0 ? (first_time.real / second_time.real).round(2) : \"N/A\"\n+puts \"Cache Speedup: #{speedup}x\"\n```",
+            "codegen_instructions": "In experimental/cpp_ast_v3/test/performance/performance_benchmark.rb around lines 90 to 92, the calculation of cache speedup can raise ZeroDivisionError when second_time.real is zero; guard against this by checking if second_time.real is zero (or <= 0) before dividing and print a safe alternative (e.g. \"Infinity\", \"N/A\", or use Float::INFINITY) or compute the ratio only when second_time.real > 0, otherwise output the chosen fallback string/value.",
+            "suggestions": [
+              "    puts \"First Parse: #{first_time.real.round(4)}s\"\n    puts \"Second Parse: #{second_time.real.round(4)}s\"\n    speedup = second_time.real > 0 ? (first_time.real / second_time.real).round(2) : \"N/A\"\n    puts \"Cache Speedup: #{speedup}x\""
+            ],
+            "analysis": null,
+            "tool_outputs": {}
+          },
+          {
+            "filename": "experimental/cpp_ast_v3/test/performance/performance_benchmark.rb",
+            "start_line": 71,
+            "end_line": 73,
+            "type": "actionable",
+            "severity": "minor",
+            "comment": "**Guard against potential division by zero.**\n\nIf `original_total` is zero, line 73 will raise a `ZeroDivisionError`.\n\n\n\nApply this diff:\n\n```diff\n puts \"Original Parser Memory: #{format_bytes(original_total)}\"\n puts \"Optimized Parser Memory: #{format_bytes(optimized_total)}\"\n-puts \"Memory Reduction: #{((original_total - optimized_total) / original_total.to_f * 100).round(1)}%\"\n+if original_total > 0\n+  reduction = ((original_total - optimized_total) / original_total.to_f * 100).round(1)\n+  puts \"Memory Reduction: #{reduction}%\"\n+else\n+  puts \"Memory Reduction: N/A\"\n+end\n```",
+            "codegen_instructions": "In experimental/cpp_ast_v3/test/performance/performance_benchmark.rb around lines 71 to 73, the memory reduction calculation can raise ZeroDivisionError when original_total is zero; modify the code to check if original_total.zero? and handle that case (e.g., set reduction to 0.0 or \"N/A\") before performing the division, then print the Memory Reduction using the computed safe value.",
+            "suggestions": [],
+            "analysis": null,
+            "tool_outputs": {}
+          }
+        ],
+        "comment_count": 5
+      },
+      {
+        "filename": "experimental/cpp_ast_v3/test/performance/simple_benchmark.rb",
+        "comments": [
+          {
+            "filename": "experimental/cpp_ast_v3/test/performance/simple_benchmark.rb",
+            "start_line": 88,
+            "end_line": 88,
+            "type": "actionable",
+            "severity": "minor",
+            "comment": "**Hard-coded time thresholds cause brittle tests.**\n\nSame issue: `parse_time.real < 2.0` is brittle. Make it configurable or remove it.",
+            "codegen_instructions": "In experimental/cpp_ast_v3/test/performance/simple_benchmark.rb around line 88, the assertion uses a hard-coded threshold `parse_time.real < 2.0` which makes the test brittle; change it to a configurable threshold (e.g., read a numeric ENV var like PARSE_TIME_LIMIT or a constant at top of the file) or remove the timing assert entirely; if making configurable, parse ENV['PARSE_TIME_LIMIT'] to a Float with a sensible default (e.g., 2.0) and use that variable in the assertion so CI or different machines can override the limit.",
+            "suggestions": [],
+            "analysis": null,
+            "tool_outputs": {}
+          },
+          {
+            "filename": "experimental/cpp_ast_v3/test/performance/simple_benchmark.rb",
+            "start_line": 54,
+            "end_line": 54,
+            "type": "actionable",
+            "severity": "minor",
+            "comment": "**Hard-coded time thresholds cause brittle tests.**\n\nThe assertion `parse_time.real < 1.0` will fail on slower machines, overloaded CI systems, or when running under a debugger. Consider making the threshold configurable via an environment variable, significantly increasing it, or removing the assertion entirely if this is purely informational benchmarking.",
+            "codegen_instructions": "In experimental/cpp_ast_v3/test/performance/simple_benchmark.rb around line 54, the hard-coded assertion assert parse_time.real < 1.0 is brittle; replace it with a configurable threshold read from an environment variable (e.g. PARSE_TIME_THRESHOLD) with a sensible, larger default (for example 5.0), parse the ENV value to a Float with fallback and validation, and use that variable in the assertion (or make the check conditional/skip if an env flag indicates \"informational only\"); ensure non-numeric or missing ENV values fall back to the default so the test remains stable across machines.",
+            "suggestions": [],
+            "analysis": null,
+            "tool_outputs": {}
+          },
+          {
+            "filename": "experimental/cpp_ast_v3/test/performance/simple_benchmark.rb",
+            "start_line": 72,
+            "end_line": 72,
+            "type": "actionable",
+            "severity": "minor",
+            "comment": "**Hard-coded time thresholds cause brittle tests.**\n\nSame issue as the parsing test: `gen_time.real < 1.0` is brittle and can cause flaky failures. Consider making it configurable or removing it.",
+            "codegen_instructions": "In experimental/cpp_ast_v3/test/performance/simple_benchmark.rb around line 72, the test uses a brittle hard-coded threshold `gen_time.real < 1.0`; make the threshold configurable and the assertion message informative: read a float threshold from an environment variable (e.g. ENV['GEN_TIME_THRESHOLD']) with a sensible default (1.0), optionally allow skipping via an env flag for CI or slow-run scenarios, then assert using that threshold and include both the threshold and actual time in the failure message.",
+            "suggestions": [],
+            "analysis": null,
+            "tool_outputs": {}
+          },
+          {
+            "filename": "experimental/cpp_ast_v3/test/performance/simple_benchmark.rb",
+            "start_line": 32,
+            "end_line": 32,
+            "type": "actionable",
+            "severity": "minor",
+            "comment": "**Performance assertions can cause flaky tests.**\n\nAsserting that one approach is faster than another can fail non-deterministically due to system load, garbage collection, or other environmental factors. Consider removing this assertion or using a more lenient approach (e.g., allowing a margin or running multiple samples).",
+            "codegen_instructions": "In experimental/cpp_ast_v3/test/performance/simple_benchmark.rb around line 32, the test currently asserts builder_time.real < regular_time.real which is flaky; change it to either remove the strict performance assertion or make it robust by running multiple iterations for each approach, taking the median (or mean after outlier removal), and asserting with a tolerance (e.g., builder_time_median <= regular_time_median * 0.90) or require a statistically significant difference; alternatively simply log the times and avoid a hard pass/fail on performance.",
+            "suggestions": [],
+            "analysis": null,
+            "tool_outputs": {}
+          },
+          {
+            "filename": "experimental/cpp_ast_v3/test/performance/simple_benchmark.rb",
+            "start_line": 100,
+            "end_line": 106,
+            "type": "actionable",
+            "severity": "major",
+            "comment": "**Use `<<` instead of `+=` for string concatenation in loop.**\n\nThis method uses `+=` for repeated string concatenation, which creates new string objects on each iteration. This is inefficient and contradicts the lesson from `test_string_builder_performance`. Use `<<` for better performance.\n\nApply this diff:\n\n```diff\n     function_count.times do |i|\n-      source += <<~AURORA\n+      source << <<~AURORA\n         fn function_#{i}(x: i32) -> i32 =\n           if x > 0 then x * 2\n           else 0\n       AURORA\n     end\n```",
+            "codegen_instructions": "In experimental/cpp_ast_v3/test/performance/simple_benchmark.rb around lines 100 to 106, the loop uses `source += <<~AURORA` which repeatedly reallocates strings; change the concatenation to use the mutating append operator `<<` (i.e. `source << <<~AURORA`) inside the loop so the string is appended in place, preserving the heredoc content and improving performance.",
+            "suggestions": [],
+            "analysis": null,
+            "tool_outputs": {}
+          },
+          {
+            "filename": "experimental/cpp_ast_v3/test/performance/simple_benchmark.rb",
+            "start_line": 30,
+            "end_line": 30,
+            "type": "actionable",
+            "severity": "minor",
+            "comment": "**Guard against division by zero.**\n\nIf `builder_time.real` is extremely small or zero (possible on very fast machines or with timing precision issues), this will raise a `ZeroDivisionError`.\n\nApply this diff to add a guard:\n\n```diff\n-    puts \"StringBuilder Speedup: #{(regular_time.real / builder_time.real).round(2)}x\"\n+    speedup = builder_time.real > 0 ? (regular_time.real / builder_time.real).round(2) : \"N/A\"\n+    puts \"StringBuilder Speedup: #{speedup}x\"\n```",
+            "codegen_instructions": "In experimental/cpp_ast_v3/test/performance/simple_benchmark.rb around line 30, the print line divides by builder_time.real which can be zero or extremely small and cause ZeroDivisionError; guard by testing builder_time.real (e.g. nil? or <= 0.0 or < 1e-12) and if so set the speedup to a safe fallback like Float::INFINITY or \"N/A\", otherwise compute (regular_time.real / builder_time.real).round(2); then use that speedup value in the puts call so no division by zero occurs.",
+            "suggestions": [
+              "    speedup = builder_time.real > 0 ? (regular_time.real / builder_time.real).round(2) : \"N/A\"\n    puts \"StringBuilder Speedup: #{speedup}x\""
+            ],
+            "analysis": null,
+            "tool_outputs": {}
+          }
+        ],
+        "comment_count": 6
+      }
+    ]
+  }
+]
