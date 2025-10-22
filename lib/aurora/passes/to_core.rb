@@ -821,7 +821,16 @@ module Aurora
         ensure_type!(right_type, "Right operand of '#{op}' has no type")
 
         case op
-        when "+", "-", "*", "%"
+        when "+"
+          # Support both numeric addition and string concatenation
+          if string_type?(left_type) && string_type?(right_type)
+            CoreIR::Builder.primitive_type("string")
+          elsif numeric_type?(left_type) && numeric_type?(right_type)
+            combine_numeric_type(left_type, right_type)
+          else
+            type_error("Cannot add #{describe_type(left_type)} and #{describe_type(right_type)}")
+          end
+        when "-", "*", "%"
           ensure_numeric_type(left_type, "left operand of '#{op}'")
           ensure_numeric_type(right_type, "right operand of '#{op}'")
           combine_numeric_type(left_type, right_type)

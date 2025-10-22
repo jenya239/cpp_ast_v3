@@ -1080,7 +1080,12 @@ module CppAst
         when Aurora::AST::BinaryOp
           left = generate_aurora_expression(expr.left)
           right = generate_aurora_expression(expr.right)
-          "#{left} #{expr.op} #{right}"
+          if expr.op == "+" && is_string_expression(expr.left) && is_string_expression(expr.right)
+            # String concatenation
+            "aurora::String(#{left}) + aurora::String(#{right})"
+          else
+            "#{left} #{expr.op} #{right}"
+          end
         else
           "0" # fallback
         end
@@ -1088,6 +1093,23 @@ module CppAst
       
       def generate_aurora_type(type)
         "// Type declaration: #{type.name}"
+      end
+      
+      private
+      
+      def is_string_expression(expr)
+        case expr
+        when Aurora::AST::StringLit
+          true
+        when Aurora::AST::VarRef
+          # TODO: Check variable type from context
+          true # Assume string for now
+        when Aurora::AST::BinaryOp
+          # Check if this is a string concatenation
+          expr.op == "+" && is_string_expression(expr.left) && is_string_expression(expr.right)
+        else
+          false
+        end
       end
     end
   end
