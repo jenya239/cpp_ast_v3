@@ -1,0 +1,82 @@
+# Aurora Standard Library - IO Module
+# Input/Output utilities
+
+module IO
+
+# Basic I/O functions (these are built-in, but we can add more)
+fn print(s: str) -> i32 = 
+  print(s)
+
+fn println(s: str) -> i32 = 
+  println(s)
+
+fn eprint(s: str) -> i32 = 
+  eprint(s)
+
+fn eprintln(s: str) -> i32 = 
+  eprintln(s)
+
+fn read_line() -> str = 
+  read_line()
+
+fn input(prompt: str) -> str = 
+  print(prompt);
+  read_line()
+
+# File operations (conceptual - would need file system support)
+fn read_file(path: str) -> str = 
+  # This would need file system support
+  ""
+
+fn write_file(path: str, content: str) -> bool = 
+  # This would need file system support
+  false
+
+fn file_exists(path: str) -> bool = 
+  # This would need file system support
+  false
+
+# Command line arguments
+fn args() -> str[] = 
+  args()
+
+fn get_arg(index: i32) -> str = 
+  let all_args = args() in
+  if index >= 0 && index < all_args.length() then all_args[index]
+  else ""
+
+fn arg_count() -> i32 = 
+  args().length()
+
+# Environment variables (conceptual)
+fn get_env(name: str) -> str = 
+  # This would need environment variable support
+  ""
+
+fn set_env(name: str, value: str) -> bool = 
+  # This would need environment variable support
+  false
+
+# Process control
+fn exit(code: i32) -> void = 
+  # This would need process control support
+  ()
+
+fn panic(message: str) -> void = 
+  eprintln("PANIC: " + message);
+  exit(1)
+
+# Utility functions
+fn debug_print(s: str) -> void = 
+  eprintln("[DEBUG] " + s)
+
+fn info_print(s: str) -> void = 
+  eprintln("[INFO] " + s)
+
+fn warn_print(s: str) -> void = 
+  eprintln("[WARN] " + s)
+
+fn error_print(s: str) -> void = 
+  eprintln("[ERROR] " + s)
+
+end

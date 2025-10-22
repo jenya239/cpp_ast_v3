@@ -1,0 +1,137 @@
+# Aurora Standard Library - Option Module
+# Option type utilities and operations
+
+module Option
+
+# Option type definition
+type Option<T> = Some(T) | None
+
+# Basic operations
+fn is_some<T>(opt: Option<T>) -> bool = 
+  match opt
+    | Some(_) => true
+    | None => false
+
+fn is_none<T>(opt: Option<T>) -> bool = 
+  match opt
+    | Some(_) => false
+    | None => true
+
+fn unwrap<T>(opt: Option<T>) -> T = 
+  match opt
+    | Some(value) => value
+    | None => panic("Called unwrap on None")
+
+fn unwrap_or<T>(opt: Option<T>, default: T) -> T = 
+  match opt
+    | Some(value) => value
+    | None => default
+
+fn unwrap_or_else<T>(opt: Option<T>, f: () -> T) -> T = 
+  match opt
+    | Some(value) => value
+    | None => f()
+
+# Transformations
+fn map<T, U>(opt: Option<T>, f: T -> U) -> Option<U> = 
+  match opt
+    | Some(value) => Some(f(value))
+    | None => None
+
+fn map_or<T, U>(opt: Option<T>, default: U, f: T -> U) -> U = 
+  match opt
+    | Some(value) => f(value)
+    | None => default
+
+fn map_or_else<T, U>(opt: Option<T>, default: () -> U, f: T -> U) -> U = 
+  match opt
+    | Some(value) => f(value)
+    | None => default()
+
+fn and_then<T, U>(opt: Option<T>, f: T -> Option<U>) -> Option<U> = 
+  match opt
+    | Some(value) => f(value)
+    | None => None
+
+fn or<T>(opt: Option<T>, other: Option<T>) -> Option<T> = 
+  match opt
+    | Some(value) => Some(value)
+    | None => other
+
+fn or_else<T>(opt: Option<T>, f: () -> Option<T>) -> Option<T> = 
+  match opt
+    | Some(value) => Some(value)
+    | None => f()
+
+# Filtering
+fn filter<T>(opt: Option<T>, pred: T -> bool) -> Option<T> = 
+  match opt
+    | Some(value) => if pred(value) then Some(value) else None
+    | None => None
+
+# Conversion
+fn to_array<T>(opt: Option<T>) -> T[] = 
+  match opt
+    | Some(value) => [value]
+    | None => []
+
+fn from_array<T>(arr: T[]) -> Option<T> = 
+  if arr.is_empty() then None
+  else Some(arr[0])
+
+# Utility functions
+fn expect<T>(opt: Option<T>, message: str) -> T = 
+  match opt
+    | Some(value) => value
+    | None => panic(message)
+
+fn zip<T, U>(opt1: Option<T>, opt2: Option<U>) -> Option<(T, U)> = 
+  match (opt1, opt2)
+    | (Some(a), Some(b)) => Some((a, b))
+    | _ => None
+
+fn zip_with<T, U, V>(opt1: Option<T>, opt2: Option<U>, f: (T, U) -> V) -> Option<V> = 
+  match (opt1, opt2)
+    | (Some(a), Some(b)) => Some(f(a, b))
+    | _ => None
+
+# Result type for error handling
+type Result<T, E> = Ok(T) | Err(E)
+
+fn ok<T, E>(value: T) -> Result<T, E> = 
+  Ok(value)
+
+fn err<T, E>(error: E) -> Result<T, E> = 
+  Err(error)
+
+fn is_ok<T, E>(result: Result<T, E>) -> bool = 
+  match result
+    | Ok(_) => true
+    | Err(_) => false
+
+fn is_err<T, E>(result: Result<T, E>) -> bool = 
+  match result
+    | Ok(_) => false
+    | Err(_) => true
+
+fn unwrap_result<T, E>(result: Result<T, E>) -> T = 
+  match result
+    | Ok(value) => value
+    | Err(_) => panic("Called unwrap on Err")
+
+fn unwrap_or_result<T, E>(result: Result<T, E>, default: T) -> T = 
+  match result
+    | Ok(value) => value
+    | Err(_) => default
+
+fn map_result<T, U, E>(result: Result<T, E>, f: T -> U) -> Result<U, E> = 
+  match result
+    | Ok(value) => Ok(f(value))
+    | Err(error) => Err(error)
+
+fn map_err<T, E, F>(result: Result<T, E>, f: E -> F) -> Result<T, F> = 
+  match result
+    | Ok(value) => Ok(value)
+    | Err(error) => Err(f(error))
+
+end

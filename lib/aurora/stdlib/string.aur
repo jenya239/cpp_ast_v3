@@ -1,0 +1,144 @@
+# Aurora Standard Library - String Module
+# String manipulation and utilities
+
+module String
+
+# Basic string operations
+fn length(s: str) -> i32 = 
+  s.length()
+
+fn is_empty(s: str) -> bool = 
+  s.length() == 0
+
+fn trim(s: str) -> str = 
+  s.trim()
+
+fn trim_start(s: str) -> str = 
+  s.trim_start()
+
+fn trim_end(s: str) -> str = 
+  s.trim_end()
+
+fn upper(s: str) -> str = 
+  s.upper()
+
+fn lower(s: str) -> str = 
+  s.lower()
+
+# String splitting and joining
+fn split(s: str, delimiter: str) -> str[] = 
+  s.split(delimiter)
+
+fn join(strings: str[], delimiter: str) -> str = 
+  join_helper(strings, delimiter, "", 0)
+
+fn join_helper(strings: str[], delimiter: str, result: str, index: i32) -> str = 
+  if index >= strings.length() then result
+  else 
+    let new_result = if index == 0 then strings[index]
+                     else result + delimiter + strings[index] in
+    join_helper(strings, delimiter, new_result, index + 1)
+
+# String searching
+fn contains(s: str, substring: str) -> bool = 
+  contains_helper(s, substring, 0)
+
+fn contains_helper(s: str, substring: str, start: i32) -> bool = 
+  if start + substring.length() > s.length() then false
+  else if s[start..start + substring.length() - 1] == substring then true
+  else contains_helper(s, substring, start + 1)
+
+fn starts_with(s: str, prefix: str) -> bool = 
+  if prefix.length() > s.length() then false
+  else s[0..prefix.length() - 1] == prefix
+
+fn ends_with(s: str, suffix: str) -> bool = 
+  if suffix.length() > s.length() then false
+  else s[s.length() - suffix.length()..s.length() - 1] == suffix
+
+# String conversion
+fn to_string<T>(value: T) -> str = 
+  value.to_string()
+
+fn to_i32(s: str) -> i32 = 
+  # Simple implementation - in real stdlib would handle errors properly
+  parse_i32_helper(s, 0, 0, false)
+
+fn parse_i32_helper(s: str, index: i32, result: i32, negative: bool) -> i32 = 
+  if index >= s.length() then 
+    if negative then -result else result
+  else 
+    let char = s[index] in
+    if char == "-" then parse_i32_helper(s, index + 1, result, true)
+    else if char >= "0" && char <= "9" then 
+      let digit = char_to_digit(char) in
+      parse_i32_helper(s, index + 1, result * 10 + digit, negative)
+    else result
+
+fn char_to_digit(c: str) -> i32 = 
+  # Simple implementation
+  if c == "0" then 0
+  else if c == "1" then 1
+  else if c == "2" then 2
+  else if c == "3" then 3
+  else if c == "4" then 4
+  else if c == "5" then 5
+  else if c == "6" then 6
+  else if c == "7" then 7
+  else if c == "8" then 8
+  else if c == "9" then 9
+  else 0
+
+fn to_f32(s: str) -> f32 = 
+  # Simple implementation - in real stdlib would handle errors properly
+  parse_f32_helper(s, 0, 0.0, 0.0, false, false)
+
+fn parse_f32_helper(s: str, index: i32, result: f32, decimal: f32, negative: bool, in_decimal: bool) -> f32 = 
+  if index >= s.length() then 
+    if negative then -result else result
+  else 
+    let char = s[index] in
+    if char == "-" then parse_f32_helper(s, index + 1, result, decimal, true, in_decimal)
+    else if char == "." then parse_f32_helper(s, index + 1, result, decimal, negative, true)
+    else if char >= "0" && char <= "9" then 
+      let digit = char_to_digit(char) in
+      if in_decimal then 
+        let new_decimal = decimal + 1.0 in
+        parse_f32_helper(s, index + 1, result + digit / pow(10.0, new_decimal), new_decimal, negative, in_decimal)
+      else 
+        parse_f32_helper(s, index + 1, result * 10.0 + digit, decimal, negative, in_decimal)
+    else result
+
+# String formatting
+fn format(template: str, args: str[]) -> str = 
+  format_helper(template, args, 0, 0, "")
+
+fn format_helper(template: str, args: str[], template_index: i32, arg_index: i32, result: str) -> str = 
+  if template_index >= template.length() then result
+  else 
+    let char = template[template_index] in
+    if char == "{" then 
+      # Look for closing brace
+      let end_brace = find_closing_brace(template, template_index + 1) in
+      if end_brace > template_index + 1 then 
+        # Found placeholder
+        let placeholder = template[template_index + 1..end_brace - 1] in
+        let arg_value = if placeholder == "" then 
+          if arg_index < args.length() then args[arg_index] else ""
+        else 
+          # Parse placeholder as index
+          let index = parse_i32_helper(placeholder, 0, 0, false) in
+          if index < args.length() then args[index] else ""
+        in
+        format_helper(template, args, end_brace + 1, arg_index + 1, result + arg_value)
+      else 
+        format_helper(template, args, template_index + 1, arg_index, result + char)
+    else 
+      format_helper(template, args, template_index + 1, arg_index, result + char)
+
+fn find_closing_brace(s: str, start: i32) -> i32 = 
+  if start >= s.length() then start
+  else if s[start] == "}" then start
+  else find_closing_brace(s, start + 1)
+
+end
