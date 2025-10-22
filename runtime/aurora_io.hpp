@@ -3,33 +3,29 @@
 
 #include <iostream>
 #include <cstdlib>
+#include <vector>
 #include "aurora_string.hpp"
 
+namespace aurora {
 namespace io {
 
 // Basic console output
-inline void print(const aurora::String& s) {
-    std::cout << s.as_std_string();
-}
-
-inline void println(const aurora::String& s) {
-    std::cout << s.as_std_string() << std::endl;
-}
+int print(const String& s);
+int println(const String& s);
 
 // Error output
-inline void eprint(const aurora::String& s) {
-    std::cerr << s.as_std_string();
-}
+int eprint(const String& s);
+int eprintln(const String& s);
 
-inline void eprintln(const aurora::String& s) {
-    std::cerr << s.as_std_string() << std::endl;
-}
+// I/O functions
+String read_line();
+String read_all();
 
-// Process control
-inline void exit(int code) {
-    std::exit(code);
-}
+// Command line arguments
+const std::vector<String>& args();
+void set_args(std::vector<String>&& new_args);
 
 } // namespace io
+} // namespace aurora
 
 #endif // AURORA_IO_HPP
