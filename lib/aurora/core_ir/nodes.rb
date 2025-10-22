@@ -93,9 +93,9 @@ module Aurora
     
     # Function declaration
     class Func < Node
-      attr_reader :name, :params, :ret_type, :body, :effects, :type_params
+      attr_reader :name, :params, :ret_type, :body, :effects, :type_params, :external
 
-      def initialize(name:, params:, ret_type:, body:, effects: [], type_params: [], origin: nil)
+      def initialize(name:, params:, ret_type:, body: nil, effects: [], type_params: [], external: false, origin: nil)
         super(origin: origin)
         @name = name
         @params = params  # Array of Param
@@ -103,6 +103,7 @@ module Aurora
         @body = body
         @effects = effects  # Array of :noexcept, :constexpr, etc.
         @type_params = type_params  # Array of TypeParam
+        @external = external  # Boolean - is this an external (C++) function?
       end
     end
     

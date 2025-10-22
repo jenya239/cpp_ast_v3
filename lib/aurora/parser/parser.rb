@@ -34,7 +34,7 @@ module Aurora
         if current.type == :MODULE
           module_decl = parse_module_decl
           # Skip any remaining tokens on the module line (for malformed input like module app/geom)
-          while !eof? && current.type != :FN && current.type != :TYPE && current.type != :IMPORT
+          while !eof? && current.type != :FN && current.type != :TYPE && current.type != :IMPORT && current.type != :EXTERN && current.type != :EXPORT
             @pos += 1
           end
         end
@@ -61,6 +61,15 @@ module Aurora
               declarations << type_decl
             else
               raise "Expected FN or TYPE after export, got #{current.type}"
+            end
+          when :EXTERN
+            # Parse external declaration
+            consume(:EXTERN)
+            case current.type
+            when :FN
+              declarations << parse_function(external: true)
+            else
+              raise "Expected FN after extern, got #{current.type}"
             end
           when :FN
             declarations << parse_function
@@ -182,7 +191,7 @@ module Aurora
         @tokens[@pos + offset] if @pos + offset < @tokens.length
       end
       
-      def parse_function
+      def parse_function(external: false)
         consume(:FN)
         name_token = consume(:IDENTIFIER)
         name = name_token.value
@@ -202,8 +211,12 @@ module Aurora
         consume(:ARROW)
         ret_type = parse_type
 
-        consume(:EQUAL)
-        body = parse_expression
+        # Body is optional for extern functions
+        body = nil
+        if current.type == :EQUAL
+          consume(:EQUAL)
+          body = parse_expression
+        end
 
         with_origin(name_token) do
           AST::FuncDecl.new(
@@ -211,7 +224,8 @@ module Aurora
             params: params,
             ret_type: ret_type,
             body: body,
-            type_params: type_params
+            type_params: type_params,
+            external: external
           )
         end
       end

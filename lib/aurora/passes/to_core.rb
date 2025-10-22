@@ -34,6 +34,7 @@ module Aurora
         @lambda_param_type_stack = []
         @function_return_type_stack = []
         @current_node = nil
+        @current_type_params = []  # Track type parameters of current function/type
       end
       
       def transform(ast)
@@ -130,8 +131,27 @@ module Aurora
           end
 
           ret_type = signature.ret_type
+          type_params = normalize_type_params(func.type_params)
+
+          # For external functions, skip body transformation
+          if func.external
+            return CoreIR::Func.new(
+              name: func.name,
+              params: params,
+              ret_type: ret_type,
+              body: nil,
+              effects: [],
+              type_params: type_params,
+              external: true
+            )
+          end
+
           saved_var_types = @var_types.dup
+          saved_type_params = @current_type_params
           @function_return_type_stack.push(ret_type)
+
+          # Save type parameters for constraint checking
+          @current_type_params = type_params
 
           params.each do |param|
             @var_types[param.name] = param.type
@@ -145,8 +165,6 @@ module Aurora
             type_error("function '#{func.name}' should not return a value") unless void_type?(body.type)
           end
 
-          type_params = normalize_type_params(func.type_params)
-
           CoreIR::Func.new(
             name: func.name,
             params: params,
@@ -159,6 +177,7 @@ module Aurora
       ensure
         @function_return_type_stack.pop if @function_return_type_stack.any?
         @var_types = saved_var_types if defined?(saved_var_types)
+        @current_type_params = saved_type_params if defined?(saved_type_params)
       end
       
       def normalize_type_params(params)
@@ -1169,7 +1188,12 @@ module Aurora
       end
 
       def numeric_type?(type)
-        NUMERIC_PRIMITIVES.include?(normalized_type_name(type_name(type)))
+        type_str = normalized_type_name(type_name(type))
+        return true if NUMERIC_PRIMITIVES.include?(type_str)
+
+        # Check if this is a generic type parameter with Numeric constraint
+        type_param = @current_type_params.find { |tp| tp.name == type_str }
+        type_param && type_param.constraint == "Numeric"
       end
 
       def float_type?(type)

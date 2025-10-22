@@ -109,9 +109,9 @@ module Aurora
 
     # Function declarations
     class FuncDecl < Node
-      attr_reader :name, :params, :ret_type, :body, :type_params, :exported
+      attr_reader :name, :params, :ret_type, :body, :type_params, :exported, :external
 
-      def initialize(name:, params:, ret_type:, body:, type_params: [], exported: false, origin: nil)
+      def initialize(name:, params:, ret_type:, body: nil, type_params: [], exported: false, external: false, origin: nil)
         super(origin: origin)
         @name = name
         @params = params
@@ -119,6 +119,7 @@ module Aurora
         @body = body
         @type_params = type_params  # Array of TypeParam
         @exported = exported        # Boolean - is this exported?
+        @external = external        # Boolean - is this an external (C++) function?
       end
     end
 

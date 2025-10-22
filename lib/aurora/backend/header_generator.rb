@@ -23,9 +23,10 @@ module Aurora
             # All type declarations go in header
             header_items << item
           when CoreIR::Func
-            # Function declarations go in header, definitions in implementation
+            # Function declarations go in header
             header_items << item
-            impl_items << item
+            # External functions don't need implementation
+            impl_items << item unless item.external
           end
         end
 
