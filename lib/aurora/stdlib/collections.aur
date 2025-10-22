@@ -81,5 +81,3 @@ fn bubble_pass<T>(arr: T[], start: i32, end: i32, compare: (T, T) -> i32) -> boo
       true
     else false in
     bubble_pass(arr, start + 1, end, compare) || swapped
-
-end

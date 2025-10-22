@@ -121,9 +121,17 @@ module Aurora
 
       def skip_comments
         loop do
-          break if @pos >= @source.length - 1
+          break if @pos >= @source.length
 
-          if @source[@pos] == '/' && @source[@pos + 1] == '/'
+          if @source[@pos] == '#'
+            # Skip # comment
+            @pos += 1
+            @column += 1
+            while @pos < @source.length && @source[@pos] != "\n"
+              @pos += 1
+              @column += 1
+            end
+          elsif @pos < @source.length - 1 && @source[@pos] == '/' && @source[@pos + 1] == '/'
             # Skip single-line comment (// or ///)
             @pos += 2
             @column += 2
@@ -131,7 +139,7 @@ module Aurora
               @pos += 1
               @column += 1
             end
-          elsif @source[@pos] == '/' && @source[@pos + 1] == '*'
+          elsif @pos < @source.length - 1 && @source[@pos] == '/' && @source[@pos + 1] == '*'
             # Skip block comment /* ... */
             @pos += 2
             @column += 2

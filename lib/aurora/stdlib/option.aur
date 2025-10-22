@@ -133,5 +133,3 @@ fn map_err<T, E, F>(result: Result<T, E>, f: E -> F) -> Result<T, F> =
   match result
     | Ok(value) => Ok(value)
     | Err(error) => Err(f(error))
-
-end

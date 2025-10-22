@@ -51,16 +51,24 @@ module Aurora
             # Parse exported declaration
             consume(:EXPORT)
             case current.type
+            when :EXTERN
+              # export extern fn ...
+              consume(:EXTERN)
+              if current.type == :FN
+                func = parse_function(external: true, exported: true)
+                declarations << func
+              else
+                raise "Expected FN after export extern, got #{current.type}"
+              end
             when :FN
-              func = parse_function
-              func.instance_variable_set(:@exported, true)
+              func = parse_function(exported: true)
               declarations << func
             when :TYPE
               type_decl = parse_type_decl
               type_decl.instance_variable_set(:@exported, true)
               declarations << type_decl
             else
-              raise "Expected FN or TYPE after export, got #{current.type}"
+              raise "Expected FN, TYPE, or EXTERN after export, got #{current.type}"
             end
           when :EXTERN
             # Parse external declaration
@@ -191,7 +199,7 @@ module Aurora
         @tokens[@pos + offset] if @pos + offset < @tokens.length
       end
       
-      def parse_function(external: false)
+      def parse_function(external: false, exported: false)
         consume(:FN)
         name_token = consume(:IDENTIFIER)
         name = name_token.value
@@ -225,7 +233,8 @@ module Aurora
             ret_type: ret_type,
             body: body,
             type_params: type_params,
-            external: external
+            external: external,
+            exported: exported
           )
         end
       end

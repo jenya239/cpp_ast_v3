@@ -108,5 +108,3 @@ fn print_space<T>(x: T) -> void =
 
 fn print_tab<T>(x: T) -> void = 
   IO.print(show(x) + "\t")
-
-end

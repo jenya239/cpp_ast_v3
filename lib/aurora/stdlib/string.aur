@@ -140,5 +140,3 @@ fn find_closing_brace(s: str, start: i32) -> i32 =
   if start >= s.length() then start
   else if s[start] == "}" then start
   else find_closing_brace(s, start + 1)
-
-end

@@ -1102,13 +1102,137 @@ module CppAst
         when Aurora::AST::StringLit
           true
         when Aurora::AST::VarRef
-          # TODO: Check variable type from context
-          true # Assume string for now
+          # Without type context, we can't determine if a variable is a string
+          # Conservative approach: assume it's not a string
+          false
         when Aurora::AST::BinaryOp
           # Check if this is a string concatenation
           expr.op == "+" && is_string_expression(expr.left) && is_string_expression(expr.right)
         else
           false
+        end
+      end
+
+      # Aurora-specific generation methods
+      def generate_aurora_program(program)
+        result = []
+        
+        # Add includes
+        result << '#include "aurora_match.hpp"'
+        result << ""
+        
+        # Generate module namespace if present
+        if program.module_decl
+          result << "namespace #{program.module_decl.name} {"
+          result << ""
+        end
+        
+        # Generate declarations
+        program.declarations.each do |decl|
+          result << generate_aurora_declaration(decl)
+          result << ""
+        end
+        
+        # Close module namespace if present
+        if program.module_decl
+          result << "} // namespace #{program.module_decl.name}"
+        end
+        
+        result.join("\n")
+      end
+
+      def generate_aurora_declaration(decl)
+        case decl
+        when Aurora::AST::FuncDecl
+          generate_aurora_function(decl)
+        when Aurora::AST::TypeDecl
+          generate_aurora_type(decl)
+        else
+          "#{decl.class} // TODO: implement"
+        end
+      end
+
+      def generate_aurora_function(func)
+        result = []
+        
+        # Function signature
+        signature = "auto #{func.name}("
+        if func.params && !func.params.empty?
+          signature += func.params.map { |param| "#{param.name}: #{generate_aurora_type(param.type)}" }.join(", ")
+        end
+        signature += ") -> #{generate_aurora_type(func.ret_type)}"
+        
+        result << signature
+        result << "  = #{generate_aurora_expression(func.body)}"
+        
+        result.join("\n")
+      end
+
+      def generate_aurora_type(type)
+        case type
+        when Aurora::AST::PrimType
+          case type.name
+          when "i32" then "int"
+          when "f32" then "float"
+          when "bool" then "bool"
+          when "str" then "std::string"
+          when "void" then "void"
+          else type.name
+          end
+        when Aurora::AST::ArrayType
+          "std::vector<#{generate_aurora_type(type.element_type)}>"
+        when Aurora::AST::OptionType
+          "std::optional<#{generate_aurora_type(type.inner_type)}>"
+        else
+          type.class.name # fallback
+        end
+      end
+
+      def generate_aurora_expression(expr)
+        case expr
+        when Aurora::AST::IntLit
+          expr.value.to_s
+        when Aurora::AST::FloatLit
+          expr.value.to_s
+        when Aurora::AST::StringLit
+          "\"#{expr.value}\""
+        when Aurora::AST::VarRef
+          expr.name
+        when Aurora::AST::BinaryOp
+          left = generate_aurora_expression(expr.left)
+          right = generate_aurora_expression(expr.right)
+          if expr.op == "+" && is_string_expression(expr.left) && is_string_expression(expr.right)
+            # String concatenation
+            "aurora::String(#{left}) + aurora::String(#{right})"
+          else
+            "#{left} #{expr.op} #{right}"
+          end
+        when Aurora::AST::UnaryOp
+          "#{expr.op}#{generate_aurora_expression(expr.operand)}"
+        when Aurora::AST::IfExpr
+          condition = generate_aurora_expression(expr.condition)
+          then_expr = generate_aurora_expression(expr.then_expr)
+          else_expr = generate_aurora_expression(expr.else_expr)
+          "#{condition} ? #{then_expr} : #{else_expr}"
+        when Aurora::AST::FuncCall
+          args = expr.args.map { |arg| generate_aurora_expression(arg) }.join(", ")
+          "#{expr.name}(#{args})"
+        when Aurora::AST::ArrayLit
+          elements = expr.elements.map { |elem| generate_aurora_expression(elem) }.join(", ")
+          "{#{elements}}"
+        when Aurora::AST::ArrayAccess
+          array = generate_aurora_expression(expr.array)
+          index = generate_aurora_expression(expr.index)
+          "#{array}[#{index}]"
+        when Aurora::AST::MemberAccess
+          object = generate_aurora_expression(expr.object)
+          "#{object}.#{expr.member}"
+        when Aurora::AST::Lambda
+          params = expr.params.map { |param| "#{param.name}: #{generate_aurora_type(param.type)}" }.join(", ")
+          body = generate_aurora_expression(expr.body)
+          "(#{params}) => #{body}"
+        else
+          "0" # fallback
         end
       end
     end

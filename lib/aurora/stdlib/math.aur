@@ -3,22 +3,32 @@
 
 module Math
 
-# Basic arithmetic functions
-extern fn abs(x: i32) -> i32
-extern fn abs_f(x: f32) -> f32
-extern fn min(a: i32, b: i32) -> i32
-extern fn max(a: i32, b: i32) -> i32
-extern fn min_f(a: f32, b: f32) -> f32
-extern fn max_f(a: f32, b: f32) -> f32
+# Basic arithmetic functions (extern - implemented in C++)
+export extern fn abs(x: i32) -> i32
+export extern fn abs_f(x: f32) -> f32
+export extern fn min(a: i32, b: i32) -> i32
+export extern fn max(a: i32, b: i32) -> i32
+export extern fn min_f(a: f32, b: f32) -> f32
+export extern fn max_f(a: f32, b: f32) -> f32
 
 # Power and root functions
-extern fn pow_f(base: f32, exp: f32) -> f32
-extern fn sqrt_f(x: f32) -> f32
+export extern fn pow_f(base: f32, exp: f32) -> f32
+export extern fn sqrt_f(x: f32) -> f32
 
 # Trigonometric functions
-extern fn sin_f(x: f32) -> f32
-extern fn cos_f(x: f32) -> f32
-extern fn tan_f(x: f32) -> f32
+export extern fn sin_f(x: f32) -> f32
+export extern fn cos_f(x: f32) -> f32
+export extern fn tan_f(x: f32) -> f32
+
+# Aurora helper functions (implemented in Aurora)
+export fn hypotenuse(a: f32, b: f32) -> f32 =
+  sqrt_f(a * a + b * b)
+
+export fn radians(degrees: f32) -> f32 =
+  degrees * 0.0174532925
+
+export fn degrees(radians: f32) -> f32 =
+  radians * 57.2957795131
 
 # Mathematical constants (will be replaced with const declarations when supported)
 # const PI: f32 = 3.14159265359

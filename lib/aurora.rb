@@ -8,6 +8,7 @@ require_relative "aurora/parser/parser"
 require_relative "aurora/passes/to_core"
 require_relative "aurora/backend/cpp_lowering"
 require_relative "aurora/backend/header_generator"
+require_relative "aurora/stdlib_resolver"
 
 module Aurora
   class ParseError < StandardError; end
