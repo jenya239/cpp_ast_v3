@@ -28,6 +28,8 @@ def wrap_cpp(body)
     #include "aurora_buffer.hpp"
     #include "aurora_regex.hpp"
     #include "aurora_io.hpp"
+    #include "aurora_math.hpp"
+    #include "aurora_file.hpp"
     #include "aurora_match.hpp"
 
     #define main aurora_user_main

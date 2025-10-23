@@ -20,6 +20,38 @@ end
 class Minitest::Test
   include TestHelpers
 
+  # Support for tagging slow tests
+  # Usage: tag :slow
+  # Run only slow tests: TEST_TAGS=slow rake test
+  # Run without slow tests: TEST_TAGS=!slow rake test
+  def self.tag(name)
+    @tags ||= []
+    @tags << name unless @tags.include?(name)
+  end
+
+  def self.tags
+    @tags || []
+  end
+
+  # Override setup to check tags
+  def setup
+    tags = ENV['TEST_TAGS']&.split(',') || []
+
+    # Check for exclusion tags (starting with !)
+    tags.each do |tag|
+      if tag.start_with?('!')
+        excluded_tag = tag[1..-1].to_sym
+        skip "Skipped due to tag exclusion: !#{excluded_tag}" if self.class.tags.include?(excluded_tag)
+      end
+    end
+
+    # Check for inclusion tags (only run these)
+    inclusion_tags = tags.reject { |t| t.start_with?('!') }.map(&:to_sym)
+    unless inclusion_tags.empty?
+      skip "Skipped due to tag filter" unless (self.class.tags & inclusion_tags).any?
+    end
+  end
+
   def teardown
     super
     if defined?(CppAst) && CppAst.respond_to?(:formatting_mode=)
