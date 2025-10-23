@@ -203,6 +203,19 @@ module Aurora
         parse_match_expression
       when :DO
         parse_do_expression
+      when :IDENTIFIER
+        # Check for assignment: x = ...
+        if peek && peek.type == :EQUAL
+          target_token = consume(:IDENTIFIER)
+          target_name = target_token.value
+          consume(:EQUAL)
+          value = parse_expression
+          target = attach_origin(AST::VarRef.new(name: target_name), target_token)
+          with_origin(target_token) { AST::Assignment.new(target: target, value: value) }
+        else
+          # Otherwise it's an expression
+          parse_if_expression
+        end
       else
         # Parse any other expression
         parse_if_expression

@@ -3,6 +3,8 @@
 
 #include <cstdint>
 #include <memory>
+#include <thread>
+#include <chrono>
 #include <xcb/xcb.h>
 #include <cairo/cairo.h>
 #include <cairo/cairo-xcb.h>
@@ -280,6 +282,15 @@ inline Color rgb(double r, double g, double b) {
 
 inline Color rgba(double r, double g, double b, double a) {
     return Color(r, g, b, a);
+}
+
+// ============================================================================
+// Timing and Event Loop Utilities
+// ============================================================================
+
+// Sleep for given milliseconds
+inline void sleep_ms(int32_t milliseconds) {
+    std::this_thread::sleep_for(std::chrono::milliseconds(milliseconds));
 }
 
 } // namespace aurora::graphics

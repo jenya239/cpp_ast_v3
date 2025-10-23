@@ -1,0 +1,54 @@
+// Demo of mutable variables and assignment with graphics
+
+import {
+  create_window, create_draw_context, flush_window,
+  clear, set_color, draw_circle, draw_text,
+  rgb
+} from "Graphics"
+
+fn main() -> i32 = do
+  let win = create_window(600, 400, "Assignment Demo");
+  let ctx = create_draw_context(win);
+
+  // Mutable variables - demonstrate reassignment
+  let mut x = 100.0;
+  let mut y = 200.0;
+  let mut radius = 30.0;
+
+  // Draw first circle
+  clear(ctx, rgb(0.1, 0.1, 0.15));
+  set_color(ctx, rgb(1.0, 0.3, 0.3));
+  draw_circle(ctx, x, y, radius);
+  set_color(ctx, rgb(1.0, 1.0, 1.0));
+  draw_text(ctx, "Circle 1: Red at (100, 200)", 10.0, 30.0, 16.0);
+  flush_window(win);
+
+  // Reassign values
+  x = 300.0;
+  y = 200.0;
+  radius = 50.0;
+
+  // Draw second circle (overwrites first)
+  clear(ctx, rgb(0.1, 0.1, 0.15));
+  set_color(ctx, rgb(0.2, 0.8, 0.4));
+  draw_circle(ctx, x, y, radius);
+  set_color(ctx, rgb(1.0, 1.0, 1.0));
+  draw_text(ctx, "Circle 2: Green at (300, 200)", 10.0, 30.0, 16.0);
+  flush_window(win);
+
+  // Reassign again
+  x = 500.0;
+  y = 200.0;
+  radius = 40.0;
+
+  // Draw third circle
+  clear(ctx, rgb(0.1, 0.1, 0.15));
+  set_color(ctx, rgb(0.3, 0.5, 1.0));
+  draw_circle(ctx, x, y, radius);
+  set_color(ctx, rgb(1.0, 1.0, 1.0));
+  draw_text(ctx, "Circle 3: Blue at (500, 200)", 10.0, 30.0, 16.0);
+  draw_text(ctx, "Assignment operator working!", 10.0, 380.0, 18.0);
+  flush_window(win);
+
+  0
+end

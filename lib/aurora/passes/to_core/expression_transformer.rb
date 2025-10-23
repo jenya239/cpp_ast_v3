@@ -118,6 +118,19 @@ module Aurora
             value = transform_expression(e.value)
             @var_types[e.name] = value.type
             statements << CoreIR::Builder.variable_decl_stmt(e.name, value.type, value, mutable: e.mutable)
+          elsif e.is_a?(AST::Assignment)
+            # Assignment statement: x = value
+            unless e.target.is_a?(AST::VarRef)
+              type_error("Assignment target must be a variable", node: e)
+            end
+            target_name = e.target.name
+            existing_type = @var_types[target_name]
+            type_error("Assignment to undefined variable '#{target_name}'", node: e) unless existing_type
+
+            value_ir = transform_expression(e.value)
+            ensure_compatible_type(value_ir.type, existing_type, "assignment to '#{target_name}'")
+            target_ir = CoreIR::Builder.var(target_name, existing_type)
+            statements << CoreIR::Builder.assignment_stmt(target_ir, value_ir)
           elsif !is_last
             # Not the last expression - convert to statement
             statements << CoreIR::Builder.expr_statement(transform_expression(e))
@@ -131,6 +144,20 @@ module Aurora
           value = transform_expression(last_expr.value)
           @var_types[last_expr.name] = value.type
           statements << CoreIR::Builder.variable_decl_stmt(last_expr.name, value.type, value, mutable: last_expr.mutable)
+          result_expr = CoreIR::Builder.literal(nil, CoreIR::Builder.primitive_type("void"))
+        elsif last_expr.is_a?(AST::Assignment)
+          # If last is an assignment, treat as statement and return void
+          unless last_expr.target.is_a?(AST::VarRef)
+            type_error("Assignment target must be a variable", node: last_expr)
+          end
+          target_name = last_expr.target.name
+          existing_type = @var_types[target_name]
+          type_error("Assignment to undefined variable '#{target_name}'", node: last_expr) unless existing_type
+
+          value_ir = transform_expression(last_expr.value)
+          ensure_compatible_type(value_ir.type, existing_type, "assignment to '#{target_name}'")
+          target_ir = CoreIR::Builder.var(target_name, existing_type)
+          statements << CoreIR::Builder.assignment_stmt(target_ir, value_ir)
           result_expr = CoreIR::Builder.literal(nil, CoreIR::Builder.primitive_type("void"))
         else
           result_expr = transform_expression(last_expr)

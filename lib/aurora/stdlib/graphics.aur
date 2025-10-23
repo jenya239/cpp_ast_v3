@@ -49,6 +49,9 @@ extern fn stroke_circle(ctx: DrawContext, x: f32, y: f32, radius: f32, line_widt
 extern fn draw_line(ctx: DrawContext, x1: f32, y1: f32, x2: f32, y2: f32, line_width: f32) -> void
 extern fn draw_text(ctx: DrawContext, text: str, x: f32, y: f32, font_size: f32) -> void
 
+// Timing utilities
+extern fn sleep_ms(milliseconds: i32) -> void
+
 // Helper functions
 export fn is_quit_event(evt: Event) -> bool =
   match evt.event_type

@@ -128,7 +128,8 @@ module Aurora
         "draw_circle" => "aurora::graphics::draw_circle",
         "stroke_circle" => "aurora::graphics::stroke_circle",
         "draw_line" => "aurora::graphics::draw_line",
-        "draw_text" => "aurora::graphics::draw_text"
+        "draw_text" => "aurora::graphics::draw_text",
+        "sleep_ms" => "aurora::graphics::sleep_ms"
       }.freeze
 
       def initialize
