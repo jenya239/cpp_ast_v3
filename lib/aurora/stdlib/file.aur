@@ -1,0 +1,59 @@
+// File I/O operations
+// Provides file reading, writing, and manipulation functions
+
+// Simple convenience functions for reading entire files
+
+export extern fn read_to_string(path: str) -> str
+export extern fn read_lines(path: str) -> str[]
+
+// Simple convenience functions for writing files
+
+export extern fn write_string(path: str, content: str) -> bool
+export extern fn write_lines(path: str, lines: str[]) -> bool
+
+export extern fn append_string(path: str, content: str) -> bool
+export extern fn append_line(path: str, line: str) -> bool
+
+// File system operations
+
+export extern fn exists(path: str) -> bool
+export extern fn remove_file(path: str) -> bool
+export extern fn rename_file(old_path: str, new_path: str) -> bool
+
+// Helper functions
+
+export fn read_text(path: str) -> str =
+  read_to_string(path)
+
+export fn write_text(path: str, content: str) -> bool =
+  write_string(path, content)
+
+export fn append_text(path: str, content: str) -> bool =
+  append_string(path, content)
+
+export fn file_exists(path: str) -> bool =
+  exists(path)
+
+export fn delete_file(path: str) -> bool =
+  remove_file(path)
+
+export fn move_file(old_path: str, new_path: str) -> bool =
+  rename_file(old_path, new_path)
+
+// Result-based safe file operations using Result type
+// Note: These require Result<T, E> from stdlib
+
+// export fn safe_read_to_string(path: str) -> Result<str, str> =
+//   if exists(path)
+//     then Ok(read_to_string(path))
+//     else Err("File not found: " + path)
+
+// export fn safe_read_lines(path: str) -> Result<str[], str> =
+//   if exists(path)
+//     then Ok(read_lines(path))
+//     else Err("File not found: " + path)
+
+// export fn safe_write_string(path: str, content: str) -> Result<bool, str> =
+//   if write_string(path, content)
+//     then Ok(true)
+//     else Err("Failed to write to file: " + path)
