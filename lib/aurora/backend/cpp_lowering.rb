@@ -112,7 +112,23 @@ module Aurora
         "json_keys" => "aurora::json::json_keys",
         "json_array_length" => "aurora::json::json_array_length",
         "json_array_get" => "aurora::json::json_array_get",
-        "json_array_push" => "aurora::json::json_array_push"
+        "json_array_push" => "aurora::json::json_array_push",
+
+        # Graphics module (aurora::graphics namespace)
+        "create_window" => "aurora::graphics::create_window",
+        "flush_window" => "aurora::graphics::flush_window",
+        "create_draw_context" => "aurora::graphics::create_draw_context",
+        "poll_event" => "aurora::graphics::poll_event",
+        "rgb" => "aurora::graphics::rgb",
+        "rgba" => "aurora::graphics::rgba",
+        "clear" => "aurora::graphics::clear",
+        "set_color" => "aurora::graphics::set_color",
+        "draw_rect" => "aurora::graphics::draw_rect",
+        "stroke_rect" => "aurora::graphics::stroke_rect",
+        "draw_circle" => "aurora::graphics::draw_circle",
+        "stroke_circle" => "aurora::graphics::stroke_circle",
+        "draw_line" => "aurora::graphics::draw_line",
+        "draw_text" => "aurora::graphics::draw_text"
       }.freeze
 
       def initialize

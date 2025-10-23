@@ -1,0 +1,57 @@
+// Graphics module - XCB + Cairo bindings for 2D graphics
+// Provides window creation, event handling, and drawing primitives
+
+// Opaque types (pointers to C++ objects)
+export type Window
+export type DrawContext
+export type Color
+
+// Event type
+export type EventType =
+  | EventNone
+  | EventExpose
+  | EventKeyPress
+  | EventButtonPress
+  | EventButtonRelease
+  | EventMotionNotify
+  | EventQuit
+
+// Event structure
+export type Event = {
+  event_type: EventType,
+  x: i32,
+  y: i32,
+  button: i32,
+  keycode: i32
+}
+
+// Window management
+extern fn create_window(width: i32, height: i32, title: str) -> Window
+extern fn flush_window(win: Window) -> void
+
+// Drawing context
+extern fn create_draw_context(win: Window) -> DrawContext
+
+// Event handling
+extern fn poll_event(win: Window) -> Event
+
+// Color creation
+extern fn rgb(r: f32, g: f32, b: f32) -> Color
+extern fn rgba(r: f32, g: f32, b: f32, a: f32) -> Color
+
+// Drawing operations
+extern fn clear(ctx: DrawContext, color: Color) -> void
+extern fn set_color(ctx: DrawContext, color: Color) -> void
+extern fn draw_rect(ctx: DrawContext, x: f32, y: f32, w: f32, h: f32) -> void
+extern fn stroke_rect(ctx: DrawContext, x: f32, y: f32, w: f32, h: f32, line_width: f32) -> void
+extern fn draw_circle(ctx: DrawContext, x: f32, y: f32, radius: f32) -> void
+extern fn stroke_circle(ctx: DrawContext, x: f32, y: f32, radius: f32, line_width: f32) -> void
+extern fn draw_line(ctx: DrawContext, x1: f32, y1: f32, x2: f32, y2: f32, line_width: f32) -> void
+extern fn draw_text(ctx: DrawContext, text: str, x: f32, y: f32, font_size: f32) -> void
+
+// Helper functions
+export fn is_quit_event(evt: Event) -> bool =
+  match evt.event_type
+    | EventKeyPress => true
+    | EventQuit => true
+    | _ => false

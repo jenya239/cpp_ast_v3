@@ -31,6 +31,7 @@ def wrap_cpp(body)
     #include "aurora_math.hpp"
     #include "aurora_file.hpp"
     #include "aurora_json.hpp"
+    #include "aurora_graphics.hpp"
     #include "aurora_match.hpp"
 
     #define main aurora_user_main
@@ -163,6 +164,11 @@ def compile_cpp(options, cpp_source)
 
   runtime_cpp = File.join(RUNTIME_DIR, "aurora_string.cpp")
   runtime_io_cpp = File.join(RUNTIME_DIR, "aurora_io.cpp")
+
+  # Get XCB and Cairo flags via pkg-config
+  xcb_flags = `pkg-config --cflags --libs xcb cairo cairo-xcb 2>/dev/null`.strip.split
+  xcb_flags = [] if $?.exitstatus != 0  # If pkg-config fails, continue without graphics
+
   compile_cmd = [
     options[:compiler],
     "-std=c++20",
@@ -171,6 +177,7 @@ def compile_cpp(options, cpp_source)
     source_path,
     runtime_cpp,
     runtime_io_cpp,
+    *xcb_flags,
     "-o", binary_path
   ]
 
