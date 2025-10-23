@@ -107,7 +107,12 @@ module Aurora
         "json_array" => "aurora::json::json_array",
         "json_object" => "aurora::json::json_object",
         "json_get" => "aurora::json::json_get",
-        "json_set" => "aurora::json::json_set"
+        "json_set" => "aurora::json::json_set",
+        "json_has_key" => "aurora::json::json_has_key",
+        "json_keys" => "aurora::json::json_keys",
+        "json_array_length" => "aurora::json::json_array_length",
+        "json_array_get" => "aurora::json::json_array_get",
+        "json_array_push" => "aurora::json::json_array_push"
       }.freeze
 
       def initialize

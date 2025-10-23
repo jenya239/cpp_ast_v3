@@ -10,14 +10,21 @@ export type JsonValue =
   | JsonArray(JsonValue[])
   | JsonObject(str, JsonValue)  // TODO: Should be Map<str, JsonValue>
 
-// Parse JSON string into JsonValue
-extern fn parse_json(json_str: str) -> Result<JsonValue, str>
-
-// Serialize JsonValue to JSON string
+// Core parsing and serialization
+extern fn parse_json(json_str: str) -> JsonValue
 extern fn stringify_json(value: JsonValue) -> str
-
-// Pretty-print JSON with indentation
 extern fn stringify_json_pretty(value: JsonValue, indent: i32) -> str
+
+// Object operations
+extern fn json_get(obj: JsonValue, key: str) -> Option<JsonValue>
+extern fn json_set(obj: JsonValue, key: str, value: JsonValue) -> JsonValue
+extern fn json_has_key(obj: JsonValue, key: str) -> bool
+extern fn json_keys(obj: JsonValue) -> str[]
+
+// Array operations
+extern fn json_array_length(arr: JsonValue) -> i32
+extern fn json_array_get(arr: JsonValue, index: i32) -> Option<JsonValue>
+extern fn json_array_push(arr: JsonValue, value: JsonValue) -> JsonValue
 
 // Query functions for JSON values
 

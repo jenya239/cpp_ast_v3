@@ -118,16 +118,17 @@ inline json to_nlohmann_json(const JsonValue& jv) {
     return json(nullptr);
 }
 
-// Parse JSON string - returns JsonValue on success, error string on failure
-// For now, we'll use std::variant to represent Result<JsonValue, String>
-inline std::variant<JsonValue, aurora::String> parse_json(const aurora::String& json_str) {
+// Parse JSON string - returns JsonValue or JsonNull on error
+// TODO: Return Result<JsonValue, String> when Result type is available
+inline JsonValue parse_json(const aurora::String& json_str) {
     try {
         json parsed = json::parse(json_str.c_str());
         return from_nlohmann_json(parsed);
     } catch (const json::parse_error& e) {
-        return aurora::String(e.what());
+        // Return null on parse error for now
+        return JsonValue(std::monostate{});
     } catch (const std::exception& e) {
-        return aurora::String(e.what());
+        return JsonValue(std::monostate{});
     }
 }
 
@@ -192,6 +193,59 @@ inline JsonValue json_set(JsonValue obj, const aurora::String& key, const JsonVa
     json new_obj = json::object();
     new_obj[key.c_str()] = to_nlohmann_json(value);
     return JsonValue(new_obj);
+}
+
+// Check if object has key
+inline bool json_has_key(const JsonValue& obj, const aurora::String& key) {
+    if (auto* j = std::get_if<json>(&obj.value)) {
+        if (j->is_object()) {
+            return j->contains(key.c_str());
+        }
+    }
+    return false;
+}
+
+// Get all keys from JSON object
+inline std::vector<aurora::String> json_keys(const JsonValue& obj) {
+    std::vector<aurora::String> keys;
+    if (auto* j = std::get_if<json>(&obj.value)) {
+        if (j->is_object()) {
+            for (auto it = j->begin(); it != j->end(); ++it) {
+                keys.push_back(aurora::String(it.key().c_str()));
+            }
+        }
+    }
+    return keys;
+}
+
+// Get array length
+inline int32_t json_array_length(const JsonValue& arr) {
+    if (auto* vec = std::get_if<std::vector<JsonValue>>(&arr.value)) {
+        return static_cast<int32_t>(vec->size());
+    }
+    return 0;
+}
+
+// Get element from JSON array by index
+inline std::optional<JsonValue> json_array_get(const JsonValue& arr, int32_t index) {
+    if (auto* vec = std::get_if<std::vector<JsonValue>>(&arr.value)) {
+        if (index >= 0 && index < static_cast<int32_t>(vec->size())) {
+            return (*vec)[index];
+        }
+    }
+    return std::nullopt;
+}
+
+// Push element to JSON array
+inline JsonValue json_array_push(const JsonValue& arr, const JsonValue& value) {
+    std::vector<JsonValue> new_arr;
+
+    if (auto* vec = std::get_if<std::vector<JsonValue>>(&arr.value)) {
+        new_arr = *vec;
+    }
+
+    new_arr.push_back(value);
+    return JsonValue(new_arr);
 }
 
 } // namespace aurora::json
