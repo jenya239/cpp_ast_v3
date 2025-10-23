@@ -60,6 +60,13 @@ module Aurora
             tokenize_number
           when '"'
             tokenize_string
+          when '<'
+            # Check for heredoc syntax << or <<~
+            if @pos + 1 < @source.length && @source[@pos + 1] == '<'
+              tokenize_heredoc
+            else
+              tokenize_operator
+            end
           when '/'
             # Distinguish between division operator and regex literal
             if regex_context?
@@ -67,7 +74,7 @@ module Aurora
             else
               tokenize_operator
             end
-          when /[=+\-*%<>!&|.]/
+          when /[=+\-*%>!&|.]/
             tokenize_operator
           when '('
             add_token(:LPAREN, char)
@@ -214,7 +221,7 @@ module Aurora
         @pos += 1 # Skip opening quote
         start = @pos
         @column += 1
-        
+
         while @pos < @source.length && @source[@pos] != '"'
           if @source[@pos] == "\n"
             @line += 1
@@ -224,14 +231,119 @@ module Aurora
           end
           @pos += 1
         end
-        
+
         value = @source[start...@pos]
         @pos += 1 # Skip closing quote
         @column += 1
-        
+
         add_token(:STRING_LITERAL, value, line: start_line, column: start_column)
       end
-      
+
+      def tokenize_heredoc
+        start_line = @line
+        start_column = @column
+
+        # Skip << or <<~
+        @pos += 2
+        @column += 2
+        strip_indent = false
+
+        # Check for ~ (indented heredoc)
+        if @pos < @source.length && @source[@pos] == '~'
+          strip_indent = true
+          @pos += 1
+          @column += 1
+        end
+
+        # Read delimiter (must be uppercase identifier)
+        delimiter_start = @pos
+        while @pos < @source.length && @source[@pos] =~ /[A-Z0-9_]/
+          @pos += 1
+          @column += 1
+        end
+
+        delimiter = @source[delimiter_start...@pos]
+        if delimiter.empty?
+          raise "Heredoc delimiter must be an uppercase identifier"
+        end
+
+        # Skip to end of line
+        while @pos < @source.length && @source[@pos] != "\n"
+          @pos += 1
+          @column += 1
+        end
+
+        if @pos < @source.length
+          @pos += 1 # Skip newline
+          @line += 1
+          @column = 1
+        end
+
+        # Collect heredoc body lines
+        body_lines = []
+        content_start = @pos
+
+        while @pos < @source.length
+          line_start = @pos
+
+          # Read current line
+          while @pos < @source.length && @source[@pos] != "\n"
+            @pos += 1
+          end
+
+          line = @source[line_start...@pos]
+
+          # Check if this line is the delimiter
+          if line.strip == delimiter
+            # Found end delimiter
+            if @pos < @source.length
+              @pos += 1 # Skip newline
+              @line += 1
+              @column = 1
+            end
+            break
+          end
+
+          body_lines << line
+
+          if @pos < @source.length
+            @pos += 1 # Skip newline
+            @line += 1
+            @column = 1
+          end
+        end
+
+        # Process body based on strip_indent flag
+        value = if strip_indent
+          strip_common_indent(body_lines)
+        else
+          body_lines.join("\n")
+        end
+
+        add_token(:STRING_LITERAL, value, line: start_line, column: start_column)
+      end
+
+      def strip_common_indent(lines)
+        # Find minimum indentation (ignoring empty lines)
+        non_empty_lines = lines.reject { |line| line.strip.empty? }
+        return "" if non_empty_lines.empty?
+
+        min_indent = non_empty_lines.map { |line|
+          line.match(/^(\s*)/)[1].length
+        }.min
+
+        # Strip min_indent from all lines
+        stripped_lines = lines.map { |line|
+          if line.strip.empty?
+            "" # Keep empty lines empty
+          else
+            line[min_indent..-1] || ""
+          end
+        }
+
+        stripped_lines.join("\n")
+      end
+
       def regex_context?
         # Regex can appear after: =, (, [, {, ,, return, :, =>, operators
         # Regex cannot appear after: ), ], identifiers, numbers, strings
