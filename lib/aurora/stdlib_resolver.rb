@@ -8,7 +8,8 @@ module Aurora
     STDLIB_MODULES = {
       'Math' => 'math.aur',
       'IO' => 'io.aur',
-      'String' => 'string.aur'
+      'String' => 'string.aur',
+      'Conv' => 'conv.aur'
     }.freeze
 
     def initialize(stdlib_dir = nil)

@@ -52,7 +52,8 @@ class AuroraStdlibTest < Minitest::Test
     stdlib_files = [
       "lib/aurora/stdlib/math.aur",
       "lib/aurora/stdlib/io.aur",
-      "lib/aurora/stdlib/string.aur"
+      "lib/aurora/stdlib/string.aur",
+      "lib/aurora/stdlib/conv.aur"
     ]
 
     stdlib_files.each do |file|

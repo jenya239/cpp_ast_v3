@@ -59,6 +59,7 @@ class StdlibResolutionTest < Minitest::Test
     assert_includes modules, 'Math'
     assert_includes modules, 'IO'
     assert_includes modules, 'String'
-    assert_equal 3, modules.length
+    assert_includes modules, 'Conv'
+    assert_equal 4, modules.length
   end
 end

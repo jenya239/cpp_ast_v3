@@ -1,0 +1,33 @@
+# Aurora Standard Library - Conversion Module
+# Type conversion utilities
+
+module Conv
+
+# Convert to string (extern - implemented in C++)
+export extern fn to_string_i32(x: i32) -> str
+export extern fn to_string_f32(x: f32) -> str
+export extern fn to_string_bool(x: bool) -> str
+
+# Parse from string (extern - implemented in C++)
+export extern fn parse_i32(s: str) -> i32
+export extern fn parse_f32(s: str) -> f32
+export extern fn parse_bool(s: str) -> bool
+
+# Aurora helper functions with better names
+export fn int_to_str(x: i32) -> str =
+  to_string_i32(x)
+
+export fn float_to_str(x: f32) -> str =
+  to_string_f32(x)
+
+export fn bool_to_str(x: bool) -> str =
+  to_string_bool(x)
+
+export fn str_to_int(s: str) -> i32 =
+  parse_i32(s)
+
+export fn str_to_float(s: str) -> f32 =
+  parse_f32(s)
+
+export fn str_to_bool(s: str) -> bool =
+  parse_bool(s)

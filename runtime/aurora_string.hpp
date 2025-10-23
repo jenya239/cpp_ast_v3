@@ -251,6 +251,41 @@ inline String to_string(const std::string& value) {
     return String(value);
 }
 
+// Parsing functions - convert strings to numbers
+inline int32_t parse_i32(const String& str) {
+    try {
+        return std::stoi(str.as_std_string());
+    } catch (...) {
+        return 0; // Return 0 on parse failure (Aurora could improve this with Option<T>)
+    }
+}
+
+inline float parse_f32(const String& str) {
+    try {
+        return std::stof(str.as_std_string());
+    } catch (...) {
+        return 0.0f; // Return 0.0 on parse failure
+    }
+}
+
+inline bool parse_bool(const String& str) {
+    const std::string& s = str.trim().lower().as_std_string();
+    return s == "true" || s == "1" || s == "yes";
+}
+
+// Named wrappers for to_string (Aurora doesn't support overloading)
+inline String to_string_i32(int32_t value) {
+    return to_string(value);
+}
+
+inline String to_string_f32(float value) {
+    return to_string(value);
+}
+
+inline String to_string_bool(bool value) {
+    return to_string(value);
+}
+
 inline String format(const String& fmt, const std::vector<String>& parts) {
     const std::string& pattern = fmt.as_std_string();
     std::string result;
