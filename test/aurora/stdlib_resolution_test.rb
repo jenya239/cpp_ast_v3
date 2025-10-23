@@ -13,6 +13,11 @@ class StdlibResolutionTest < Minitest::Test
     assert resolver.stdlib_module?('IO')
   end
 
+  def test_stdlib_resolver_recognizes_string
+    resolver = Aurora::StdlibResolver.new
+    assert resolver.stdlib_module?('String')
+  end
+
   def test_stdlib_resolver_does_not_recognize_unknown
     resolver = Aurora::StdlibResolver.new
     refute resolver.stdlib_module?('Unknown')
@@ -35,6 +40,14 @@ class StdlibResolutionTest < Minitest::Test
     assert path.end_with?('io.aur')
   end
 
+  def test_stdlib_resolver_resolves_string
+    resolver = Aurora::StdlibResolver.new
+    path = resolver.resolve('String')
+    refute_nil path
+    assert File.exist?(path)
+    assert path.end_with?('string.aur')
+  end
+
   def test_stdlib_resolver_returns_nil_for_unknown
     resolver = Aurora::StdlibResolver.new
     assert_nil resolver.resolve('Unknown')
@@ -45,6 +58,7 @@ class StdlibResolutionTest < Minitest::Test
     modules = resolver.available_modules
     assert_includes modules, 'Math'
     assert_includes modules, 'IO'
-    assert_equal 2, modules.length
+    assert_includes modules, 'String'
+    assert_equal 3, modules.length
   end
 end

@@ -9,6 +9,10 @@ export extern fn println(s: str) -> void
 export extern fn eprint(s: str) -> void
 export extern fn eprintln(s: str) -> void
 
+# Input functions (extern - implemented in C++)
+export extern fn read_line() -> str
+export extern fn read_all() -> str
+
 # Exit function
 export extern fn exit(code: i32) -> void
 

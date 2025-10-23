@@ -1,0 +1,67 @@
+# Aurora Standard Library - String Module
+# String manipulation and utilities
+# Wraps String methods for convenient imports
+
+module String
+
+# Case conversion (wrappers for String methods)
+export fn upper(s: str) -> str =
+  s.upper()
+
+export fn lower(s: str) -> str =
+  s.lower()
+
+# Trimming (wrappers for String methods)
+export fn trim(s: str) -> str =
+  s.trim()
+
+export fn trim_start(s: str) -> str =
+  s.trim_start()
+
+export fn trim_end(s: str) -> str =
+  s.trim_end()
+
+# Splitting (wrapper for String method)
+export fn split(s: str, delimiter: str) -> str[] =
+  s.split(delimiter)
+
+# Searching (wrappers for String methods)
+export fn contains(s: str, substring: str) -> bool =
+  s.contains(substring)
+
+export fn starts_with(s: str, prefix: str) -> bool =
+  s.starts_with(prefix)
+
+export fn ends_with(s: str, suffix: str) -> bool =
+  s.ends_with(suffix)
+
+# String properties (wrappers for String methods)
+export fn length(s: str) -> i32 =
+  s.length()
+
+export fn is_empty(s: str) -> bool =
+  s.is_empty()
+
+# Aurora helper functions (implemented in Aurora)
+export fn lines(s: str) -> str[] =
+  s.split("\n")
+
+export fn words(s: str) -> str[] =
+  s.trim().split(" ")
+
+export fn join(strings: str[], separator: str) -> str =
+  join_impl(strings, separator, 0, "")
+
+fn join_impl(strings: str[], separator: str, index: i32, acc: str) -> str =
+  if index >= strings.length() then acc
+  else if index == 0 then
+    join_impl(strings, separator, index + 1, strings[0])
+  else
+    join_impl(strings, separator, index + 1, acc + separator + strings[index])
+
+export fn repeat(s: str, count: i32) -> str =
+  repeat_impl(s, count, "")
+
+fn repeat_impl(s: str, count: i32, acc: str) -> str =
+  if count <= 0 then acc
+  else repeat_impl(s, count - 1, acc + s)

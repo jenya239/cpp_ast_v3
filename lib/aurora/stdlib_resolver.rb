@@ -7,7 +7,8 @@ module Aurora
     # Only includes fully working modules with proper implementations
     STDLIB_MODULES = {
       'Math' => 'math.aur',
-      'IO' => 'io.aur'
+      'IO' => 'io.aur',
+      'String' => 'string.aur'
     }.freeze
 
     def initialize(stdlib_dir = nil)
