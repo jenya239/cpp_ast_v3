@@ -126,4 +126,75 @@ class StdlibFileTest < Minitest::Test
     assert_includes cpp, "write_string"
     assert_includes cpp, "exists"
   end
+
+  def test_safe_read_operations
+    source = <<~AURORA
+      import { safe_read_to_string, safe_read_lines } from "File"
+
+      fn test_safe_read() -> Result<str, str> =
+        safe_read_to_string("config.txt")
+
+      fn test_safe_read_lines() -> Result<str[], str> =
+        safe_read_lines("data.txt")
+    AURORA
+
+    cpp = Aurora.to_cpp(source)
+    assert_includes cpp, "safe_read_to_string"
+    assert_includes cpp, "safe_read_lines"
+  end
+
+  def test_safe_write_operations
+    source = <<~AURORA
+      import { safe_write_string, safe_write_lines, safe_append_string } from "File"
+
+      fn test_safe_write() -> Result<bool, str> =
+        safe_write_string("output.txt", "content")
+
+      fn test_safe_write_lines() -> Result<bool, str> =
+        safe_write_lines("output.txt", ["line1", "line2"])
+
+      fn test_safe_append() -> Result<bool, str> =
+        safe_append_string("log.txt", "entry")
+    AURORA
+
+    cpp = Aurora.to_cpp(source)
+    assert_includes cpp, "safe_write_string"
+    assert_includes cpp, "safe_write_lines"
+    assert_includes cpp, "safe_append_string"
+  end
+
+  def test_safe_file_system_operations
+    source = <<~AURORA
+      import { safe_remove_file, safe_rename_file } from "File"
+
+      fn test_safe_remove() -> Result<bool, str> =
+        safe_remove_file("temp.txt")
+
+      fn test_safe_rename() -> Result<bool, str> =
+        safe_rename_file("old.txt", "new.txt")
+    AURORA
+
+    cpp = Aurora.to_cpp(source)
+    assert_includes cpp, "safe_remove_file"
+    assert_includes cpp, "safe_rename_file"
+  end
+
+  def test_safe_operations_with_result_combinators
+    source = <<~AURORA
+      import { safe_read_to_string, safe_write_string } from "File"
+      import { is_ok, unwrap_or } from "Result"
+
+      fn process_file(input_path: str, output_path: str) -> bool = do
+        let result = safe_read_to_string(input_path)
+        if is_ok(result)
+          then is_ok(safe_write_string(output_path, unwrap_or(result, "")))
+          else false
+      end
+    AURORA
+
+    cpp = Aurora.to_cpp(source)
+    assert_includes cpp, "process_file"
+    assert_includes cpp, "safe_read_to_string"
+    assert_includes cpp, "safe_write_string"
+  end
 end

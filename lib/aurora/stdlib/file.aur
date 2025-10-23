@@ -41,19 +41,48 @@ export fn move_file(old_path: str, new_path: str) -> bool =
   rename_file(old_path, new_path)
 
 // Result-based safe file operations using Result type
-// Note: These require Result<T, E> from stdlib
+// These functions return Result<T, E> for better error handling
 
-// export fn safe_read_to_string(path: str) -> Result<str, str> =
-//   if exists(path)
-//     then Ok(read_to_string(path))
-//     else Err("File not found: " + path)
+export fn safe_read_to_string(path: str) -> Result<str, str> =
+  if exists(path)
+    then Ok(read_to_string(path))
+    else Err("File not found: " + path)
 
-// export fn safe_read_lines(path: str) -> Result<str[], str> =
-//   if exists(path)
-//     then Ok(read_lines(path))
-//     else Err("File not found: " + path)
+export fn safe_read_lines(path: str) -> Result<str[], str> =
+  if exists(path)
+    then Ok(read_lines(path))
+    else Err("File not found: " + path)
 
-// export fn safe_write_string(path: str, content: str) -> Result<bool, str> =
-//   if write_string(path, content)
-//     then Ok(true)
-//     else Err("Failed to write to file: " + path)
+export fn safe_write_string(path: str, content: str) -> Result<bool, str> =
+  if write_string(path, content)
+    then Ok(true)
+    else Err("Failed to write to file: " + path)
+
+export fn safe_write_lines(path: str, lines: str[]) -> Result<bool, str> =
+  if write_lines(path, lines)
+    then Ok(true)
+    else Err("Failed to write lines to file: " + path)
+
+export fn safe_append_string(path: str, content: str) -> Result<bool, str> =
+  if append_string(path, content)
+    then Ok(true)
+    else Err("Failed to append to file: " + path)
+
+export fn safe_append_line(path: str, line: str) -> Result<bool, str> =
+  if append_line(path, line)
+    then Ok(true)
+    else Err("Failed to append line to file: " + path)
+
+export fn safe_remove_file(path: str) -> Result<bool, str> =
+  if exists(path)
+    then if remove_file(path)
+      then Ok(true)
+      else Err("Failed to remove file: " + path)
+    else Err("File not found: " + path)
+
+export fn safe_rename_file(old_path: str, new_path: str) -> Result<bool, str> =
+  if exists(old_path)
+    then if rename_file(old_path, new_path)
+      then Ok(true)
+      else Err("Failed to rename file: " + old_path)
+    else Err("File not found: " + old_path)
