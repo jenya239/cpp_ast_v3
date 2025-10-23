@@ -45,8 +45,6 @@ class StdlibResolutionTest < Minitest::Test
     modules = resolver.available_modules
     assert_includes modules, 'Math'
     assert_includes modules, 'IO'
-    assert_includes modules, 'Collections'
-    assert_includes modules, 'String'
-    assert_includes modules, 'Option'
+    assert_equal 2, modules.length
   end
 end

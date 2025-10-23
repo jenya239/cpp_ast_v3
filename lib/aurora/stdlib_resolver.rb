@@ -4,13 +4,10 @@ module Aurora
   # Resolves stdlib module names to file paths
   class StdlibResolver
     # Map of stdlib module names to their file paths
+    # Only includes fully working modules with proper implementations
     STDLIB_MODULES = {
       'Math' => 'math.aur',
-      'IO' => 'io.aur',
-      'Collections' => 'collections.aur',
-      'String' => 'string.aur',
-      'Option' => 'option.aur',
-      'Result' => 'result.aur'
+      'IO' => 'io.aur'
     }.freeze
 
     def initialize(stdlib_dir = nil)
