@@ -1327,12 +1327,34 @@ module Aurora
         return CoreIR::Builder.literal(nil, CoreIR::Builder.primitive_type("void")) if expr.body.empty?
 
         statements = []
-        expr.body[0..-2].each do |e|
-          statements << CoreIR::Builder.expr_statement(transform_expression(e))
+
+        # Process all expressions
+        expr.body.each_with_index do |e, idx|
+          is_last = (idx == expr.body.length - 1)
+
+          if e.is_a?(AST::Let) && e.body.nil?
+            # Statement-style let (let x = value without 'in')
+            value = transform_expression(e.value)
+            @var_types[e.name] = value.type
+            statements << CoreIR::Builder.variable_decl_stmt(e.name, value.type, value, mutable: e.mutable)
+          elsif !is_last
+            # Not the last expression - convert to statement
+            statements << CoreIR::Builder.expr_statement(transform_expression(e))
+          end
         end
 
         # Last expression is the result value
-        result_expr = transform_expression(expr.body.last)
+        last_expr = expr.body.last
+        if last_expr.is_a?(AST::Let) && last_expr.body.nil?
+          # If last is a let statement, return void
+          value = transform_expression(last_expr.value)
+          @var_types[last_expr.name] = value.type
+          statements << CoreIR::Builder.variable_decl_stmt(last_expr.name, value.type, value, mutable: last_expr.mutable)
+          result_expr = CoreIR::Builder.literal(nil, CoreIR::Builder.primitive_type("void"))
+        else
+          result_expr = transform_expression(last_expr)
+        end
+
         CoreIR::Builder.block_expr(statements, result_expr, result_expr.type)
       end
     end

@@ -725,31 +725,66 @@ module Aurora
         body = []
 
         # Parse expressions until we hit END
-        #  Each line/statement in a do block is a full expression
         until current.type == :END
           if eof?
             raise "Unexpected EOF in do block, expected 'end'"
           end
 
-          # Check what kind of expression starts here
-          case current.type
-          when :LET
-            body << parse_let_expression
-          when :IF
-            body << parse_if_expression
-          when :MATCH
-            body << parse_match_expression
-          when :DO
-            body << parse_do_expression
-          else
-            # Parse a simple expression (not let/if/match/do)
-            body << parse_if_expression
+          # Parse one expression
+          expr = parse_do_statement
+          body << expr
+
+          # Skip optional semicolon between statements
+          if current.type == :SEMICOLON
+            consume(:SEMICOLON)
           end
         end
 
         consume(:END)
 
         with_origin(do_token) { AST::DoExpr.new(body: body) }
+      end
+
+      def parse_do_statement
+        # Parse a single statement/expression in a do block
+        case current.type
+        when :LET
+          parse_let_statement
+        when :IF
+          parse_if_expression
+        when :MATCH
+          parse_match_expression
+        when :DO
+          parse_do_expression
+        else
+          # Parse any other expression
+          parse_if_expression
+        end
+      end
+
+      def parse_let_statement
+        # Parse: let x = value or let mut x = value
+        let_token = consume(:LET)
+        mutable = false
+        if current.type == :MUT
+          consume(:MUT)
+          mutable = true
+        end
+
+        name_token = consume(:IDENTIFIER)
+        name = name_token.value
+        consume(:EQUAL)
+
+        # Value can be any expression including do-blocks
+        value = if current.type == :DO
+          parse_do_expression
+        else
+          parse_if_expression
+        end
+
+        # In do-blocks, let is a statement that doesn't need 'in'
+        # It returns a special LetStmt expression
+        with_origin(let_token) { AST::Let.new(name: name, value: value, body: nil, mutable: mutable) }
       end
 
       def parse_pattern
