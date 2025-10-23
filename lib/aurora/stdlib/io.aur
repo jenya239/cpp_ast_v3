@@ -13,6 +13,11 @@ export extern fn eprintln(s: str) -> void
 export extern fn exit(code: i32) -> void
 
 # Aurora helper functions (implemented in Aurora)
+export fn panic(message: str) -> void = do
+  eprintln("PANIC: " + message);
+  exit(1)
+end
+
 export fn debug_print(s: str) -> void =
   eprintln("[DEBUG] " + s)
 
