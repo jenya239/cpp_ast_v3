@@ -62,6 +62,9 @@ module Aurora
             path: import_decl.path,
             items: import_decl.items
           )
+
+          # Register stdlib function signatures
+          register_stdlib_imports(import_decl)
         end
 
         # Pre-register type declarations for constraint checks
@@ -1074,6 +1077,39 @@ module Aurora
         ret_type = transform_type(func_decl.ret_type)
         info = FunctionInfo.new(func_decl.name, param_types, ret_type)
         @function_table[func_decl.name] = info
+      end
+
+      def register_stdlib_imports(import_decl)
+        # Check if this is a stdlib module
+        resolver = StdlibResolver.new
+        return unless resolver.stdlib_module?(import_decl.path)
+
+        # Resolve the stdlib module path
+        stdlib_path = resolver.resolve(import_decl.path)
+        return unless stdlib_path
+
+        # Parse the stdlib module
+        source = File.read(stdlib_path)
+        stdlib_ast = Aurora.parse(source)
+
+        # Get the list of imported items (or all if import_all)
+        imported_items = if import_decl.import_all
+          # Import all exported functions
+          stdlib_ast.declarations.select { |d| d.is_a?(AST::FuncDecl) && d.exported }.map(&:name)
+        else
+          import_decl.items || []
+        end
+
+        # Register signatures for imported functions
+        stdlib_ast.declarations.each do |decl|
+          next unless decl.is_a?(AST::FuncDecl)
+          next unless imported_items.include?(decl.name)
+
+          # Register the function signature
+          param_types = decl.params.map { |param| transform_type(param.type) }
+          ret_type = transform_type(decl.ret_type)
+          @function_table[decl.name] = FunctionInfo.new(decl.name, param_types, ret_type)
+        end
       end
 
       def ensure_function_signature(func_decl)
