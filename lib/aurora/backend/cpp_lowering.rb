@@ -37,6 +37,66 @@ module Aurora
         "format" => "aurora::format"
       }.freeze
 
+      # Stdlib functions with their qualified C++ names
+      STDLIB_FUNCTIONS = {
+        # Array module (aurora::collections namespace)
+        "sum_i32" => "aurora::collections::sum_i32",
+        "sum_f32" => "aurora::collections::sum_f32",
+        "min_i32" => "aurora::collections::min_i32",
+        "max_i32" => "aurora::collections::max_i32",
+        "min_f32" => "aurora::collections::min_f32",
+        "max_f32" => "aurora::collections::max_f32",
+        "contains_i32" => "aurora::collections::contains_i32",
+        "contains_f32" => "aurora::collections::contains_f32",
+        "contains_str" => "aurora::collections::contains_str",
+        "reverse_i32" => "aurora::collections::reverse_i32",
+        "reverse_f32" => "aurora::collections::reverse_f32",
+        "reverse_str" => "aurora::collections::reverse_str",
+        "take_i32" => "aurora::collections::take_i32",
+        "take_f32" => "aurora::collections::take_f32",
+        "take_str" => "aurora::collections::take_str",
+        "drop_i32" => "aurora::collections::drop_i32",
+        "drop_f32" => "aurora::collections::drop_f32",
+        "drop_str" => "aurora::collections::drop_str",
+        "slice_i32" => "aurora::collections::slice_i32",
+        "slice_f32" => "aurora::collections::slice_f32",
+        "slice_str" => "aurora::collections::slice_str",
+        "range" => "aurora::collections::range",
+        "join_strings" => "aurora::collections::join_strings",
+
+        # Math module (aurora::math namespace)
+        "abs" => "aurora::math::abs",
+        "abs_f" => "aurora::math::abs_f",
+        "min" => "aurora::math::min",
+        "max" => "aurora::math::max",
+        "min_f" => "aurora::math::min_f",
+        "max_f" => "aurora::math::max_f",
+        "pow_f" => "aurora::math::pow_f",
+        "sqrt_f" => "aurora::math::sqrt_f",
+        "sin_f" => "aurora::math::sin_f",
+        "cos_f" => "aurora::math::cos_f",
+        "tan_f" => "aurora::math::tan_f",
+
+        # Conv module (aurora namespace - in aurora_string.hpp)
+        "parse_i32" => "aurora::parse_i32",
+        "parse_f32" => "aurora::parse_f32",
+        "parse_bool" => "aurora::parse_bool",
+        "to_string_i32" => "aurora::to_string_i32",
+        "to_string_f32" => "aurora::to_string_f32",
+        "to_string_bool" => "aurora::to_string_bool",
+
+        # File module (aurora::file namespace)
+        "read_to_string" => "aurora::file::read_to_string",
+        "read_lines" => "aurora::file::read_lines",
+        "write_string" => "aurora::file::write_string",
+        "write_lines" => "aurora::file::write_lines",
+        "append_string" => "aurora::file::append_string",
+        "append_line" => "aurora::file::append_line",
+        "exists" => "aurora::file::exists",
+        "remove_file" => "aurora::file::remove_file",
+        "rename_file" => "aurora::file::rename_file"
+      }.freeze
+
       def initialize
         @type_map = {
           "i32" => "int",

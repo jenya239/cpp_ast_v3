@@ -112,10 +112,22 @@ module Aurora
             end
 
       def lower_call(call)
+              # Check for IO functions
               if call.callee.is_a?(CoreIR::VarExpr) && IO_FUNCTIONS.key?(call.callee.name)
                 return lower_io_function(call)
               end
-      
+
+              # Check for stdlib functions with namespace qualification
+              if call.callee.is_a?(CoreIR::VarExpr) && STDLIB_FUNCTIONS.key?(call.callee.name)
+                qualified_name = STDLIB_FUNCTIONS[call.callee.name]
+                args = call.args.map { |arg| lower_expression(arg) }
+                return CppAst::Nodes::FunctionCallExpression.new(
+                  callee: CppAst::Nodes::Identifier.new(name: qualified_name),
+                  arguments: args,
+                  argument_separators: Array.new([args.size - 1, 0].max, ", ")
+                )
+              end
+
               # Check if this is an array method call that needs translation
               if call.callee.is_a?(CoreIR::MemberExpr) && call.callee.object.type.is_a?(CoreIR::ArrayType)
                 method_name = call.callee.member
