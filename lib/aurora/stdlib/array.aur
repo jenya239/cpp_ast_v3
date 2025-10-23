@@ -1,0 +1,59 @@
+// Array utility functions
+// Provides functional programming utilities for arrays
+
+// Note: Higher-order functions like map, filter, fold are generic templates
+// in C++ runtime (aurora_collections.hpp) and used directly through lambda
+// expressions in Aurora code.
+
+// Basic array operations
+
+export fn length<T>(arr: T[]) -> i32 =
+  arr.length()
+
+export fn is_empty<T>(arr: T[]) -> bool =
+  arr.length() == 0
+
+export fn first<T>(arr: T[]) -> T =
+  arr[0]
+
+export fn last<T>(arr: T[]) -> T =
+  arr[arr.length() - 1]
+
+// Array queries and transformations (extern from aurora_collections.hpp)
+
+export extern fn contains_i32(arr: i32[], element: i32) -> bool
+export extern fn contains_f32(arr: f32[], element: f32) -> bool
+export extern fn contains_str(arr: str[], element: str) -> bool
+
+export extern fn reverse_i32(arr: i32[]) -> i32[]
+export extern fn reverse_f32(arr: f32[]) -> f32[]
+export extern fn reverse_str(arr: str[]) -> str[]
+
+export extern fn take_i32(arr: i32[], n: i32) -> i32[]
+export extern fn take_f32(arr: f32[], n: i32) -> f32[]
+export extern fn take_str(arr: str[], n: i32) -> str[]
+
+export extern fn drop_i32(arr: i32[], n: i32) -> i32[]
+export extern fn drop_f32(arr: f32[], n: i32) -> f32[]
+export extern fn drop_str(arr: str[], n: i32) -> str[]
+
+export extern fn slice_i32(arr: i32[], start: i32, end: i32) -> i32[]
+export extern fn slice_f32(arr: f32[], start: i32, end: i32) -> f32[]
+export extern fn slice_str(arr: str[], start: i32, end: i32) -> str[]
+
+// Join for string arrays
+export extern fn join_strings(arr: str[], separator: str) -> str
+
+// Aggregation functions
+
+export extern fn sum_i32(arr: i32[]) -> i32
+export extern fn sum_f32(arr: f32[]) -> f32
+
+export extern fn min_i32(arr: i32[]) -> i32
+export extern fn max_i32(arr: i32[]) -> i32
+
+export extern fn min_f32(arr: f32[]) -> f32
+export extern fn max_f32(arr: f32[]) -> f32
+
+// Range generator
+export extern fn range(start: i32, end: i32) -> i32[]
