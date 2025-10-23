@@ -1,0 +1,91 @@
+// JSON support module
+// Provides JSON parsing and serialization
+
+// JSON value type - can be any JSON type
+export type JsonValue =
+  | JsonNull
+  | JsonBool(bool)
+  | JsonNumber(f32)
+  | JsonString(str)
+  | JsonArray(JsonValue[])
+  | JsonObject(str, JsonValue)  // TODO: Should be Map<str, JsonValue>
+
+// Parse JSON string into JsonValue
+extern fn parse_json(json_str: str) -> Result<JsonValue, str>
+
+// Serialize JsonValue to JSON string
+extern fn stringify_json(value: JsonValue) -> str
+
+// Pretty-print JSON with indentation
+extern fn stringify_json_pretty(value: JsonValue, indent: i32) -> str
+
+// Query functions for JSON values
+
+export fn is_null(value: JsonValue) -> bool =
+  match value
+    | JsonNull => true
+    | _ => false
+
+export fn is_bool(value: JsonValue) -> bool =
+  match value
+    | JsonBool(_) => true
+    | _ => false
+
+export fn is_number(value: JsonValue) -> bool =
+  match value
+    | JsonNumber(_) => true
+    | _ => false
+
+export fn is_string(value: JsonValue) -> bool =
+  match value
+    | JsonString(_) => true
+    | _ => false
+
+export fn is_array(value: JsonValue) -> bool =
+  match value
+    | JsonArray(_) => true
+    | _ => false
+
+export fn is_object(value: JsonValue) -> bool =
+  match value
+    | JsonObject(_, _) => true
+    | _ => false
+
+// Value extraction with Option
+
+export fn as_bool(value: JsonValue) -> Option<bool> =
+  match value
+    | JsonBool(b) => Some(b)
+    | _ => None
+
+export fn as_number(value: JsonValue) -> Option<f32> =
+  match value
+    | JsonNumber(n) => Some(n)
+    | _ => None
+
+export fn as_string(value: JsonValue) -> Option<str> =
+  match value
+    | JsonString(s) => Some(s)
+    | _ => None
+
+export fn as_array(value: JsonValue) -> Option<JsonValue[]> =
+  match value
+    | JsonArray(arr) => Some(arr)
+    | _ => None
+
+// Helper constructors
+
+export fn json_null() -> JsonValue =
+  JsonNull
+
+export fn json_bool(b: bool) -> JsonValue =
+  JsonBool(b)
+
+export fn json_number(n: f32) -> JsonValue =
+  JsonNumber(n)
+
+export fn json_string(s: str) -> JsonValue =
+  JsonString(s)
+
+export fn json_array(arr: JsonValue[]) -> JsonValue =
+  JsonArray(arr)

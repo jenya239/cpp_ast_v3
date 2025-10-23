@@ -94,7 +94,20 @@ module Aurora
         "append_line" => "aurora::file::append_line",
         "exists" => "aurora::file::exists",
         "remove_file" => "aurora::file::remove_file",
-        "rename_file" => "aurora::file::rename_file"
+        "rename_file" => "aurora::file::rename_file",
+
+        # JSON module (aurora::json namespace)
+        "parse_json" => "aurora::json::parse_json",
+        "stringify_json" => "aurora::json::stringify_json",
+        "stringify_json_pretty" => "aurora::json::stringify_json_pretty",
+        "json_null" => "aurora::json::json_null",
+        "json_bool" => "aurora::json::json_bool",
+        "json_number" => "aurora::json::json_number",
+        "json_string" => "aurora::json::json_string",
+        "json_array" => "aurora::json::json_array",
+        "json_object" => "aurora::json::json_object",
+        "json_get" => "aurora::json::json_get",
+        "json_set" => "aurora::json::json_set"
       }.freeze
 
       def initialize
