@@ -1,0 +1,45 @@
+import { parse_json, json_get, as_string } from "Json"
+import { unwrap } from "Option"
+
+fn main() -> i32 = do
+  println("=== Aurora Language Features Demo ===\n")
+  
+  // Feature 1: Escape sequences in strings
+  println("1. Escape sequences:")
+  println("   Line 1\n   Line 2")
+  println("   Quoted: \"Hello, World!\"")
+  println("   Backslash: \\\n")
+  
+  // Feature 2: Nested if-then-do
+  println("2. Nested if-then-do:")
+  let x = 15
+  if x > 10 then do
+    println("   x > 10")
+    if x > 12 then do
+      println("   x > 12")
+      if x > 14 then do
+        println("   x > 14 (all conditions passed!)")
+        0
+      end else
+        0
+    end else
+      0
+  end else
+    0
+  
+  println("")
+  
+  // Feature 3: JSON with escape sequences
+  println("3. JSON with escape sequences:")
+  let json_str = "{\"name\": \"Aurora\", \"version\": \"0.1\", \"status\": \"active\"}"
+  println("   Input: " + json_str)
+  
+  let data = parse_json(json_str)
+  let name_opt = json_get(data, "name")
+  
+  // Feature 4: Using Option unwrap
+  println("   Parsed successfully!")
+  
+  println("\n=== Demo Complete ===")
+  0
+end

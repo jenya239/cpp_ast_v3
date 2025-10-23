@@ -219,20 +219,51 @@ module Aurora
         start_line = @line
         start_column = @column
         @pos += 1 # Skip opening quote
-        start = @pos
         @column += 1
 
+        chars = []
         while @pos < @source.length && @source[@pos] != '"'
-          if @source[@pos] == "\n"
-            @line += 1
-            @column = 1
-          else
+          if @source[@pos] == '\\'
+            # Handle escape sequence
+            @pos += 1
             @column += 1
+            if @pos >= @source.length
+              raise "Unterminated escape sequence"
+            end
+
+            case @source[@pos]
+            when 'n'
+              chars << "\n"
+            when 't'
+              chars << "\t"
+            when 'r'
+              chars << "\r"
+            when '\\'
+              chars << "\\"
+            when '"'
+              chars << '"'
+            when '0'
+              chars << "\0"
+            else
+              # Unknown escape - keep backslash
+              chars << '\\'
+              chars << @source[@pos]
+            end
+            @pos += 1
+            @column += 1
+          else
+            if @source[@pos] == "\n"
+              @line += 1
+              @column = 1
+            else
+              @column += 1
+            end
+            chars << @source[@pos]
+            @pos += 1
           end
-          @pos += 1
         end
 
-        value = @source[start...@pos]
+        value = chars.join
         @pos += 1 # Skip closing quote
         @column += 1
 

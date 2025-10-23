@@ -258,6 +258,8 @@ module Aurora
     def parse_if_branch_expression
       if current.type == :LBRACE
         parse_block_expression
+      elsif current.type == :DO
+        parse_do_expression
       else
         parse_if_expression
       end

@@ -1,0 +1,37 @@
+import { 
+  create_window, create_draw_context, flush_window,
+  clear, set_color, draw_circle, draw_rect, draw_text,
+  rgb
+} from "Graphics"
+
+fn main() -> i32 = do
+  let win = create_window(500, 400, "Aurora Graphics Demo")
+  let ctx = create_draw_context(win)
+  
+  clear(ctx, rgb(0.1, 0.1, 0.15))
+  
+  set_color(ctx, rgb(1.0, 0.5, 0.0))
+  draw_circle(ctx, 250.0, 200.0, 60.0)
+  
+  set_color(ctx, rgb(0.2, 0.8, 0.3))
+  draw_rect(ctx, 50.0, 50.0, 150.0, 100.0)
+  
+  set_color(ctx, rgb(0.3, 0.5, 1.0))
+  draw_rect(ctx, 300.0, 50.0, 150.0, 100.0)
+  
+  set_color(ctx, rgb(1.0, 0.2, 0.2))
+  draw_circle(ctx, 125.0, 300.0, 40.0)
+  
+  set_color(ctx, rgb(1.0, 0.9, 0.2))
+  draw_circle(ctx, 375.0, 300.0, 40.0)
+  
+  set_color(ctx, rgb(1.0, 1.0, 1.0))
+  draw_text(ctx, "Hello from Aurora!", 150.0, 30.0, 24.0)
+  
+  set_color(ctx, rgb(0.7, 0.7, 0.7))
+  draw_text(ctx, "XCB + Cairo Graphics", 160.0, 380.0, 16.0)
+  
+  flush_window(win)
+  
+  0
+end
