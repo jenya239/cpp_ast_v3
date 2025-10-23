@@ -7,9 +7,9 @@ module Aurora
       # Statement transformation and control flow
       # Auto-extracted from to_core.rb during refactoring
       module StatementTransformer
-      def transform_block(block, require_value: true)
+      def transform_block(block, require_value: true, preserve_scope: false)
         with_current_node(block) do
-          saved_var_types = @var_types.dup
+          saved_var_types = @var_types.dup unless preserve_scope
           if block.stmts.empty?
             if require_value
               type_error("Block must end with an expression")
@@ -42,7 +42,7 @@ module Aurora
           block_type = result_ir ? result_ir.type : CoreIR::Builder.primitive_type("void")
           CoreIR::Builder.block_expr(statement_nodes, result_ir, block_type)
         ensure
-          @var_types = saved_var_types if defined?(saved_var_types)
+          @var_types = saved_var_types if defined?(saved_var_types) && !preserve_scope
         end
       end
 
@@ -73,7 +73,7 @@ module Aurora
         saved = @var_types[stmt.var_name]
         element_type = infer_iterable_type(iterable_ir)
         @var_types[stmt.var_name] = element_type
-        body_ir = within_loop_scope { transform_statement_block(stmt.body) }
+        body_ir = within_loop_scope { transform_statement_block(stmt.body, preserve_scope: true) }
 
         CoreIR::Builder.for_stmt(stmt.var_name, element_type, iterable_ir, body_ir)
       ensure
@@ -111,7 +111,7 @@ module Aurora
         CoreIR::Builder.return_stmt(expr_ir)
       end
 
-      def transform_statement_block(node)
+      def transform_statement_block(node, preserve_scope: false)
         block_ast =
           case node
           when AST::Block
@@ -122,7 +122,7 @@ module Aurora
             AST::Block.new(stmts: [AST::ExprStmt.new(expr: node)])
           end
 
-        transform_block(block_ast, require_value: false)
+        transform_block(block_ast, require_value: false, preserve_scope: preserve_scope)
       end
 
       def transform_statements(statements)
@@ -181,7 +181,7 @@ module Aurora
       def transform_while_statement(condition_node, body_node)
         condition_ir = transform_expression(condition_node)
         ensure_boolean_type(condition_ir.type, "while condition", node: condition_node)
-        body_ir = within_loop_scope { transform_statement_block(body_node) }
+        body_ir = within_loop_scope { transform_statement_block(body_node, preserve_scope: true) }
         CoreIR::Builder.while_stmt(condition_ir, body_ir)
       end
 

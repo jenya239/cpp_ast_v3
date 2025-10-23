@@ -1,0 +1,82 @@
+// Animation demo using mutable variables
+// Shows multiple frames with changing positions
+
+import {
+  create_window, create_draw_context, flush_window, sleep_ms,
+  clear, set_color, draw_circle, draw_text,
+  rgb
+} from "Graphics"
+
+fn main() -> i32 = do
+  println("Starting animation demo...");
+
+  let win = create_window(600, 400, "Mutable Variables Animation");
+  let ctx = create_draw_context(win);
+
+  // Mutable position that we'll update
+  let mut x = 50.0;
+  let mut y = 200.0;
+
+  // Frame 1
+  clear(ctx, rgb(0.1, 0.1, 0.15));
+  set_color(ctx, rgb(1.0, 0.3, 0.3));
+  draw_circle(ctx, x, y, 25.0);
+  set_color(ctx, rgb(1.0, 1.0, 1.0));
+  draw_text(ctx, "Frame 1", 10.0, 30.0, 20.0);
+  flush_window(win);
+  sleep_ms(500);
+
+  // Update position - THIS IS THE KEY FEATURE!
+  x = 150.0;
+
+  // Frame 2
+  clear(ctx, rgb(0.1, 0.1, 0.15));
+  set_color(ctx, rgb(1.0, 0.6, 0.0));
+  draw_circle(ctx, x, y, 25.0);
+  set_color(ctx, rgb(1.0, 1.0, 1.0));
+  draw_text(ctx, "Frame 2 - x reassigned!", 10.0, 30.0, 20.0);
+  flush_window(win);
+  sleep_ms(500);
+
+  // Update again
+  x = 250.0;
+
+  // Frame 3
+  clear(ctx, rgb(0.1, 0.1, 0.15));
+  set_color(ctx, rgb(0.2, 0.8, 0.4));
+  draw_circle(ctx, x, y, 25.0);
+  set_color(ctx, rgb(1.0, 1.0, 1.0));
+  draw_text(ctx, "Frame 3", 10.0, 30.0, 20.0);
+  flush_window(win);
+  sleep_ms(500);
+
+  // Update both x and y
+  x = 350.0;
+  y = 250.0;
+
+  // Frame 4
+  clear(ctx, rgb(0.1, 0.1, 0.15));
+  set_color(ctx, rgb(0.3, 0.5, 1.0));
+  draw_circle(ctx, x, y, 25.0);
+  set_color(ctx, rgb(1.0, 1.0, 1.0));
+  draw_text(ctx, "Frame 4 - x AND y reassigned!", 10.0, 30.0, 20.0);
+  flush_window(win);
+  sleep_ms(500);
+
+  // Final position
+  x = 500.0;
+  y = 100.0;
+
+  // Frame 5
+  clear(ctx, rgb(0.1, 0.1, 0.15));
+  set_color(ctx, rgb(1.0, 0.0, 1.0));
+  draw_circle(ctx, x, y, 25.0);
+  set_color(ctx, rgb(1.0, 1.0, 1.0));
+  draw_text(ctx, "Frame 5 - Assignment operator works!", 10.0, 30.0, 20.0);
+  draw_text(ctx, "Mutable variables fully functional", 10.0, 370.0, 18.0);
+  flush_window(win);
+  sleep_ms(2000);
+
+  println("Animation complete!");
+  0
+end

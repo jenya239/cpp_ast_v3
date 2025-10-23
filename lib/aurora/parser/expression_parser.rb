@@ -253,11 +253,25 @@ module Aurora
       consume(:IN)
       iterable = parse_if_expression
       consume(:DO)
-      body = if current.type == :LBRACE
-               parse_block_expression
-             else
-               parse_expression
-             end
+
+      # Parse body as a sequence of statements until END
+      statements = []
+      until current.type == :END
+        if eof?
+          raise "Unexpected EOF in for loop, expected 'end'"
+        end
+        stmt = parse_do_statement
+        # Wrap expressions in ExprStmt
+        stmt = AST::ExprStmt.new(expr: stmt) unless stmt.is_a?(AST::Stmt)
+        statements << stmt
+        if current.type == :SEMICOLON
+          consume(:SEMICOLON)
+        end
+      end
+      consume(:END)
+
+      # Wrap statements in a block
+      body = AST::Block.new(stmts: statements)
 
       with_origin(for_token) do
         AST::ForLoop.new(
@@ -694,11 +708,25 @@ module Aurora
       while_token = consume(:WHILE)
       condition = parse_if_expression
       consume(:DO)
-      body = if current.type == :LBRACE
-               parse_block_expression
-             else
-               parse_expression
-             end
+
+      # Parse body as a sequence of statements until END
+      statements = []
+      until current.type == :END
+        if eof?
+          raise "Unexpected EOF in while loop, expected 'end'"
+        end
+        stmt = parse_do_statement
+        # Wrap expressions in ExprStmt
+        stmt = AST::ExprStmt.new(expr: stmt) unless stmt.is_a?(AST::Stmt)
+        statements << stmt
+        if current.type == :SEMICOLON
+          consume(:SEMICOLON)
+        end
+      end
+      consume(:END)
+
+      # Wrap statements in a block
+      body = AST::Block.new(stmts: statements)
 
       with_origin(while_token) do
         AST::WhileLoop.new(
