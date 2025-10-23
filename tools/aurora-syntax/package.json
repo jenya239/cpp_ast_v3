@@ -1,0 +1,38 @@
+{
+  "name": "aurora-syntax",
+  "displayName": "Aurora Language Support",
+  "description": "Syntax highlighting for the Aurora (.aur) language used in this workspace.",
+  "version": "0.1.0",
+  "publisher": "workspace-local",
+  "engines": {
+    "vscode": "^1.70.0"
+  },
+  "categories": [
+    "Programming Languages"
+  ],
+  "contributes": {
+    "languages": [
+      {
+        "id": "aurora",
+        "aliases": [
+          "Aurora",
+          "aur"
+        ],
+        "extensions": [
+          ".aur"
+        ],
+        "filenames": [
+          "failing.aur"
+        ],
+        "configuration": "./language-configuration.json"
+      }
+    ],
+    "grammars": [
+      {
+        "language": "aurora",
+        "scopeName": "source.aurora",
+        "path": "./syntaxes/aurora.tmLanguage.json"
+      }
+    ]
+  }
+}

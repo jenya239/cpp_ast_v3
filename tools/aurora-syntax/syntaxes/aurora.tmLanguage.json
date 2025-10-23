@@ -1,0 +1,119 @@
+{
+  "scopeName": "source.aurora",
+  "name": "Aurora",
+  "patterns": [
+    { "include": "#comments" },
+    { "include": "#heredoc" },
+    { "include": "#regex" },
+    { "include": "#keywords" },
+    { "include": "#types" },
+    { "include": "#numbers" },
+    { "include": "#strings" },
+    { "include": "#operators" },
+    {
+      "match": "\\b(true|false)\\b",
+      "name": "constant.language.boolean.aurora"
+    },
+    {
+      "match": "\\b[A-Za-z_][A-Za-z0-9_]*\\b",
+      "name": "identifier.aurora"
+    }
+  ],
+  "repository": {
+    "comments": {
+      "patterns": [
+        {
+          "name": "comment.line.double-slash.aurora",
+          "begin": "//",
+          "beginCaptures": { "0": { "name": "punctuation.definition.comment.aurora" } },
+          "end": "$\\n?",
+          "patterns": []
+        }
+      ]
+    },
+    "keywords": {
+      "patterns": [
+        {
+          "match": "\\b(fn|type|let|mut|return|if|then|else|while|for|in|do|end|match|module|import|export|enum|from|as|where|case|of|break|continue|extern)\\b",
+          "name": "keyword.control.aurora"
+        }
+      ]
+    },
+    "types": {
+      "patterns": [
+        {
+          "match": "\\b(i32|f32|bool|str|string|void|regex)\\b",
+          "name": "storage.type.aurora"
+        },
+        {
+          "match": "\\b[A-Z][A-Za-z0-9_]*\\b",
+          "name": "entity.name.type.aurora"
+        }
+      ]
+    },
+    "numbers": {
+      "patterns": [
+        {
+          "match": "\\b\\d+(_\\d+)*(\\.\\d+(_\\d+)*)?\\b",
+          "name": "constant.numeric.aurora"
+        }
+      ]
+    },
+    "strings": {
+      "name": "string.quoted.double.aurora",
+      "begin": "\"",
+      "beginCaptures": { "0": { "name": "punctuation.definition.string.begin.aurora" } },
+      "end": "\"",
+      "endCaptures": { "0": { "name": "punctuation.definition.string.end.aurora" } },
+      "patterns": [
+        {
+          "name": "constant.character.escape.aurora",
+          "match": "\\\\."
+        }
+      ]
+    },
+    "operators": {
+      "patterns": [
+        {
+          "match": "(\\+|\\-|\\*|\\/|%|==|!=|<=|>=|<|>|&&|\\|\\||=|\\.|:|\\|>)",
+          "name": "keyword.operator.aurora"
+        }
+      ]
+    },
+    "heredoc": {
+      "patterns": [
+        {
+          "name": "string.unquoted.heredoc.aurora",
+          "begin": "<<~?[A-Z0-9_]+",
+          "beginCaptures": { "0": { "name": "punctuation.definition.string.begin.aurora" } },
+          "end": "^[A-Z0-9_]+$",
+          "endCaptures": { "0": { "name": "punctuation.definition.string.end.aurora" } }
+        }
+      ]
+    },
+    "regex": {
+      "patterns": [
+        {
+          "name": "string.regexp.aurora",
+          "begin": "/",
+          "beginCaptures": { "0": { "name": "punctuation.definition.string.begin.aurora" } },
+          "end": "/[gimsuxy]*",
+          "endCaptures": { "0": { "name": "punctuation.definition.string.end.aurora" } },
+          "patterns": [
+            {
+              "name": "constant.character.escape.aurora",
+              "match": "\\\\."
+            }
+          ]
+        }
+      ]
+    }
+  },
+  "scopeNameAliases": [
+    "source.aurlang"
+  ],
+  "fileTypes": [
+    "aur"
+  ],
+  "uuid": "5c98d2f1-ff3f-4d9e-b1d2-aurora-syntax"
+}
