@@ -1,0 +1,53 @@
+// Option<T> type - represents an optional value
+// Either Some(value) or None
+
+export type Option<T> = Some(T) | None
+
+// Constructors (automatically exported with the type)
+
+// Query functions
+
+export fn is_some<T>(opt: Option<T>) -> bool =
+  match opt
+    | Some(_) => true
+    | None => false
+
+export fn is_none<T>(opt: Option<T>) -> bool =
+  match opt
+    | Some(_) => false
+    | None => true
+
+// Value extraction
+
+export fn unwrap<T>(opt: Option<T>, default: T) -> T =
+  match opt
+    | Some(x) => x
+    | None => default
+
+export fn unwrap_or<T>(opt: Option<T>, default: T) -> T =
+  unwrap(opt, default)
+
+// Transformation
+
+export fn map<T, U>(opt: Option<T>, f: fn(T) -> U) -> Option<U> =
+  match opt
+    | Some(x) => Some(f(x))
+    | None => None
+
+export fn and_then<T, U>(opt: Option<T>, f: fn(T) -> Option<U>) -> Option<U> =
+  match opt
+    | Some(x) => f(x)
+    | None => None
+
+export fn or_else<T>(opt: Option<T>, alternative: Option<T>) -> Option<T> =
+  match opt
+    | Some(_) => opt
+    | None => alternative
+
+// Helper for creating Some
+export fn some<T>(value: T) -> Option<T> =
+  Some(value)
+
+// Helper for creating None
+export fn none<T>() -> Option<T> =
+  None

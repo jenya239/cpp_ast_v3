@@ -1,0 +1,62 @@
+// Result<T, E> type - represents either success (Ok) or failure (Err)
+
+export type Result<T, E> = Ok(T) | Err(E)
+
+// Constructors (automatically exported with the type)
+
+// Query functions
+
+export fn is_ok<T, E>(res: Result<T, E>) -> bool =
+  match res
+    | Ok(_) => true
+    | Err(_) => false
+
+export fn is_err<T, E>(res: Result<T, E>) -> bool =
+  match res
+    | Ok(_) => false
+    | Err(_) => true
+
+// Value extraction
+
+export fn unwrap<T, E>(res: Result<T, E>, default: T) -> T =
+  match res
+    | Ok(x) => x
+    | Err(_) => default
+
+export fn unwrap_or<T, E>(res: Result<T, E>, default: T) -> T =
+  unwrap(res, default)
+
+export fn unwrap_err<T, E>(res: Result<T, E>, default: E) -> E =
+  match res
+    | Ok(_) => default
+    | Err(e) => e
+
+// Transformation
+
+export fn map<T, U, E>(res: Result<T, E>, f: fn(T) -> U) -> Result<U, E> =
+  match res
+    | Ok(x) => Ok(f(x))
+    | Err(e) => Err(e)
+
+export fn map_err<T, E, F>(res: Result<T, E>, f: fn(E) -> F) -> Result<T, F> =
+  match res
+    | Ok(x) => Ok(x)
+    | Err(e) => Err(f(e))
+
+export fn and_then<T, U, E>(res: Result<T, E>, f: fn(T) -> Result<U, E>) -> Result<U, E> =
+  match res
+    | Ok(x) => f(x)
+    | Err(e) => Err(e)
+
+export fn or_else<T, E, F>(res: Result<T, E>, f: fn(E) -> Result<T, F>) -> Result<T, F> =
+  match res
+    | Ok(x) => Ok(x)
+    | Err(e) => f(e)
+
+// Helpers for creating Ok/Err
+
+export fn ok<T, E>(value: T) -> Result<T, E> =
+  Ok(value)
+
+export fn err<T, E>(error: E) -> Result<T, E> =
+  Err(error)
