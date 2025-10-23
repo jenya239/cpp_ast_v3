@@ -1,0 +1,42 @@
+import {
+  parse_json, stringify_json_pretty,
+  json_get, json_keys, is_object, is_array, is_string, is_number, is_bool,
+  as_string, as_number, as_bool
+} from "Json"
+import { unwrap } from "Option"
+import {
+  create_window, create_draw_context, flush_window, poll_event,
+  clear, set_color, draw_rect, draw_text,
+  rgb
+} from "Graphics"
+
+fn main() -> i32 = do
+  let json_data = <<~JSON
+    {
+      "name": "Aurora",
+      "version": 0.1,
+      "features": ["heredoc", "json", "graphics"],
+      "active": true
+    }
+  JSON
+  
+  let data = parse_json(json_data)
+  
+  let win = create_window(600, 400, "JSON Visualizer")
+  let ctx = create_draw_context(win)
+  
+  clear(ctx, rgb(0.15, 0.15, 0.20))
+  
+  set_color(ctx, rgb(1.0, 1.0, 1.0))
+  draw_text(ctx, "JSON Visualizer", 20.0, 30.0, 24.0)
+  
+  set_color(ctx, rgb(0.8, 0.8, 0.8))
+  draw_text(ctx, "Parsed JSON:", 20.0, 60.0, 16.0)
+  
+  set_color(ctx, rgb(0.4, 0.8, 0.4))
+  draw_text(ctx, stringify_json_pretty(data, 2), 40.0, 90.0, 14.0)
+  
+  flush_window(win)
+  
+  0
+end
