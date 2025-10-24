@@ -1,13 +1,19 @@
 // Interactive graphics demo with event loop and mutable variables
+// Click anywhere to move the green circle
+// Press any key to quit
 
 import {
   create_window, create_draw_context, flush_window,
   poll_event, clear, set_color, draw_circle, draw_text,
-  rgb, is_quit_event, sleep_ms
+  rgb, sleep_ms
 } from "Graphics"
 
 fn main() -> i32 = do
-  let win = create_window(600, 400, "Interactive Demo - Click to Move Circle");
+  println("=== Aurora Interactive Demo ===");
+  println("Click anywhere to move the circle");
+  println("Press any key to quit");
+
+  let win = create_window(600, 400, "Aurora Interactive Demo - Click to Move");
   let ctx = create_draw_context(win);
 
   // Mutable state for circle position
@@ -16,32 +22,42 @@ fn main() -> i32 = do
   let mut running = true;
   let mut frame_count = 0;
 
-  // Event loop
+  // Event loop - runs at ~60 FPS
   while running do
     let evt = poll_event(win);
 
-    // Check for quit event
-    if is_quit_event(evt) then do
+    // Check for quit (any key press)
+    if evt.keycode > 0 then do
+      println("Key pressed, quitting...");
       running = false;
       0
     end else 0;
 
-    // Update position from mouse events
-    let evt_x = to_f32(evt.x);
-    let evt_y = to_f32(evt.y);
-    if evt_x > 0.0 then do
-      x = evt_x;
-      y = evt_y;
+    // Update position on mouse click
+    if evt.button > 0 then do
+      x = to_f32(evt.x);
+      y = to_f32(evt.y);
+      println("Moved circle to: ");
+      println(to_string(evt.x));
+      println(to_string(evt.y));
       0
     end else 0;
 
-    // Clear and redraw
+    // Render frame
     clear(ctx, rgb(0.1, 0.1, 0.15));
+
+    // Draw circle at current position
     set_color(ctx, rgb(0.2, 0.8, 0.4));
     draw_circle(ctx, x, y, 30.0);
 
+    // Draw instructions
     set_color(ctx, rgb(1.0, 1.0, 1.0));
-    draw_text(ctx, "Click to move circle - Press key to quit", 10.0, 30.0, 16.0);
+    draw_text(ctx, "Click anywhere to move the circle", 10.0, 30.0, 16.0);
+    draw_text(ctx, "Press any key to quit", 10.0, 60.0, 16.0);
+
+    // Draw frame counter
+    set_color(ctx, rgb(0.7, 0.7, 0.7));
+    draw_text(ctx, "Frame: ", 10.0, 380.0, 14.0);
 
     flush_window(win);
     sleep_ms(16);
@@ -50,5 +66,8 @@ fn main() -> i32 = do
     0
   end;
 
+  println("=== Demo Finished ===");
+  println("Total frames rendered: ");
+  println(to_string(frame_count));
   0
 end

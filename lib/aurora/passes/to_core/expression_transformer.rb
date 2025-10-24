@@ -113,12 +113,17 @@ module Aurora
         expr.body.each_with_index do |e, idx|
           is_last = (idx == expr.body.length - 1)
 
-          if e.is_a?(AST::Let) && e.body.nil?
-            # Statement-style let (let x = value without 'in')
+          if e.is_a?(AST::VariableDecl) && !is_last
+            # Statement-style variable declaration (let x = value or let mut x = value)
             value = transform_expression(e.value)
             @var_types[e.name] = value.type
             statements << CoreIR::Builder.variable_decl_stmt(e.name, value.type, value, mutable: e.mutable)
-          elsif e.is_a?(AST::Assignment)
+          elsif e.is_a?(AST::Let) && e.body.nil? && !is_last
+            # Legacy statement-style let (let x = value without 'in')
+            value = transform_expression(e.value)
+            @var_types[e.name] = value.type
+            statements << CoreIR::Builder.variable_decl_stmt(e.name, value.type, value, mutable: e.mutable)
+          elsif e.is_a?(AST::Assignment) && !is_last
             # Assignment statement: x = value
             unless e.target.is_a?(AST::VarRef)
               type_error("Assignment target must be a variable", node: e)
@@ -139,8 +144,14 @@ module Aurora
 
         # Last expression is the result value
         last_expr = expr.body.last
-        if last_expr.is_a?(AST::Let) && last_expr.body.nil?
-          # If last is a let statement, return void
+        if last_expr.is_a?(AST::VariableDecl)
+          # If last is a variable declaration, return void
+          value = transform_expression(last_expr.value)
+          @var_types[last_expr.name] = value.type
+          statements << CoreIR::Builder.variable_decl_stmt(last_expr.name, value.type, value, mutable: last_expr.mutable)
+          result_expr = CoreIR::Builder.literal(nil, CoreIR::Builder.primitive_type("void"))
+        elsif last_expr.is_a?(AST::Let) && last_expr.body.nil?
+          # Legacy: if last is a let statement, return void
           value = transform_expression(last_expr.value)
           @var_types[last_expr.name] = value.type
           statements << CoreIR::Builder.variable_decl_stmt(last_expr.name, value.type, value, mutable: last_expr.mutable)
@@ -491,7 +502,7 @@ module Aurora
 
       def transform_while_loop(while_loop)
         condition = transform_expression(while_loop.condition)
-        body = within_loop_scope { transform_statement_block(while_loop.body) }
+        body = within_loop_scope { transform_expression(while_loop.body) }
         CoreIR::Builder.while_loop_expr(condition, body)
       end
 

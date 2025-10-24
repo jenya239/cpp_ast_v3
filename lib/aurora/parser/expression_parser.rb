@@ -196,7 +196,7 @@ module Aurora
       # Parse a single statement/expression in a do block
       case current.type
       when :LET
-        parse_let_statement
+        parse_variable_decl_statement
       when :IF
         parse_if_expression
       when :MATCH
@@ -709,24 +709,20 @@ module Aurora
       condition = parse_if_expression
       consume(:DO)
 
-      # Parse body as a sequence of statements until END
-      statements = []
+      # Parse body as a do-expression body (statements until END)
+      body_exprs = []
       until current.type == :END
         if eof?
           raise "Unexpected EOF in while loop, expected 'end'"
         end
-        stmt = parse_do_statement
-        # Wrap expressions in ExprStmt
-        stmt = AST::ExprStmt.new(expr: stmt) unless stmt.is_a?(AST::Stmt)
-        statements << stmt
+        body_exprs << parse_do_statement
         if current.type == :SEMICOLON
           consume(:SEMICOLON)
         end
       end
-      consume(:END)
 
-      # Wrap statements in a block
-      body = AST::Block.new(stmts: statements)
+      # Wrap in DoExpr
+      body = AST::DoExpr.new(body: body_exprs)
 
       with_origin(while_token) do
         AST::WhileLoop.new(
