@@ -40,13 +40,13 @@ module Aurora
     def compile(source, filename: nil)
       # 1. Parse Aurora source
       ast = parse(source, filename: filename)
-      
-      # 2. Transform to CoreIR
-      core_ir = transform_to_core(ast)
-      
-      # 3. Lower to C++ AST
-      cpp_ast = lower_to_cpp(core_ir)
-      
+
+      # 2. Transform to CoreIR (with type_registry)
+      core_ir, type_registry = transform_to_core_with_registry(ast)
+
+      # 3. Lower to C++ AST (with shared type_registry)
+      cpp_ast = lower_to_cpp(core_ir, type_registry: type_registry)
+
       cpp_ast
     end
     
@@ -59,19 +59,31 @@ module Aurora
     end
     
     # Transform Aurora AST to CoreIR
+    # For backward compatibility, returns just core_ir
+    # Use transform_to_core_with_registry if you need the type_registry
     def transform_to_core(ast)
+      core_ir, _type_registry = transform_to_core_with_registry(ast)
+      core_ir
+    end
+
+    # Transform Aurora AST to CoreIR (with TypeRegistry)
+    # Returns: [core_ir, type_registry]
+    def transform_to_core_with_registry(ast)
       transformer = Passes::ToCore.new
-      transformer.transform(ast)
+      core_ir = transformer.transform(ast)
+      [core_ir, transformer.type_registry]
     rescue CompileError
       raise
     rescue => e
       origin = e.respond_to?(:origin) ? e.origin : nil
       raise CompileError.new("Transform error: #{e.message}", origin: origin)
     end
-    
+
     # Lower CoreIR to C++ AST
-    def lower_to_cpp(core_ir)
-      lowerer = Backend::CppLowering.new
+    # @param core_ir [CoreIR::Module] CoreIR module
+    # @param type_registry [TypeRegistry] Shared type registry from ToCore
+    def lower_to_cpp(core_ir, type_registry: nil)
+      lowerer = Backend::CppLowering.new(type_registry: type_registry)
       lowerer.lower(core_ir)
     rescue CompileError
       raise
@@ -91,10 +103,10 @@ module Aurora
     def to_hpp_cpp(source, filename: nil)
       # Parse and transform to CoreIR
       ast = parse(source, filename: filename)
-      core_ir = transform_to_core(ast)
+      core_ir, type_registry = transform_to_core_with_registry(ast)
 
       # Generate header and implementation
-      lowering = Backend::CppLowering.new
+      lowering = Backend::CppLowering.new(type_registry: type_registry)
       generator = Backend::HeaderGenerator.new(lowering)
       generator.generate(core_ir)
     rescue CompileError

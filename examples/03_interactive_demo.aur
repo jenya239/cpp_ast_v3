@@ -3,10 +3,13 @@
 // Press any key to quit
 
 import {
+  Event, is_quit_event,
   create_window, create_draw_context, flush_window,
   poll_event, clear, set_color, draw_circle, draw_text,
   rgb, sleep_ms
 } from "Graphics"
+
+import { to_f32 } from "Conv"
 
 fn main() -> i32 = do
   println("=== Aurora Interactive Demo ===");
@@ -23,25 +26,20 @@ fn main() -> i32 = do
   let mut frame_count = 0;
 
   // Event loop - runs at ~60 FPS
-  while running do do
+  while running do
     let evt = poll_event(win);
 
-    // Check for quit (any key press)
-    if evt.keycode > 0 then do
-      println("Key pressed, quitting...");
-      running = false;
-      0
-    end else 0;
+    // Check for quit (any key press) - simplified syntax!
+    if is_quit_event(evt) then running = false;
 
-    // Update position on mouse click
+    // Update position on mouse click - direct member access!
     if evt.button > 0 then do
       x = to_f32(evt.x);
       y = to_f32(evt.y);
       println("Moved circle to: ");
       println(to_string(evt.x));
-      println(to_string(evt.y));
-      0
-    end else 0;
+      println(to_string(evt.y))
+    end;
 
     // Render frame
     clear(ctx, rgb(0.1, 0.1, 0.15));
@@ -62,8 +60,7 @@ fn main() -> i32 = do
     flush_window(win);
     sleep_ms(16);
 
-    frame_count = frame_count + 1;
-    0
+    frame_count = frame_count + 1
   end;
 
   println("=== Demo Finished ===");

@@ -185,12 +185,66 @@ module Aurora
         CoreIR::Builder.block_expr(statements, result_expr, result_expr.type)
       end
 
+      def transform_block_expr(block_expr)
+        # Transform BlockExpr: unified block construct with statements and result_expr
+        # This is the new unified architecture replacing DoExpr
+        statements_ir = []
+
+        # Transform all statements
+        block_expr.statements.each do |stmt|
+          case stmt
+          when AST::VariableDecl
+            # Variable declaration statement
+            value = transform_expression(stmt.value)
+            @var_types[stmt.name] = value.type
+            statements_ir << CoreIR::Builder.variable_decl_stmt(stmt.name, value.type, value, mutable: stmt.mutable)
+
+          when AST::Assignment
+            # Assignment statement
+            unless stmt.target.is_a?(AST::VarRef)
+              type_error("Assignment target must be a variable", node: stmt)
+            end
+            target_name = stmt.target.name
+            existing_type = @var_types[target_name]
+            type_error("Assignment to undefined variable '#{target_name}'", node: stmt) unless existing_type
+
+            value_ir = transform_expression(stmt.value)
+            ensure_compatible_type(value_ir.type, existing_type, "assignment to '#{target_name}'")
+            target_ir = CoreIR::Builder.var(target_name, existing_type)
+            statements_ir << CoreIR::Builder.assignment_stmt(target_ir, value_ir)
+
+          when AST::Break
+            # Break statement
+            statements_ir << CoreIR::Builder.break_stmt
+
+          when AST::Continue
+            # Continue statement
+            statements_ir << CoreIR::Builder.continue_stmt
+
+          when AST::ExprStmt
+            # Expression statement (expression used for side effects)
+            statements_ir << CoreIR::Builder.expr_statement(transform_expression(stmt.expr))
+
+          else
+            type_error("Unknown statement type in BlockExpr: #{stmt.class}", node: stmt)
+          end
+        end
+
+        # Transform result expression
+        result_ir = transform_expression(block_expr.result_expr)
+
+        CoreIR::Builder.block_expr(statements_ir, result_ir, result_ir.type)
+      end
+
       def transform_expression(expr)
         with_current_node(expr) do
           case expr
           when AST::IntLit
             type = CoreIR::Builder.primitive_type("i32")
             CoreIR::Builder.literal(expr.value, type)
+          when AST::UnitLit
+            # Unit literal - represents void/unit type ()
+            CoreIR::Builder.unit_literal
           when AST::FloatLit
             type = CoreIR::Builder.primitive_type("f32")
             CoreIR::Builder.literal(expr.value, type)
@@ -288,10 +342,17 @@ module Aurora
             condition = transform_expression(expr.condition)
             then_branch = transform_expression(expr.then_branch)
             else_branch = expr.else_branch ? transform_expression(expr.else_branch) : nil
+
+            # Determine type based on whether else branch exists
             if else_branch
+              # Both branches exist - types must match
               ensure_compatible_type(else_branch.type, then_branch.type, "if expression branches")
+              type = then_branch.type
+            else
+              # No else branch - this is a side-effect statement, returns unit type
+              type = CoreIR::Builder.unit_type
             end
-            type = then_branch.type
+
             CoreIR::Builder.if_expr(condition, then_branch, else_branch, type)
           when AST::MatchExpr
             scrutinee = transform_expression(expr.scrutinee)
@@ -317,6 +378,8 @@ module Aurora
             transform_list_comprehension(expr)
           when AST::DoExpr
             transform_do_expr(expr)
+          when AST::BlockExpr
+            transform_block_expr(expr)
           else
             raise "Unknown expression: #{expr.class}"
           end

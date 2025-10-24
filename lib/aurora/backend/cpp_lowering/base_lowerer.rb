@@ -7,11 +7,25 @@ module Aurora
       # Base utilities for C++ code generation
       # Auto-extracted from cpp_lowering.rb during refactoring
       module BaseLowerer
+      # Helper: Check if expression/type should be lowered as statement (not expression)
+      def should_lower_as_statement?(expr_or_type)
+        return true if expr_or_type.is_a?(CoreIR::UnitLiteral)
+        return true if expr_or_type.is_a?(CoreIR::UnitType)
+        return true if expr_or_type.is_a?(CoreIR::IfExpr) && expr_or_type.type.is_a?(CoreIR::UnitType)
+        false
+      end
+
       def map_type(type)
               case type
               when CoreIR::ArrayType
                 "std::vector<#{map_type(type.element_type)}>"
               when CoreIR::Type
+                # NEW: Try TypeRegistry first for accurate C++ names
+                if @type_registry && type.respond_to?(:name) && @type_registry.has_type?(type.name)
+                  return @type_registry.cpp_name(type.name)
+                end
+
+                # OLD: Fallback to @type_map
                 # Check if it's a known primitive type, otherwise treat as type parameter
                 mapped = @type_map[type.name]
                 if mapped
@@ -22,9 +36,21 @@ module Aurora
                   @type_map[type.name] || type.name
                 end
               when CoreIR::RecordType
-                type.name
+                # NEW: Try TypeRegistry first
+                if @type_registry && @type_registry.has_type?(type.name)
+                  return @type_registry.cpp_name(type.name)
+                end
+
+                # OLD: Fallback to @type_map
+                @type_map[type.name] || type.name
               when CoreIR::SumType
-                type.name
+                # NEW: Try TypeRegistry first
+                if @type_registry && @type_registry.has_type?(type.name)
+                  return @type_registry.cpp_name(type.name)
+                end
+
+                # OLD: Fallback to @type_map
+                @type_map[type.name] || type.name
               when CoreIR::FunctionType
                 "auto" # Simplified - real implementation would be more complex
               else

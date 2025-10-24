@@ -93,8 +93,11 @@ class DoBlockIntegrationTest < Minitest::Test
     assert_equal 1, ast.declarations.length
 
     func = ast.declarations.first
-    assert func.body.is_a?(Aurora::AST::DoExpr)
-    assert_equal 6, func.body.body.length
+    # Now returns BlockExpr with statements and result_expr
+    assert func.body.is_a?(Aurora::AST::BlockExpr)
+    # 5 statements (let a, let b, let a_sq, let b_sq, let result) + 1 result (result)
+    assert_equal 5, func.body.statements.length
+    assert func.body.result_expr.is_a?(Aurora::AST::VarRef)
 
     cpp = Aurora.to_cpp(source)
     assert_includes cpp, "calculate"

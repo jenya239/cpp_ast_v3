@@ -9,8 +9,12 @@ module Aurora
       module ExpressionLowerer
       def lower_expression(expr)
               return CppAst::Nodes::NumberLiteral.new(value: "0") if expr.nil?
-      
+
               case expr
+              when CoreIR::UnitLiteral
+                # Unit literal should not appear in expression context
+                # If it does, it's an error in the compiler
+                raise "Internal error: UnitLiteral should not be lowered as expression"
               when CoreIR::LiteralExpr
                 lower_literal(expr)
               when CoreIR::RegexExpr
@@ -280,11 +284,17 @@ module Aurora
             end
 
       def lower_if(if_expr)
+              # Unit type if-expressions should be lowered as statements, not expressions
+              if should_lower_as_statement?(if_expr)
+                raise "Internal error: Unit type if-expression should not be lowered as expression. Use lower_if_expr_as_statement instead."
+              end
+
               condition = lower_expression(if_expr.condition)
               then_branch = lower_expression(if_expr.then_branch)
+
+              # For value-producing expressions, use ternary operator
               else_branch = if_expr.else_branch ? lower_expression(if_expr.else_branch) : CppAst::Nodes::NumberLiteral.new(value: "0")
-      
-              # Generate ternary operator for if expressions
+
               CppAst::Nodes::TernaryExpression.new(
                 condition: condition,
                 true_expression: then_branch,
@@ -708,16 +718,19 @@ module Aurora
 
       def lower_block_expr_statements(block_expr, emit_return: true)
               statements = block_expr.statements.map { |stmt| lower_coreir_statement(stmt) }
-      
+
               if block_expr.result
-                result_expr = lower_expression(block_expr.result)
-                if emit_return
-                  statements << CppAst::Nodes::ReturnStatement.new(expression: result_expr)
-                else
-                  statements << CppAst::Nodes::ExpressionStatement.new(expression: result_expr)
+                # Skip unit literals - they represent void/no value
+                unless block_expr.result.is_a?(CoreIR::UnitLiteral)
+                  result_expr = lower_expression(block_expr.result)
+                  if emit_return
+                    statements << CppAst::Nodes::ReturnStatement.new(expression: result_expr)
+                  else
+                    statements << CppAst::Nodes::ExpressionStatement.new(expression: result_expr)
+                  end
                 end
               end
-      
+
               statements
             end
 

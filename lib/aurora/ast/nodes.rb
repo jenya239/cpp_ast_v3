@@ -215,13 +215,20 @@ module Aurora
     # Literal expressions
     class IntLit < Expr
       attr_reader :value
-      
+
       def initialize(value:, origin: nil)
         super(kind: :int_lit, data: value, origin: origin)
         @value = value
       end
     end
-    
+
+    # Unit literal - represents void/unit type ()
+    class UnitLit < Expr
+      def initialize(origin: nil)
+        super(kind: :unit_lit, data: nil, origin: origin)
+      end
+    end
+
     class FloatLit < Expr
       attr_reader :value
 
@@ -362,6 +369,18 @@ module Aurora
       def initialize(body:, origin: nil)
         super(kind: :do, data: {body: body}, origin: origin)
         @body = body  # Array of expressions
+      end
+    end
+
+    # Block expression - unified block construct with statements and result expression
+    # This unifies do-blocks, while bodies, for bodies, and function bodies
+    class BlockExpr < Expr
+      attr_reader :statements, :result_expr
+
+      def initialize(statements:, result_expr:, origin: nil)
+        super(kind: :block_expr, data: {statements: statements, result_expr: result_expr}, origin: origin)
+        @statements = statements    # Array of Stmt nodes (VariableDecl, Assignment, ExprStmt)
+        @result_expr = result_expr  # Single Expr node - the result value of the block
       end
     end
 

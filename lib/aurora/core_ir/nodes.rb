@@ -14,23 +14,27 @@ module Aurora
     # Types
     class Type < Node
       attr_reader :kind, :name
-      
+
       def initialize(kind:, name:, origin: nil)
         super(origin: origin)
-        @kind = kind  # :prim/:record/:func
+        @kind = kind  # :prim/:record/:func/:unit
         @name = name
       end
-      
+
       def primitive?
         @kind == :prim
       end
-      
+
       def record?
         @kind == :record
       end
-      
+
       def function?
         @kind == :func
+      end
+
+      def unit?
+        @kind == :unit
       end
     end
     
@@ -64,7 +68,20 @@ module Aurora
         @ret_type = ret_type
       end
     end
-    
+
+    # Unit type (void/empty type for side-effects)
+    # Represents expressions that don't return a meaningful value
+    # Example: if without else, statements, etc.
+    class UnitType < Type
+      def initialize(origin: nil)
+        super(kind: :unit, name: "unit", origin: origin)
+      end
+
+      def unit?
+        true
+      end
+    end
+
     # Modules
     class Module < Node
       attr_reader :name, :items, :imports
@@ -137,6 +154,13 @@ module Aurora
       def initialize(value:, type:, origin: nil)
         super(kind: :lit, data: value, type: type, origin: origin)
         @value = value
+      end
+    end
+
+    # Unit literal - represents void/unit type ()
+    class UnitLiteral < Expr
+      def initialize(origin: nil)
+        super(kind: :unit_lit, data: nil, type: UnitType.new, origin: origin)
       end
     end
 

@@ -9,7 +9,11 @@ module Aurora
       def self.primitive_type(name, origin: nil)
         Type.new(kind: :prim, name: name, origin: origin)
       end
-      
+
+      def self.unit_type(origin: nil)
+        UnitType.new(origin: origin)
+      end
+
       def self.record_type(name, fields, origin: nil)
         RecordType.new(name: name, fields: fields, origin: origin)
       end
@@ -32,6 +36,10 @@ module Aurora
       
       def self.literal(value, type, origin: nil)
         LiteralExpr.new(value: value, type: type, origin: origin)
+      end
+
+      def self.unit_literal(origin: nil)
+        UnitLiteral.new(origin: origin)
       end
 
       def self.regex(pattern, flags, type, origin: nil)

@@ -4,6 +4,7 @@ require_relative "../ast/nodes"
 require_relative "../core_ir/nodes"
 require_relative "../core_ir/builder"
 require_relative "../stdlib_resolver"
+require_relative "../type_registry"
 require_relative "to_core/base_transformer"
 require_relative "to_core/type_inference"
 require_relative "to_core/expression_transformer"
@@ -37,7 +38,14 @@ module Aurora
         "Numeric" => %w[i32 f32 i64 f64 u32 u64]
       }.freeze
 
+      # Expose type_registry for sharing with CppLowering
+      attr_reader :type_registry
+
       def initialize
+        # NEW: Unified type registry
+        @type_registry = TypeRegistry.new
+
+        # OLD: Keep for backward compatibility during migration
         @type_table = {}
         @function_table = {}
         @type_decl_table = {}

@@ -293,6 +293,12 @@ inline void sleep_ms(int32_t milliseconds) {
     std::this_thread::sleep_for(std::chrono::milliseconds(milliseconds));
 }
 
+// Check if event is a quit event (key press or explicit quit)
+inline bool is_quit_event(const Event& evt) {
+    return evt.type == EventType::KeyPress ||
+           evt.type == EventType::Quit;
+}
+
 } // namespace aurora::graphics
 
 #endif // AURORA_GRAPHICS_HPP

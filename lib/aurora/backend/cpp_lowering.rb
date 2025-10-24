@@ -84,6 +84,7 @@ module Aurora
         "to_string_i32" => "aurora::to_string_i32",
         "to_string_f32" => "aurora::to_string_f32",
         "to_string_bool" => "aurora::to_string_bool",
+        "to_f32" => "static_cast<float>",
 
         # File module (aurora::file namespace)
         "read_to_string" => "aurora::file::read_to_string",
@@ -119,6 +120,7 @@ module Aurora
         "flush_window" => "aurora::graphics::flush_window",
         "create_draw_context" => "aurora::graphics::create_draw_context",
         "poll_event" => "aurora::graphics::poll_event",
+        "is_quit_event" => "aurora::graphics::is_quit_event",
         "rgb" => "aurora::graphics::rgb",
         "rgba" => "aurora::graphics::rgba",
         "clear" => "aurora::graphics::clear",
@@ -132,7 +134,12 @@ module Aurora
         "sleep_ms" => "aurora::graphics::sleep_ms"
       }.freeze
 
-      def initialize
+      def initialize(type_registry: nil)
+        # NEW: Use shared TypeRegistry if provided
+        @type_registry = type_registry
+
+        # OLD: Fallback type_map for backward compatibility
+        # Will be deprecated once TypeRegistry is fully integrated
         @type_map = {
           "i32" => "int",
           "f32" => "float",
@@ -140,7 +147,14 @@ module Aurora
           "void" => "void",
           "str" => "aurora::String",
           "string" => "aurora::String",
-          "regex" => "aurora::Regex"
+          "regex" => "aurora::Regex",
+          # Graphics module types (opaque pointer types)
+          # TODO: These should come from TypeRegistry
+          "Window" => "aurora::graphics::Window*",
+          "DrawContext" => "aurora::graphics::DrawContext*",
+          "Color" => "aurora::graphics::Color",
+          "Event" => "aurora::graphics::Event",
+          "EventType" => "aurora::graphics::EventType"
         }
       end
 

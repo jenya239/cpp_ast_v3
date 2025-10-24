@@ -200,6 +200,19 @@ module Aurora
       def infer_member_type(object_type, member)
         type_error("Cannot access member '#{member}' on value without type") unless object_type
 
+        # Try NEW TypeRegistry first for better type resolution
+        if object_type.respond_to?(:name) && @type_registry.has_type?(object_type.name)
+          member_type = @type_registry.resolve_member(object_type.name, member)
+          return member_type if member_type
+        end
+
+        # Fallback to OLD type_table for backward compat
+        if object_type.respond_to?(:name) && @type_table.key?(object_type.name)
+          resolved_type = @type_table[object_type.name]
+          # Recursively resolve with the actual type definition
+          return infer_member_type(resolved_type, member) if resolved_type != object_type
+        end
+
         if object_type.record?
           field = object_type.fields.find { |f| f[:name] == member }
           type_error("Unknown field '#{member}' for type #{object_type.name}") unless field

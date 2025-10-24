@@ -13,6 +13,9 @@ export extern fn parse_i32(s: str) -> i32
 export extern fn parse_f32(s: str) -> f32
 export extern fn parse_bool(s: str) -> bool
 
+# Type conversions (extern - implemented in C++)
+export extern fn to_f32(x: i32) -> f32
+
 # Aurora helper functions with better names
 export fn int_to_str(x: i32) -> str =
   to_string_i32(x)

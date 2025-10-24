@@ -9,7 +9,8 @@ module Aurora
       'Math' => 'math.aur',
       'IO' => 'io.aur',
       'String' => 'string.aur',
-      'Conv' => 'conv.aur'
+      'Conv' => 'conv.aur',
+      'Graphics' => 'graphics.aur'
     }.freeze
 
     def initialize(stdlib_dir = nil)

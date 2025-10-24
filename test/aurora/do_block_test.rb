@@ -13,8 +13,11 @@ class DoBlockTest < Minitest::Test
     ast = Aurora.parse(source)
     assert_equal 1, ast.declarations.length
     func = ast.declarations.first
-    assert func.body.is_a?(Aurora::AST::DoExpr)
-    assert_equal 1, func.body.body.length
+    # Now returns BlockExpr instead of DoExpr
+    assert func.body.is_a?(Aurora::AST::BlockExpr)
+    # BlockExpr has no statements, just result_expr
+    assert_equal 0, func.body.statements.length
+    assert func.body.result_expr.is_a?(Aurora::AST::IntLit)
   end
 
   def test_do_block_multiple_expressions
@@ -28,8 +31,11 @@ class DoBlockTest < Minitest::Test
 
     ast = Aurora.parse(source)
     func = ast.declarations.first
-    assert func.body.is_a?(Aurora::AST::DoExpr)
-    assert_equal 3, func.body.body.length
+    # Now returns BlockExpr
+    assert func.body.is_a?(Aurora::AST::BlockExpr)
+    # 2 statements (let x, let y), 1 result (x + y)
+    assert_equal 2, func.body.statements.length
+    assert func.body.result_expr.is_a?(Aurora::AST::BinaryOp)
   end
 
   def test_do_block_with_function_calls
@@ -43,8 +49,11 @@ class DoBlockTest < Minitest::Test
 
     ast = Aurora.parse(source)
     func = ast.declarations.first
-    assert func.body.is_a?(Aurora::AST::DoExpr)
-    assert_equal 3, func.body.body.length
+    # Now returns BlockExpr
+    assert func.body.is_a?(Aurora::AST::BlockExpr)
+    # 2 statements (println calls), 1 result (0)
+    assert_equal 2, func.body.statements.length
+    assert func.body.result_expr.is_a?(Aurora::AST::IntLit)
   end
 
   def test_do_block_compiles
@@ -73,6 +82,10 @@ class DoBlockTest < Minitest::Test
 
     ast = Aurora.parse(source)
     func = ast.declarations.first
-    assert func.body.is_a?(Aurora::AST::DoExpr)
+    # Now returns BlockExpr
+    assert func.body.is_a?(Aurora::AST::BlockExpr)
+    # Nested do-block also becomes BlockExpr
+    assert func.body.statements.first.is_a?(Aurora::AST::VariableDecl)
+    assert func.body.statements.first.value.is_a?(Aurora::AST::BlockExpr)
   end
 end

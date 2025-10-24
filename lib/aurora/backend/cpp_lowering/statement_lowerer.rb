@@ -14,6 +14,14 @@ module Aurora
                   lower_for_loop_statement(stmt.expression)
                 elsif stmt.expression.is_a?(CoreIR::WhileLoopExpr)
                   lower_while_loop_statement(stmt.expression)
+                elsif should_lower_as_statement?(stmt.expression)
+                  # Expression with unit type should be lowered as statement
+                  # Currently only IfExpr with unit type
+                  if stmt.expression.is_a?(CoreIR::IfExpr)
+                    lower_if_expr_as_statement(stmt.expression)
+                  else
+                    raise "Unknown statement-like expression: #{stmt.expression.class}"
+                  end
                 else
                   expr = lower_expression(stmt.expression)
                   CppAst::Nodes::ExpressionStatement.new(expression: expr)
@@ -24,7 +32,9 @@ module Aurora
                 init_expr = lower_expression(stmt.value)
                 decl_type = use_auto ? "auto" : type_str
                 declarator = "#{stmt.name} = #{init_expr.to_source}"
-                prefix = stmt.mutable ? "" : "const "
+                # Don't add const for pointer types (they end with *)
+                is_pointer = type_str.end_with?("*")
+                prefix = (stmt.mutable || is_pointer) ? "" : "const "
                 CppAst::Nodes::VariableDeclaration.new(
                   type: decl_type,
                   declarators: [declarator],
@@ -73,7 +83,7 @@ module Aurora
               condition = lower_expression(if_stmt.condition)
               then_statement = lower_statement_block(if_stmt.then_body)
               else_statement = if_stmt.else_body ? lower_statement_block(if_stmt.else_body) : nil
-      
+
               CppAst::Nodes::IfStatement.new(
                 condition: condition,
                 then_statement: then_statement,
@@ -81,6 +91,24 @@ module Aurora
                 if_suffix: " ",
                 condition_lparen_suffix: "",
                 condition_rparen_suffix: "",
+                else_prefix: " ",
+                else_suffix: " "
+              )
+            end
+
+      def lower_if_expr_as_statement(if_expr)
+              # Lower IfExpr with unit type as if statement (not expression)
+              condition = lower_expression(if_expr.condition)
+              then_statement = lower_statement_block(if_expr.then_branch)
+              else_statement = if_expr.else_branch ? lower_statement_block(if_expr.else_branch) : nil
+
+              CppAst::Nodes::IfStatement.new(
+                condition: condition,
+                then_statement: then_statement,
+                else_statement: else_statement,
+                if_suffix: " ",
+                condition_lparen_suffix: "",
+                condition_rparen_suffix: " ",
                 else_prefix: " ",
                 else_suffix: " "
               )

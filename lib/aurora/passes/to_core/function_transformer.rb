@@ -64,6 +64,35 @@ module Aurora
           ret_type = transform_type(decl.ret_type)
           @function_table[decl.name] = FunctionInfo.new(decl.name, param_types, ret_type)
         end
+
+        # Register imported types (for member access support)
+        # Determine namespace from import path
+        namespace = infer_namespace_from_path(import_decl.path)
+
+        stdlib_ast.declarations.each do |decl|
+          next unless decl.is_a?(AST::TypeDecl)
+          next unless imported_items.include?(decl.name)
+
+          # Transform the type
+          type_ir = transform_type_decl(decl)
+
+          # Register in NEW TypeRegistry with namespace info
+          kind = infer_type_kind(decl, type_ir.type)
+          @type_registry.register(
+            decl.name,
+            ast_node: decl,
+            core_ir_type: type_ir.type,
+            namespace: namespace,
+            kind: kind,
+            exported: decl.exported
+          )
+
+          # Also register in OLD @type_table for backward compat
+          @type_table[decl.name] = type_ir.type
+
+          # If it's a sum type, register its constructors
+          register_sum_type_constructors(decl.name, type_ir.type) if type_ir.type.is_a?(CoreIR::SumType)
+        end
       end
 
       def register_sum_type_constructors(sum_type_name, sum_type)
@@ -73,6 +102,48 @@ module Aurora
           field_types = (variant[:fields] || []).map { |field| field[:type] }
           @sum_type_constructors[variant[:name]] = FunctionInfo.new(variant[:name], field_types, sum_type)
         end
+      end
+
+      # Helper: Infer C++ namespace from module path
+      # @param path [String] Module path (e.g., "Graphics", "Math")
+      # @return [String, nil] C++ namespace (e.g., "aurora::graphics")
+      def infer_namespace_from_path(path)
+        # Map stdlib module names to C++ namespaces
+        STDLIB_NAMESPACE_MAP[path]
+      end
+
+      # Map of stdlib modules to their C++ namespaces
+      STDLIB_NAMESPACE_MAP = {
+        'Graphics' => 'aurora::graphics',
+        'Math' => 'aurora::math',
+        'IO' => 'aurora::io',
+        'String' => 'aurora::string',
+        'Conv' => 'aurora',  # Conv functions are directly in aurora namespace
+        'File' => 'aurora::file',
+        'JSON' => 'aurora::json',
+        'Collections' => 'aurora::collections'
+      }.freeze
+
+      # Helper: Infer type kind from AST and CoreIR
+      # @param ast_decl [AST::TypeDecl] AST type declaration
+      # @param core_ir_type [CoreIR::Type] CoreIR type
+      # @return [Symbol] :primitive, :record, :sum, :opaque
+      def infer_type_kind(ast_decl, core_ir_type)
+        # Check if it's an opaque type (type without definition)
+        # In our parser, opaque types become PrimType with the same name as the decl
+        if core_ir_type.is_a?(CoreIR::Type) &&
+           core_ir_type.primitive? &&
+           ast_decl.type.is_a?(AST::PrimType) &&
+           ast_decl.type.name == ast_decl.name
+          return :opaque
+        end
+
+        # Otherwise determine from CoreIR type
+        return :record if core_ir_type.is_a?(CoreIR::RecordType)
+        return :sum if core_ir_type.is_a?(CoreIR::SumType)
+        return :primitive if core_ir_type.primitive?
+
+        :unknown
       end
 
       def transform_function(func)

@@ -169,7 +169,9 @@ module Aurora
 
     def parse_do_expression
       do_token = consume(:DO)
-      body = []
+      statements = []
+      result_expr = nil
+      all_items = []
 
       # Parse expressions until we hit END
       until current.type == :END
@@ -179,7 +181,7 @@ module Aurora
 
         # Parse one expression
         expr = parse_do_statement
-        body << expr
+        all_items << expr
 
         # Skip optional semicolon between statements
         if current.type == :SEMICOLON
@@ -189,7 +191,41 @@ module Aurora
 
       consume(:END)
 
-      with_origin(do_token) { AST::DoExpr.new(body: body) }
+      # Process items: last expression becomes result, others become statements
+      if all_items.empty?
+        # Empty block returns unit type
+        result_expr = AST::UnitLit.new
+      else
+        # Last item is the result expression
+        *stmt_items, last_item = all_items
+
+        # Convert all non-last items to statements
+        stmt_items.each do |item|
+          if item.is_a?(AST::Stmt)
+            # Already a statement (VariableDecl, Assignment)
+            statements << item
+          else
+            # Wrap expression as statement
+            statements << AST::ExprStmt.new(expr: item)
+          end
+        end
+
+        # Last item is the result
+        if last_item.is_a?(AST::Stmt) && !last_item.is_a?(AST::VariableDecl)
+          # If last is a non-VariableDecl statement, add it and use unit result
+          statements << last_item
+          result_expr = AST::UnitLit.new
+        elsif last_item.is_a?(AST::VariableDecl)
+          # VariableDecl is statement, not expression - add it and use unit result
+          statements << last_item
+          result_expr = AST::UnitLit.new
+        else
+          # Last is expression - use as result
+          result_expr = last_item
+        end
+      end
+
+      with_origin(do_token) { AST::BlockExpr.new(statements: statements, result_expr: result_expr) }
     end
 
     def parse_do_statement
@@ -203,6 +239,12 @@ module Aurora
         parse_match_expression
       when :DO
         parse_do_expression
+      when :BREAK
+        token = consume(:BREAK)
+        with_origin(token) { AST::Break.new }
+      when :CONTINUE
+        token = consume(:CONTINUE)
+        with_origin(token) { AST::Continue.new }
       when :IDENTIFIER
         # Check for assignment: x = ...
         if peek && peek.type == :EQUAL
@@ -254,24 +296,64 @@ module Aurora
       iterable = parse_if_expression
       consume(:DO)
 
-      # Parse body as a sequence of statements until END
+      # After 'do', parse the block directly as BlockExpr
+      # Same unified approach as while loop
       statements = []
+      result_expr = nil
+      all_items = []
+
       until current.type == :END
         if eof?
           raise "Unexpected EOF in for loop, expected 'end'"
         end
-        stmt = parse_do_statement
-        # Wrap expressions in ExprStmt
-        stmt = AST::ExprStmt.new(expr: stmt) unless stmt.is_a?(AST::Stmt)
-        statements << stmt
+
+        # Parse one statement/expression
+        expr = parse_do_statement
+        all_items << expr
+
+        # Skip optional semicolon between statements
         if current.type == :SEMICOLON
           consume(:SEMICOLON)
         end
       end
+
       consume(:END)
 
-      # Wrap statements in a block
-      body = AST::Block.new(stmts: statements)
+      # Process items: last expression becomes result, others become statements
+      if all_items.empty?
+        # Empty block returns void
+        result_expr = AST::UnitLit.new
+      else
+        # Last item is the result expression
+        *stmt_items, last_item = all_items
+
+        # Convert all non-last items to statements
+        stmt_items.each do |item|
+          if item.is_a?(AST::Stmt)
+            # Already a statement (VariableDecl, Assignment)
+            statements << item
+          else
+            # Wrap expression as statement
+            statements << AST::ExprStmt.new(expr: item)
+          end
+        end
+
+        # Last item is the result
+        if last_item.is_a?(AST::Stmt) && !last_item.is_a?(AST::VariableDecl)
+          # If last is a non-VariableDecl statement, add it and use void result
+          statements << last_item
+          result_expr = AST::UnitLit.new
+        elsif last_item.is_a?(AST::VariableDecl)
+          # VariableDecl is statement, not expression - add it and use void result
+          statements << last_item
+          result_expr = AST::UnitLit.new
+        else
+          # Last is expression - use as result
+          result_expr = last_item
+        end
+      end
+
+      body = with_origin(for_token) { AST::BlockExpr.new(statements: statements, result_expr: result_expr) }
 
       with_origin(for_token) do
         AST::ForLoop.new(
@@ -288,7 +370,21 @@ module Aurora
       elsif current.type == :DO
         parse_do_expression
       else
-        parse_if_expression
+        # Allow single statement/expression without 'do'
+        # This handles: if x then y = 1
+        # as well as:    if x then 42
+        item = parse_do_statement
+
+        # Wrap single statement in BlockExpr for consistency
+        if item.is_a?(AST::Stmt)
+          AST::BlockExpr.new(
+            statements: [item],
+            result_expr: AST::UnitLit.new  # Unit type
+          )
+        else
+          # For expressions, return as-is
+          item
+        end
       end
     end
 
@@ -709,16 +805,66 @@ module Aurora
       condition = parse_if_expression
       consume(:DO)
 
-      # Parse body - either explicit block {...} or a single do-expression
-      body = if current.type == :LBRACE
-               parse_block_expression
-             elsif current.type == :DO
-               # Explicit do-end block
-               parse_do_expression
-             else
-               # Single expression (will be parsed until newline/semicolon/end)
-               parse_if_expression
-             end
+      # After 'do', parse the block directly as BlockExpr
+      # This eliminates the need for 'while x < 3 do do ... end'
+      # Now: 'while x < 3 do ... end' works directly
+      statements = []
+      result_expr = nil
+      all_items = []
+
+      until current.type == :END
+        if eof?
+          raise "Unexpected EOF in while block, expected 'end'"
+        end
+
+        # Parse one statement/expression
+        expr = parse_do_statement
+        all_items << expr
+
+        # Skip optional semicolon between statements
+        if current.type == :SEMICOLON
+          consume(:SEMICOLON)
+        end
+      end
+
+      consume(:END)
+
+      # Process items: last expression becomes result, others become statements
+      # Same logic as parse_do_expression
+      if all_items.empty?
+        # Empty block returns void
+        result_expr = AST::UnitLit.new
+      else
+        # Last item is the result expression
+        *stmt_items, last_item = all_items
+
+        # Convert all non-last items to statements
+        stmt_items.each do |item|
+          if item.is_a?(AST::Stmt)
+            # Already a statement (VariableDecl, Assignment)
+            statements << item
+          else
+            # Wrap expression as statement
+            statements << AST::ExprStmt.new(expr: item)
+          end
+        end
+
+        # Last item is the result
+        if last_item.is_a?(AST::Stmt) && !last_item.is_a?(AST::VariableDecl)
+          # If last is a non-VariableDecl statement, add it and use void result
+          statements << last_item
+          result_expr = AST::UnitLit.new
+        elsif last_item.is_a?(AST::VariableDecl)
+          # VariableDecl is statement, not expression - add it and use void result
+          statements << last_item
+          result_expr = AST::UnitLit.new
+        else
+          # Last is expression - use as result
+          result_expr = last_item
+        end
+      end
+
+      body = with_origin(while_token) { AST::BlockExpr.new(statements: statements, result_expr: result_expr) }
 
       with_origin(while_token) do
         AST::WhileLoop.new(

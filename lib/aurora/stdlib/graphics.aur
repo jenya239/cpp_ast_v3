@@ -58,3 +58,11 @@ export fn is_quit_event(evt: Event) -> bool =
     | EventKeyPress => true
     | EventQuit => true
     | _ => false
+
+// Helper functions for Event field access
+// Note: These work within Graphics module but may have type inference issues when imported
+// Consider using pattern matching instead when importing
+export fn event_button(evt: Event) -> i32 = evt.button
+export fn event_x(evt: Event) -> i32 = evt.x
+export fn event_y(evt: Event) -> i32 = evt.y
+export fn event_keycode(evt: Event) -> i32 = evt.keycode

@@ -206,9 +206,7 @@ module Aurora
             func = parse_function(exported: true)
             declarations << func
           when :TYPE
-            type_decl = parse_type_decl
-            type_decl.instance_variable_set(:@exported, true)
-            declarations << type_decl
+            declarations << parse_type_decl(exported: true)
           else
             raise "Expected FN, TYPE, or EXTERN after export, got #{current.type}"
           end
@@ -257,7 +255,7 @@ module Aurora
       fields
     end
 
-    def parse_type_decl
+    def parse_type_decl(exported: false)
       consume(:TYPE)
       name_token = consume(:IDENTIFIER)
       name = name_token.value
@@ -270,28 +268,35 @@ module Aurora
         expect_operator(">")
       end
 
-      consume(:EQUAL)
+      # For opaque types (export type Foo), EQUAL is optional
+      # If there's no EQUAL, create an opaque type reference
+      type = if current.type == :EQUAL
+               consume(:EQUAL)
 
-      type = case current.type
-             when :LBRACE
-               parse_record_type
-             when :ENUM
-               parse_enum_type
-             when :OPERATOR
-               if current.value == "|"
-                 parse_sum_type
+               case current.type
+               when :LBRACE
+                 parse_record_type
+               when :ENUM
+                 parse_enum_type
+               when :OPERATOR
+                 if current.value == "|"
+                   parse_sum_type
+                 else
+                   parse_type
+                 end
+               when :IDENTIFIER
+                 # Could be sum type (Variant1 | Variant2) or named type
+                 # Look ahead to see if there's a | after the identifier
+                 parse_type_or_sum
                else
                  parse_type
                end
-             when :IDENTIFIER
-               # Could be sum type (Variant1 | Variant2) or named type
-               # Look ahead to see if there's a | after the identifier
-               parse_type_or_sum
              else
-               parse_type
+               # Opaque type - treat as primitive type (pointer to C++ object)
+               AST::PrimType.new(name: name)
              end
 
-      with_origin(name_token) { AST::TypeDecl.new(name: name, type: type, type_params: type_params) }
+      with_origin(name_token) { AST::TypeDecl.new(name: name, type: type, type_params: type_params, exported: exported) }
     end
 
     end

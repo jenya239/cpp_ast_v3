@@ -40,9 +40,10 @@ class AuroraControlFlowStatementTest < Minitest::Test
     source = <<~AUR
       fn countdown(n: i32) -> i32 =
         let mut value = n;
-        while value > 0 do {
+        while value > 0 do
           value = value - 1;
-        }
+          0
+        end;
         value
     AUR
 
@@ -71,13 +72,15 @@ class AuroraControlFlowStatementTest < Minitest::Test
     source = <<~AUR
       fn first_positive(xs: i32[]) -> i32 =
         let mut found = -1;
-        for x in xs do {
-          if x < 0 then {
+        for x in xs do
+          if x < 0 then do
             continue;
-          };
+            0
+          end;
           found = x;
           break;
-        };
+          0
+        end;
         found
     AUR
 
