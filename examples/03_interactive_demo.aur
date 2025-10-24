@@ -23,7 +23,7 @@ fn main() -> i32 = do
   let mut frame_count = 0;
 
   // Event loop - runs at ~60 FPS
-  while running do
+  while running do do
     let evt = poll_event(win);
 
     // Check for quit (any key press)

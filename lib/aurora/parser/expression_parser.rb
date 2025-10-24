@@ -709,20 +709,16 @@ module Aurora
       condition = parse_if_expression
       consume(:DO)
 
-      # Parse body as a do-expression body (statements until END)
-      body_exprs = []
-      until current.type == :END
-        if eof?
-          raise "Unexpected EOF in while loop, expected 'end'"
-        end
-        body_exprs << parse_do_statement
-        if current.type == :SEMICOLON
-          consume(:SEMICOLON)
-        end
-      end
-
-      # Wrap in DoExpr
-      body = AST::DoExpr.new(body: body_exprs)
+      # Parse body - either explicit block {...} or a single do-expression
+      body = if current.type == :LBRACE
+               parse_block_expression
+             elsif current.type == :DO
+               # Explicit do-end block
+               parse_do_expression
+             else
+               # Single expression (will be parsed until newline/semicolon/end)
+               parse_if_expression
+             end
 
       with_origin(while_token) do
         AST::WhileLoop.new(

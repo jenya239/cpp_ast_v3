@@ -107,6 +107,7 @@ module Aurora
         # Returns the value of the last expression
         return CoreIR::Builder.literal(nil, CoreIR::Builder.primitive_type("void")) if expr.body.empty?
 
+
         statements = []
 
         # Process all expressions
@@ -136,6 +137,9 @@ module Aurora
             ensure_compatible_type(value_ir.type, existing_type, "assignment to '#{target_name}'")
             target_ir = CoreIR::Builder.var(target_name, existing_type)
             statements << CoreIR::Builder.assignment_stmt(target_ir, value_ir)
+          elsif e.is_a?(AST::WhileLoop) && !is_last
+            # While loop is always a statement (returns void)
+            statements << CoreIR::Builder.expr_statement(transform_expression(e))
           elsif !is_last
             # Not the last expression - convert to statement
             statements << CoreIR::Builder.expr_statement(transform_expression(e))
@@ -144,7 +148,11 @@ module Aurora
 
         # Last expression is the result value
         last_expr = expr.body.last
-        if last_expr.is_a?(AST::VariableDecl)
+        if last_expr.is_a?(AST::WhileLoop)
+          # If last is while loop, add as statement and return void
+          statements << CoreIR::Builder.expr_statement(transform_expression(last_expr))
+          result_expr = CoreIR::Builder.literal(nil, CoreIR::Builder.primitive_type("void"))
+        elsif last_expr.is_a?(AST::VariableDecl)
           # If last is a variable declaration, return void
           value = transform_expression(last_expr.value)
           @var_types[last_expr.name] = value.type
