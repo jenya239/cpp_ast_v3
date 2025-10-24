@@ -103,6 +103,52 @@ end
 - **0 regressions**
 - **All critical issues resolved**
 
+#### 6. Opaque Types Full Implementation
+**Problem:** Ad-hoc solution without proper AST/CoreIR representation
+
+**Solution:**
+- **AST Level:** `AST::OpaqueType` class for types without definitions
+- **CoreIR Level:** `CoreIR::OpaqueType` with `opaque?()` method
+- **Parser:** Types without `=` are opaque (e.g., `export type Window`)
+- **TypeRegistry:** Automatic `*` suffix for opaque types
+- **Namespace Support:** Qualified names like `aurora::graphics::Window*`
+- **Full Registration:** All types registered in TypeRegistry, not just stdlib
+
+**Syntax:**
+```aurora
+export type Window           // Opaque - no definition
+export type Event = { ... }  // Record - has definition
+```
+
+**Files:**
+- `lib/aurora/ast/nodes.rb` - AST::OpaqueType class
+- `lib/aurora/core_ir/nodes.rb` - CoreIR::OpaqueType
+- `lib/aurora/core_ir/builder.rb` - opaque_type() factory
+- `lib/aurora/parser/declaration_parser.rb` - recognize opaque syntax
+- `lib/aurora/passes/to_core/function_transformer.rb` - transform + register
+- `lib/aurora/backend/cpp_lowering/base_lowerer.rb` - lower to C++ pointers
+- `test/aurora/opaque_type_test.rb` - 7 comprehensive tests
+
+#### 7. While Loop Verification
+**Status:** ✅ Already working correctly (from unit type implementation)
+
+**Verification:**
+- Parser uses `AST::UnitLit` for while loop results
+- No dummy `IntLit(0)` values
+- Clean C++ generation without ternary operators
+- 4 new tests added for verification
+
+**Generated C++:**
+```cpp
+while (count < 5){
+sum = sum + count;
+count = count + 1;
+}
+```
+
+**Files:**
+- `test/aurora/while_loop_test.rb` - 4 verification tests
+
 ### 🚀 Generated C++ Quality
 
 **Before:**
