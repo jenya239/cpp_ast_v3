@@ -49,6 +49,7 @@ class AuroraStdlibTest < Minitest::Test
 
   def test_stdlib_files_exist
     # Test that working stdlib files exist
+    project_root = File.expand_path('../..', __dir__)
     stdlib_files = [
       "lib/aurora/stdlib/math.aur",
       "lib/aurora/stdlib/io.aur",
@@ -57,13 +58,16 @@ class AuroraStdlibTest < Minitest::Test
     ]
 
     stdlib_files.each do |file|
-      assert File.exist?(file), "Stdlib file #{file} should exist"
+      full_path = File.join(project_root, file)
+      assert File.exist?(full_path), "Stdlib file #{file} should exist at #{full_path}"
     end
   end
 
   def test_stdlib_documentation_exists
     # Test that documentation exists
-    assert File.exist?("docs/STDLIB.md"), "Stdlib documentation should exist"
+    project_root = File.expand_path('../..', __dir__)
+    doc_path = File.join(project_root, "docs/STDLIB.md")
+    assert File.exist?(doc_path), "Stdlib documentation should exist at #{doc_path}"
   end
 
   def test_simple_math_functions
