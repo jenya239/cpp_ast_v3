@@ -123,12 +123,12 @@ module Aurora
 
               # Check for stdlib functions with namespace qualification
               if call.callee.is_a?(CoreIR::VarExpr)
-                # NEW: Try StdlibScanner first for automatic resolution
-                qualified_name = if @stdlib_scanner
-                  @stdlib_scanner.cpp_function_name(call.callee.name)
-                else
-                  # FALLBACK: Use hardcoded STDLIB_FUNCTIONS for backward compatibility
-                  STDLIB_FUNCTIONS[call.callee.name]
+                # Priority 1: Check hardcoded STDLIB_FUNCTIONS first (for special cases like to_f32 => static_cast)
+                qualified_name = STDLIB_FUNCTIONS[call.callee.name]
+
+                # Priority 2: If not found in hardcoded, try StdlibScanner for automatic resolution
+                if qualified_name.nil? && @stdlib_scanner
+                  qualified_name = @stdlib_scanner.cpp_function_name(call.callee.name)
                 end
 
                 if qualified_name
