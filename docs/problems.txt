@@ -148,20 +148,22 @@ STDLIB_FUNCTIONS = {
 Забыл добавить в @type_map → C++ ошибки компиляции
 Забыл добавить в STDLIB_FUNCTIONS → undefined function
 Решение: Автоматический парсинг stdlib и регистрация
-6. Opaque types - ad-hoc решение
-Текущий подход:
-# Парсер
-type = AST::PrimType.new(name: name)  # opaque type как primitive?!
+✅ 6. Opaque types - ad-hoc решение [ИСПРАВЛЕНО 2025-10-24]
 
-# Codegen
-'Window' => 'aurora::graphics::Window*'  # вручную pointer
-Проблемы:
-Opaque type представлен как PrimType - концептуально неправильно
-Pointer/non-pointer решается вручную в @type_map
-Нет способа объявить opaque type в Aurora синтаксисе
-Должно быть:
-export opaque type Window  // явно opaque
-export type Event = { ... }  // обычный record
+✅ РЕШЕНИЕ РЕАЛИЗОВАНО:
+Синтаксис:
+  export type Window           // Opaque type без определения
+  export type Event = { ... }  // Обычный record type
+
+Реализация:
+  - AST::OpaqueType узел (вместо неправильного PrimType)
+  - CoreIR::OpaqueType с методом opaque?()
+  - TypeRegistry автоматически добавляет '*' для opaque types
+  - Namespace qualified: aurora::graphics::Window*
+  - Регистрация всех типов в TypeRegistry (не только stdlib)
+  - 7 новых тестов покрывают всё
+
+Тесты: All pass, 0 regressions
 7. Const для pointers - хак в codegen
 Текущее решение:
 is_pointer = type_str.end_with?("*")
