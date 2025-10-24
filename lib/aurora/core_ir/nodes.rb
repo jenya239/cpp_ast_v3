@@ -36,6 +36,10 @@ module Aurora
       def unit?
         @kind == :unit
       end
+
+      def opaque?
+        @kind == :opaque
+      end
     end
     
     # Record type with fields
@@ -74,10 +78,23 @@ module Aurora
     # Example: if without else, statements, etc.
     class UnitType < Type
       def initialize(origin: nil)
-        super(kind: :unit, name: "unit", origin: origin)
+        super(kind: :unit, name: "unit", origin: nil)
       end
 
       def unit?
+        true
+      end
+    end
+
+    # Opaque type - type without known structure in Aurora
+    # Represented as pointer in C++, can only come from extern/stdlib
+    # Example: Window, DrawContext from Graphics module
+    class OpaqueType < Type
+      def initialize(name:, origin: nil)
+        super(kind: :opaque, name: name, origin: origin)
+      end
+
+      def opaque?
         true
       end
     end

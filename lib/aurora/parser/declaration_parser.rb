@@ -292,8 +292,9 @@ module Aurora
                  parse_type
                end
              else
-               # Opaque type - treat as primitive type (pointer to C++ object)
-               AST::PrimType.new(name: name)
+               # Opaque type - explicit type declaration without definition
+               # Represented as pointer in C++, used for extern/stdlib types
+               AST::OpaqueType.new(name: name)
              end
 
       with_origin(name_token) { AST::TypeDecl.new(name: name, type: type, type_params: type_params, exported: exported) }

@@ -129,8 +129,13 @@ module Aurora
       # @param core_ir_type [CoreIR::Type] CoreIR type
       # @return [Symbol] :primitive, :record, :sum, :opaque
       def infer_type_kind(ast_decl, core_ir_type)
-        # Check if it's an opaque type (type without definition)
-        # In our parser, opaque types become PrimType with the same name as the decl
+        # Check if it's an opaque type (explicit AST::OpaqueType or old-style implicit)
+        if core_ir_type.is_a?(CoreIR::OpaqueType) || ast_decl.type.is_a?(AST::OpaqueType)
+          return :opaque
+        end
+
+        # Legacy: Check if it's an old-style opaque type (PrimType with same name as decl)
+        # This handles types declared before AST::OpaqueType was introduced
         if core_ir_type.is_a?(CoreIR::Type) &&
            core_ir_type.primitive? &&
            ast_decl.type.is_a?(AST::PrimType) &&
@@ -264,6 +269,8 @@ module Aurora
           case type
           when AST::PrimType
             CoreIR::Builder.primitive_type(type.name)
+          when AST::OpaqueType
+            CoreIR::Builder.opaque_type(type.name)
           when AST::GenericType
             base_name = type.base_type.name
             validate_type_constraints(base_name, type.type_params)
@@ -301,6 +308,21 @@ module Aurora
                  end
           register_sum_type_constructors(decl.name, type) if type.is_a?(CoreIR::SumType)
           type_params = normalize_type_params(decl.type_params)
+
+          # Register type in TypeRegistry
+          kind = infer_type_kind(decl, type)
+          @type_registry.register(
+            decl.name,
+            ast_node: decl,
+            core_ir_type: type,
+            namespace: nil,  # Main module types have no namespace
+            kind: kind,
+            exported: decl.exported
+          )
+
+          # Backward compatibility: register in old @type_table
+          @type_table[decl.name] = type
+
           CoreIR::TypeDecl.new(name: decl.name, type: type, type_params: type_params)
         end
       end

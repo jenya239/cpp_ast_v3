@@ -14,6 +14,10 @@ module Aurora
         UnitType.new(origin: origin)
       end
 
+      def self.opaque_type(name, origin: nil)
+        OpaqueType.new(name: name, origin: origin)
+      end
+
       def self.record_type(name, fields, origin: nil)
         RecordType.new(name: name, fields: fields, origin: origin)
       end

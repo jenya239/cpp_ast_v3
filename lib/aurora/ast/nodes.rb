@@ -200,7 +200,15 @@ module Aurora
         @element_type = element_type
       end
     end
-    
+
+    # Opaque type - type without known structure in Aurora
+    # Represented as pointer in C++, can only come from extern/stdlib
+    class OpaqueType < Type
+      def initialize(name:, origin: nil)
+        super(kind: :opaque, name: name, origin: origin)
+      end
+    end
+
     # Expressions (with sugar)
     class Expr < Node
       attr_reader :kind, :data

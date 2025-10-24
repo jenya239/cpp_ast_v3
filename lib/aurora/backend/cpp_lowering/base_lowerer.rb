@@ -19,6 +19,13 @@ module Aurora
               case type
               when CoreIR::ArrayType
                 "std::vector<#{map_type(type.element_type)}>"
+              when CoreIR::OpaqueType
+                # Opaque types: Check TypeRegistry first, or add pointer suffix
+                if @type_registry && @type_registry.has_type?(type.name)
+                  return @type_registry.cpp_name(type.name)
+                end
+                # Fallback: opaque types are pointers
+                "#{type.name}*"
               when CoreIR::Type
                 # NEW: Try TypeRegistry first for accurate C++ names
                 if @type_registry && type.respond_to?(:name) && @type_registry.has_type?(type.name)
