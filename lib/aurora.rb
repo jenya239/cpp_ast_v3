@@ -9,6 +9,7 @@ require_relative "aurora/passes/to_core"
 require_relative "aurora/backend/cpp_lowering"
 require_relative "aurora/backend/header_generator"
 require_relative "aurora/stdlib_resolver"
+require_relative "aurora/stdlib_scanner"
 
 module Aurora
   class ParseError < StandardError; end
@@ -41,11 +42,14 @@ module Aurora
       # 1. Parse Aurora source
       ast = parse(source, filename: filename)
 
-      # 2. Transform to CoreIR (with type_registry)
+      # 2. Create StdlibScanner for automatic function/type discovery
+      stdlib_scanner = StdlibScanner.new
+
+      # 3. Transform to CoreIR (with type_registry)
       core_ir, type_registry = transform_to_core_with_registry(ast)
 
-      # 3. Lower to C++ AST (with shared type_registry)
-      cpp_ast = lower_to_cpp(core_ir, type_registry: type_registry)
+      # 4. Lower to C++ AST (with shared type_registry and stdlib_scanner)
+      cpp_ast = lower_to_cpp(core_ir, type_registry: type_registry, stdlib_scanner: stdlib_scanner)
 
       cpp_ast
     end
@@ -82,8 +86,9 @@ module Aurora
     # Lower CoreIR to C++ AST
     # @param core_ir [CoreIR::Module] CoreIR module
     # @param type_registry [TypeRegistry] Shared type registry from ToCore
-    def lower_to_cpp(core_ir, type_registry: nil)
-      lowerer = Backend::CppLowering.new(type_registry: type_registry)
+    # @param stdlib_scanner [StdlibScanner] Scanner for automatic stdlib function resolution
+    def lower_to_cpp(core_ir, type_registry: nil, stdlib_scanner: nil)
+      lowerer = Backend::CppLowering.new(type_registry: type_registry, stdlib_scanner: stdlib_scanner)
       lowerer.lower(core_ir)
     rescue CompileError
       raise
@@ -105,8 +110,11 @@ module Aurora
       ast = parse(source, filename: filename)
       core_ir, type_registry = transform_to_core_with_registry(ast)
 
+      # Create StdlibScanner
+      stdlib_scanner = StdlibScanner.new
+
       # Generate header and implementation
-      lowering = Backend::CppLowering.new(type_registry: type_registry)
+      lowering = Backend::CppLowering.new(type_registry: type_registry, stdlib_scanner: stdlib_scanner)
       generator = Backend::HeaderGenerator.new(lowering)
       generator.generate(core_ir)
     rescue CompileError

@@ -128,14 +128,15 @@ If требует обе ветки возвращали значение
   - Удалён hack с origin.nil? для фильтрации dummy литералов
   - Парсер генерирует явный UnitLit вместо IntLit(0)
   - Lowering обрабатывает unit type правильно на всех уровнях
-5. Import system - ручная регистрация везде
-Проблема:
+✅ 5. Import system - ручная регистрация везде [ИСПРАВЛЕНО 2025-10-24]
+
+Старая проблема:
 # lib/aurora/stdlib_resolver.rb
 STDLIB_MODULES = {
   'Graphics' => 'graphics.aur'  # добавили
 }
 
-# lib/aurora/backend/cpp_lowering.rb  
+# lib/aurora/backend/cpp_lowering.rb
 @type_map = {
   'Event' => 'aurora::graphics::Event'  # добавили вручную
 }
@@ -147,7 +148,23 @@ STDLIB_FUNCTIONS = {
 Забыл добавить в STDLIB_MODULES → import не работает
 Забыл добавить в @type_map → C++ ошибки компиляции
 Забыл добавить в STDLIB_FUNCTIONS → undefined function
-Решение: Автоматический парсинг stdlib и регистрация
+
+✅ РЕШЕНИЕ РЕАЛИЗОВАНО - StdlibScanner:
+  - Автоматическое сканирование lib/aurora/stdlib/
+  - Парсинг всех .aur файлов
+  - Извлечение функций (export fn и extern fn)
+  - Извлечение типов (opaque и record)
+  - Автоматический namespace mapping (Math → aurora::math)
+  - Единственный источник истины: .aur файл
+
+Реализация:
+  - lib/aurora/stdlib_scanner.rb (210 lines) - ядро системы
+  - lib/aurora/stdlib_resolver.rb - использует scanner
+  - lib/aurora/backend/cpp_lowering.rb - использует scanner
+  - Обратная совместимость: fallback на hardcoded constants
+
+Тесты: 23 tests, 109 assertions, 100% pass, 0 regressions
+Модули: Math, Graphics, IO, Conv, String, File, JSON - все работают
 ✅ 6. Opaque types - ad-hoc решение [ИСПРАВЛЕНО 2025-10-24]
 
 ✅ РЕШЕНИЕ РЕАЛИЗОВАНО:

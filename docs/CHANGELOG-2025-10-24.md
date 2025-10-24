@@ -149,6 +149,60 @@ count = count + 1;
 **Files:**
 - `test/aurora/while_loop_test.rb` - 4 verification tests
 
+#### 8. StdlibScanner - Automatic Stdlib Discovery
+**Problem:** Adding new stdlib required manual changes in 3+ places (STDLIB_MODULES, STDLIB_FUNCTIONS, .aur file)
+
+**Solution:**
+- **Automatic Discovery** - Scans `lib/aurora/stdlib/` and parses `.aur` files
+- **Single Source of Truth** - `.aur` file defines everything
+- **Automatic Namespace Mapping** - Math → aurora::math
+- **Type & Function Metadata** - Extracts all exported declarations
+- **Backward Compatible** - Falls back to hardcoded constants
+
+**Before:**
+```ruby
+# Manual registration required!
+STDLIB_MODULES = {
+  'Graphics' => 'graphics.aur'  # Add here
+}
+
+STDLIB_FUNCTIONS = {
+  'create_window' => 'aurora::graphics::create_window'  # Add here too!
+}
+```
+
+**After:**
+```ruby
+# Automatic!
+scanner = StdlibScanner.new
+scanner.cpp_function_name('create_window')
+# => "aurora::graphics::create_window"
+
+# Just works - no registration needed!
+```
+
+**Features:**
+- Scans all stdlib modules automatically
+- Extracts functions (both `export fn` and `extern fn`)
+- Extracts types (opaque and record)
+- Proper namespace mapping
+- Lazy scanning for performance
+- Graceful error handling
+
+**Files:**
+- `lib/aurora/stdlib_scanner.rb` - NEW (210 lines, core scanner)
+- `lib/aurora/stdlib_resolver.rb` - Updated (uses scanner)
+- `lib/aurora/backend/cpp_lowering.rb` - Updated (scanner parameter)
+- `lib/aurora/backend/cpp_lowering/expression_lowerer.rb` - Updated (use scanner)
+- `lib/aurora.rb` - Updated (create and pass scanner)
+- `test/aurora/stdlib_scanner_test.rb` - NEW (12 tests, 71 assertions)
+- `test/aurora/stdlib_scanner_integration_test.rb` - NEW (11 tests, 38 assertions)
+
+**Test Results:**
+- 23 tests, 109 assertions, **100% passing**
+- Zero regressions in existing tests
+- Successfully scans: Math, Graphics, IO, Conv, String, File, JSON
+
 ### 🚀 Generated C++ Quality
 
 **Before:**

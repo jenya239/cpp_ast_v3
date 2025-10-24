@@ -122,14 +122,23 @@ module Aurora
               end
 
               # Check for stdlib functions with namespace qualification
-              if call.callee.is_a?(CoreIR::VarExpr) && STDLIB_FUNCTIONS.key?(call.callee.name)
-                qualified_name = STDLIB_FUNCTIONS[call.callee.name]
-                args = call.args.map { |arg| lower_expression(arg) }
-                return CppAst::Nodes::FunctionCallExpression.new(
-                  callee: CppAst::Nodes::Identifier.new(name: qualified_name),
-                  arguments: args,
-                  argument_separators: Array.new([args.size - 1, 0].max, ", ")
-                )
+              if call.callee.is_a?(CoreIR::VarExpr)
+                # NEW: Try StdlibScanner first for automatic resolution
+                qualified_name = if @stdlib_scanner
+                  @stdlib_scanner.cpp_function_name(call.callee.name)
+                else
+                  # FALLBACK: Use hardcoded STDLIB_FUNCTIONS for backward compatibility
+                  STDLIB_FUNCTIONS[call.callee.name]
+                end
+
+                if qualified_name
+                  args = call.args.map { |arg| lower_expression(arg) }
+                  return CppAst::Nodes::FunctionCallExpression.new(
+                    callee: CppAst::Nodes::Identifier.new(name: qualified_name),
+                    arguments: args,
+                    argument_separators: Array.new([args.size - 1, 0].max, ", ")
+                  )
+                end
               end
 
               # Check if this is an array method call that needs translation

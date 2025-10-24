@@ -1,10 +1,13 @@
 # frozen_string_literal: true
 
+require_relative 'stdlib_scanner'
+
 module Aurora
   # Resolves stdlib module names to file paths
+  # Now uses StdlibScanner for automatic discovery
   class StdlibResolver
-    # Map of stdlib module names to their file paths
-    # Only includes fully working modules with proper implementations
+    # DEPRECATED: Legacy constant for backward compatibility
+    # Use StdlibScanner for automatic module discovery
     STDLIB_MODULES = {
       'Math' => 'math.aur',
       'IO' => 'io.aur',
@@ -13,29 +16,30 @@ module Aurora
       'Graphics' => 'graphics.aur'
     }.freeze
 
-    def initialize(stdlib_dir = nil)
+    def initialize(stdlib_dir = nil, scanner: nil)
       @stdlib_dir = stdlib_dir || File.expand_path('../aurora/stdlib', __dir__)
+      @scanner = scanner || StdlibScanner.new(@stdlib_dir)
     end
 
     # Check if a module name is a stdlib module
     def stdlib_module?(name)
-      STDLIB_MODULES.key?(name)
+      @scanner.module_exists?(name)
     end
 
     # Resolve a module name to a file path
     # Returns nil if not a stdlib module
     def resolve(name)
-      return nil unless stdlib_module?(name)
-
-      file = STDLIB_MODULES[name]
-      path = File.join(@stdlib_dir, file)
-
-      File.exist?(path) ? path : nil
+      @scanner.module_file_path(name)
     end
 
     # Get all available stdlib module names
     def available_modules
-      STDLIB_MODULES.keys
+      @scanner.available_modules
+    end
+
+    # Get the scanner instance (for accessing function/type metadata)
+    def scanner
+      @scanner
     end
   end
 end

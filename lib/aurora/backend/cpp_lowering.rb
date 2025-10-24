@@ -134,9 +134,12 @@ module Aurora
         "sleep_ms" => "aurora::graphics::sleep_ms"
       }.freeze
 
-      def initialize(type_registry: nil)
+      def initialize(type_registry: nil, stdlib_scanner: nil)
         # NEW: Use shared TypeRegistry if provided
         @type_registry = type_registry
+
+        # NEW: Use StdlibScanner for automatic function name resolution
+        @stdlib_scanner = stdlib_scanner
 
         # OLD: Fallback type_map for backward compatibility
         # Will be deprecated once TypeRegistry is fully integrated
