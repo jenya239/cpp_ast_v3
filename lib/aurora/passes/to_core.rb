@@ -21,7 +21,11 @@ module Aurora
       include StatementTransformer
       include FunctionTransformer
 
-      FunctionInfo = Struct.new(:name, :param_types, :ret_type)
+      FunctionInfo = Struct.new(:name, :param_types, :ret_type, :type_params) do
+        def initialize(name, param_types, ret_type, type_params = [])
+          super(name, param_types, ret_type, type_params)
+        end
+      end
       NUMERIC_PRIMITIVES = %w[i32 f32 i64 f64 u32 u64].freeze
       IO_RETURN_TYPES = {
         "print" => "i32",

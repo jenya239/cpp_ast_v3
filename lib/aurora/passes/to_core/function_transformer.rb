@@ -63,7 +63,7 @@ module Aurora
 
         param_types = func_decl.params.map { |param| transform_type(param.type) }
         ret_type = transform_type(func_decl.ret_type)
-        info = FunctionInfo.new(func_decl.name, param_types, ret_type)
+        info = FunctionInfo.new(func_decl.name, param_types, ret_type, type_params)
         @function_table[func_decl.name] = info
       ensure
         @current_type_params = saved_type_params if defined?(saved_type_params)
@@ -95,10 +95,17 @@ module Aurora
           next unless decl.is_a?(AST::FuncDecl)
           next unless imported_items.include?(decl.name)
 
+          # Set type parameters context before transforming types
+          type_params = normalize_type_params(decl.type_params)
+          saved_type_params = @current_type_params
+          @current_type_params = type_params
+
           # Register the function signature
           param_types = decl.params.map { |param| transform_type(param.type) }
           ret_type = transform_type(decl.ret_type)
-          @function_table[decl.name] = FunctionInfo.new(decl.name, param_types, ret_type)
+          @function_table[decl.name] = FunctionInfo.new(decl.name, param_types, ret_type, type_params)
+
+          @current_type_params = saved_type_params
         end
 
         # Register imported types (for member access support)

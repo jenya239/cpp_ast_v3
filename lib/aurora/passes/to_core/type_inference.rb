@@ -102,8 +102,32 @@ module Aurora
           unless info
             return CoreIR::Builder.primitive_type("auto")
           end
-          validate_function_call(info, args, callee.name)
-          info.ret_type
+
+          # Check if this is a generic function
+          if info.type_params && !info.type_params.empty?
+            # Infer type arguments from call arguments
+            arg_types = args.map(&:type)
+            type_map = infer_type_arguments(info.type_params, info.param_types, arg_types)
+
+            # Substitute type variables in parameter types for validation
+            instantiated_param_types = info.param_types.map { |pt| substitute_type(pt, type_map) }
+
+            # Validate with instantiated types
+            if instantiated_param_types.length != args.length
+              type_error("Function '#{callee.name}' expects #{instantiated_param_types.length} argument(s), got #{args.length}")
+            end
+
+            instantiated_param_types.each_with_index do |type, index|
+              ensure_compatible_type(args[index].type, type, "argument #{index + 1} of '#{callee.name}'")
+            end
+
+            # Substitute type variables in return type
+            substitute_type(info.ret_type, type_map)
+          else
+            # Non-generic function - use original logic
+            validate_function_call(info, args, callee.name)
+            info.ret_type
+          end
         when CoreIR::LambdaExpr
           function_type = callee.function_type
           expected = function_type.params || []
@@ -292,6 +316,125 @@ module Aurora
 
       def void_type?(type)
         normalized_type_name(type_name(type)) == "void"
+      end
+
+      # Generic type inference: infer concrete types for type parameters
+      # Returns a hash mapping type parameter names to concrete types
+      def infer_type_arguments(type_params, param_types, arg_types)
+        type_map = {}
+
+        param_types.each_with_index do |param_type, index|
+          arg_type = arg_types[index]
+          next unless arg_type
+
+          unify_types(param_type, arg_type, type_map)
+        end
+
+        type_map
+      end
+
+      # Unify two types to infer type variable bindings
+      # Mutates type_map to add discovered bindings
+      def unify_types(pattern_type, concrete_type, type_map)
+        case pattern_type
+        when CoreIR::TypeVariable
+          # This is a type variable - bind it to the concrete type
+          var_name = pattern_type.name
+          if type_map.key?(var_name)
+            # Already bound - verify consistency
+            existing = type_map[var_name]
+            unless types_compatible?(existing, concrete_type)
+              type_error("Type variable #{var_name} bound to both #{describe_type(existing)} and #{describe_type(concrete_type)}")
+            end
+          else
+            # New binding
+            type_map[var_name] = concrete_type
+          end
+
+        when CoreIR::GenericType
+          # Both should be generic with same base and compatible args
+          if concrete_type.is_a?(CoreIR::GenericType)
+            unify_types(pattern_type.base_type, concrete_type.base_type, type_map)
+            pattern_type.type_args.each_with_index do |pattern_arg, index|
+              concrete_arg = concrete_type.type_args[index]
+              unify_types(pattern_arg, concrete_arg, type_map) if concrete_arg
+            end
+          end
+
+        when CoreIR::ArrayType
+          # Array types - unify element types
+          if concrete_type.is_a?(CoreIR::ArrayType)
+            unify_types(pattern_type.element_type, concrete_type.element_type, type_map)
+          end
+
+        when CoreIR::FunctionType
+          # Function types - unify parameters and return types
+          if concrete_type.is_a?(CoreIR::FunctionType)
+            pattern_type.params.each_with_index do |pattern_param, index|
+              concrete_param = concrete_type.params[index]
+              unify_types(pattern_param[:type], concrete_param[:type], type_map) if concrete_param
+            end
+            unify_types(pattern_type.ret_type, concrete_type.ret_type, type_map)
+          end
+
+        else
+          # Primitive types, record types, etc. - just verify they match
+          # No unification needed
+        end
+      end
+
+      # Substitute type variables with concrete types
+      def substitute_type(type, type_map)
+        case type
+        when CoreIR::TypeVariable
+          # Replace type variable with its binding
+          type_map[type.name] || type
+
+        when CoreIR::GenericType
+          # Recursively substitute in base type and type arguments
+          new_base = substitute_type(type.base_type, type_map)
+          new_args = type.type_args.map { |arg| substitute_type(arg, type_map) }
+          if new_base != type.base_type || new_args != type.type_args
+            CoreIR::Builder.generic_type(new_base, new_args)
+          else
+            type
+          end
+
+        when CoreIR::ArrayType
+          # Substitute in element type
+          new_element = substitute_type(type.element_type, type_map)
+          new_element != type.element_type ? CoreIR::Builder.array_type(new_element) : type
+
+        when CoreIR::FunctionType
+          # Substitute in parameters and return type
+          new_params = type.params.map do |p|
+            new_type = substitute_type(p[:type], type_map)
+            new_type != p[:type] ? {name: p[:name], type: new_type} : p
+          end
+          new_ret = substitute_type(type.ret_type, type_map)
+          (new_params != type.params || new_ret != type.ret_type) ? CoreIR::Builder.function_type(new_params, new_ret) : type
+
+        else
+          # Primitive types, record types, etc. - no substitution needed
+          type
+        end
+      end
+
+      # Check if two types are compatible (for type variable binding verification)
+      def types_compatible?(type1, type2)
+        return true if type1 == type2
+
+        name1 = type_name(type1)
+        name2 = type_name(type2)
+
+        return true if name1 == name2
+
+        # Allow some flexibility for numeric types
+        if numeric_type?(type1) && numeric_type?(type2)
+          return true
+        end
+
+        false
       end
 
       end
