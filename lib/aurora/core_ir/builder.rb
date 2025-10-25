@@ -29,7 +29,23 @@ module Aurora
       def self.function_type(params, ret_type, origin: nil)
         FunctionType.new(params: params, ret_type: ret_type, origin: origin)
       end
-      
+
+      def self.generic_type(base_type, type_args, origin: nil)
+        GenericType.new(base_type: base_type, type_args: type_args, origin: origin)
+      end
+
+      def self.type_variable(name, constraint: nil, origin: nil)
+        TypeVariable.new(name: name, constraint: constraint, origin: origin)
+      end
+
+      def self.array_type(element_type, origin: nil)
+        ArrayType.new(element_type: element_type, origin: origin)
+      end
+
+      def self.type_param(name, constraint: nil, origin: nil)
+        TypeParam.new(name: name, constraint: constraint, origin: origin)
+      end
+
       def self.param(name, type, origin: nil)
         Param.new(name: name, type: type, origin: origin)
       end

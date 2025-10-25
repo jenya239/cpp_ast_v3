@@ -40,6 +40,18 @@ module Aurora
       def opaque?
         @kind == :opaque
       end
+
+      def generic?
+        @kind == :generic
+      end
+
+      def type_variable?
+        @kind == :type_var
+      end
+
+      def array?
+        @kind == :array
+      end
     end
     
     # Record type with fields
@@ -494,6 +506,37 @@ module Aurora
       def initialize(elements:, type:, origin: nil)
         super(kind: :array_lit, data: elements, type: type, origin: origin)
         @elements = elements  # Array of Expr
+      end
+    end
+
+    # Generic type - instantiated generic type with concrete type arguments
+    # Example: Option<i32>, Result<String, Error>, Vec<T> (where T is bound)
+    class GenericType < Type
+      attr_reader :base_type, :type_args
+
+      def initialize(base_type:, type_args:, origin: nil)
+        super(kind: :generic, name: base_type.name, origin: origin)
+        @base_type = base_type     # Type (the generic type itself, e.g., Option, Result)
+        @type_args = type_args     # Array of Type (concrete types for substitution)
+      end
+
+      def generic?
+        true
+      end
+    end
+
+    # Type variable - reference to a type parameter
+    # Example: T in fn foo<T>(x: T) -> T, the T in parameter/return type
+    class TypeVariable < Type
+      attr_reader :constraint
+
+      def initialize(name:, constraint: nil, origin: nil)
+        super(kind: :type_var, name: name, origin: origin)
+        @constraint = constraint  # Optional Type for constraints (e.g., T: Display)
+      end
+
+      def type_variable?
+        true
       end
     end
 
