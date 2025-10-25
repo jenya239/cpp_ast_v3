@@ -18,19 +18,55 @@ module Aurora
 
         @function_table.each_value do |info|
           info.param_types = info.param_types.map do |type|
-            type_name(type) == resolved_name ? resolved : type
+            refresh_type_reference(type, resolved_name, resolved)
           end
-          info.ret_type = resolved if type_name(info.ret_type) == resolved_name
+          info.ret_type = refresh_type_reference(info.ret_type, resolved_name, resolved)
+        end
+      end
+
+      # Recursively refresh type references, preserving GenericType structure
+      def refresh_type_reference(type, resolved_name, resolved_type)
+        case type
+        when CoreIR::GenericType
+          # Don't replace the entire GenericType, just refresh its base_type
+          base_type = refresh_type_reference(type.base_type, resolved_name, resolved_type)
+          type_args = type.type_args.map { |arg| refresh_type_reference(arg, resolved_name, resolved_type) }
+          if base_type != type.base_type || type_args != type.type_args
+            CoreIR::Builder.generic_type(base_type, type_args)
+          else
+            type
+          end
+        when CoreIR::ArrayType
+          # Refresh element type
+          element_type = refresh_type_reference(type.element_type, resolved_name, resolved_type)
+          element_type != type.element_type ? CoreIR::Builder.array_type(element_type) : type
+        when CoreIR::FunctionType
+          # Refresh params and return type
+          params = type.params.map { |p| {name: p[:name], type: refresh_type_reference(p[:type], resolved_name, resolved_type)} }
+          ret_type = refresh_type_reference(type.ret_type, resolved_name, resolved_type)
+          (params != type.params || ret_type != type.ret_type) ? CoreIR::Builder.function_type(params, ret_type) : type
+        else
+          # For primitive types and others, replace if name matches
+          type_name(type) == resolved_name ? resolved_type : type
         end
       end
 
       def register_function_signature(func_decl)
-        return @function_table[func_decl.name] if @function_table.key?(func_decl.name)
+        if @function_table.key?(func_decl.name)
+          return @function_table[func_decl.name]
+        end
+
+        # Set type parameters context before transforming types
+        type_params = normalize_type_params(func_decl.type_params)
+        saved_type_params = @current_type_params
+        @current_type_params = type_params
 
         param_types = func_decl.params.map { |param| transform_type(param.type) }
         ret_type = transform_type(func_decl.ret_type)
         info = FunctionInfo.new(func_decl.name, param_types, ret_type)
         @function_table[func_decl.name] = info
+      ensure
+        @current_type_params = saved_type_params if defined?(saved_type_params)
       end
 
       def register_stdlib_imports(import_decl)
@@ -153,6 +189,11 @@ module Aurora
 
       def transform_function(func)
         with_current_node(func) do
+          # Normalize and set type params FIRST, before transforming any types
+          type_params = normalize_type_params(func.type_params)
+          saved_type_params = @current_type_params
+          @current_type_params = type_params
+
           signature = ensure_function_signature(func)
           param_types = signature.param_types
 
@@ -165,7 +206,6 @@ module Aurora
           end
 
           ret_type = signature.ret_type
-          type_params = normalize_type_params(func.type_params)
 
           # For external functions, skip body transformation
           if func.external
@@ -181,11 +221,7 @@ module Aurora
           end
 
           saved_var_types = @var_types.dup
-          saved_type_params = @current_type_params
           @function_return_type_stack.push(ret_type)
-
-          # Save type parameters for constraint checking
-          @current_type_params = type_params
 
           params.each do |param|
             @var_types[param.name] = param.type
@@ -268,14 +304,29 @@ module Aurora
         with_current_node(type) do
           case type
           when AST::PrimType
-            CoreIR::Builder.primitive_type(type.name)
+            # Check if this is a reference to a type parameter
+            if @current_type_params && @current_type_params.any? { |tp| tp.name == type.name }
+              # This is a type variable (reference to type parameter)
+              constraint_param = @current_type_params.find { |tp| tp.name == type.name }
+              CoreIR::Builder.type_variable(type.name, constraint: constraint_param&.constraint)
+            else
+              CoreIR::Builder.primitive_type(type.name)
+            end
           when AST::OpaqueType
             CoreIR::Builder.opaque_type(type.name)
           when AST::GenericType
-            base_name = type.base_type.name
-            validate_type_constraints(base_name, type.type_params)
-            type_arg_names = type.type_params.map { |tp| transform_type(tp).name }.join(", ")
-            CoreIR::Builder.primitive_type("#{base_name}<#{type_arg_names}>")
+            # Transform to CoreIR::GenericType with proper type arguments
+            base_type = transform_type(type.base_type)
+            type_args = type.type_params.map { |tp| transform_type(tp) }
+            CoreIR::Builder.generic_type(base_type, type_args)
+          when AST::FunctionType
+            # Transform function type: fn(T, U) -> V
+            param_types = type.param_types.map { |pt| transform_type(pt) }
+            ret_type = transform_type(type.ret_type)
+
+            # Convert to params format expected by CoreIR::FunctionType
+            params = param_types.map.with_index { |pt, i| {name: "arg#{i}", type: pt} }
+            CoreIR::Builder.function_type(params, ret_type)
           when AST::RecordType
             fields = type.fields.map { |field| {name: field[:name], type: transform_type(field[:type])} }
             CoreIR::Builder.record_type(type.name, fields)
@@ -287,7 +338,7 @@ module Aurora
             CoreIR::Builder.sum_type(type.name, variants)
           when AST::ArrayType
             element_type = transform_type(type.element_type)
-            CoreIR::ArrayType.new(element_type: element_type)
+            CoreIR::Builder.array_type(element_type)
           else
             raise "Unknown type: #{type.class}"
           end
@@ -296,6 +347,14 @@ module Aurora
 
       def transform_type_decl(decl)
         with_current_node(decl) do
+          # Normalize type params first
+          type_params = normalize_type_params(decl.type_params)
+
+          # Set current type params context for type variable resolution
+          saved_type_params = @current_type_params
+          @current_type_params = type_params
+
+          # Transform the type definition
           type = transform_type(decl.type)
 
           type = case type
@@ -307,7 +366,6 @@ module Aurora
                    type
                  end
           register_sum_type_constructors(decl.name, type) if type.is_a?(CoreIR::SumType)
-          type_params = normalize_type_params(decl.type_params)
 
           # Register type in TypeRegistry
           kind = infer_type_kind(decl, type)
@@ -325,6 +383,8 @@ module Aurora
 
           CoreIR::TypeDecl.new(name: decl.name, type: type, type_params: type_params)
         end
+      ensure
+        @current_type_params = saved_type_params if defined?(saved_type_params)
       end
 
       end
