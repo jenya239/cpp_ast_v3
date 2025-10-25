@@ -37,9 +37,9 @@ export extern fn drop_i32(arr: i32[], n: i32) -> i32[]
 export extern fn drop_f32(arr: f32[], n: i32) -> f32[]
 export extern fn drop_str(arr: str[], n: i32) -> str[]
 
-export extern fn slice_i32(arr: i32[], start: i32, end: i32) -> i32[]
-export extern fn slice_f32(arr: f32[], start: i32, end: i32) -> f32[]
-export extern fn slice_str(arr: str[], start: i32, end: i32) -> str[]
+export extern fn slice_i32(arr: i32[], start: i32, end_idx: i32) -> i32[]
+export extern fn slice_f32(arr: f32[], start: i32, end_idx: i32) -> f32[]
+export extern fn slice_str(arr: str[], start: i32, end_idx: i32) -> str[]
 
 // Join for string arrays
 export extern fn join_strings(arr: str[], separator: str) -> str
@@ -56,4 +56,4 @@ export extern fn min_f32(arr: f32[]) -> f32
 export extern fn max_f32(arr: f32[]) -> f32
 
 // Range generator
-export extern fn range(start: i32, end: i32) -> i32[]
+export extern fn range(start: i32, end_idx: i32) -> i32[]

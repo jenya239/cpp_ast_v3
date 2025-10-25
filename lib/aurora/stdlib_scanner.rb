@@ -53,11 +53,6 @@ module Aurora
   # Automatically scans stdlib directory and extracts module metadata
   # Eliminates need for manual STDLIB_MODULES and STDLIB_FUNCTIONS registration
   class StdlibScanner
-    # Modules that use features not yet fully supported by the parser
-    # (e.g., generics, higher-order function types)
-    # These are silently skipped to avoid noise in warnings
-    KNOWN_UNSUPPORTED_MODULES = %w[array option result].freeze
-
     def initialize(stdlib_dir = nil)
       @stdlib_dir = stdlib_dir || File.expand_path('stdlib', __dir__)
       @modules = {}           # module_name => ModuleInfo
@@ -79,13 +74,8 @@ module Aurora
             @function_map[func_name] = metadata.qualified_name
           end
         rescue => e
-          # Check if this is a known unsupported module
-          module_basename = File.basename(file_path, '.aur')
-          unless KNOWN_UNSUPPORTED_MODULES.include?(module_basename)
-            # Log error for unexpected failures
-            warn "Failed to scan #{file_path}: #{e.message}"
-          end
-          # Silently skip known unsupported modules
+          # Log error but continue scanning other modules
+          warn "Failed to scan #{file_path}: #{e.message}"
         end
       end
 

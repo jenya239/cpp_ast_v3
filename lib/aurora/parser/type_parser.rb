@@ -135,6 +135,31 @@ module Aurora
                     base_type = parse_record_type
                     base_token = @last_token
                     base_type
+                  when :FN
+                    # Parse function type: fn(T, U) -> V
+                    base_token = consume(:FN)
+                    consume(:LPAREN)
+
+                    # Parse parameter types
+                    param_types = []
+                    unless current.type == :RPAREN
+                      loop do
+                        param_types << parse_type
+                        break unless current.type == :COMMA
+                        consume(:COMMA)
+                      end
+                    end
+
+                    consume(:RPAREN)
+                    consume(:ARROW)
+                    ret_type = parse_type
+
+                    with_origin(base_token) do
+                      AST::FunctionType.new(
+                        param_types: param_types,
+                        ret_type: ret_type
+                      )
+                    end
                   else
                     raise "Unexpected token: #{current}"
                   end

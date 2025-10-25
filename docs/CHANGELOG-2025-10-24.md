@@ -201,7 +201,23 @@ scanner.cpp_function_name('create_window')
 **Test Results:**
 - 23 tests, 109 assertions, **100% passing**
 - Zero regressions in existing tests
-- Successfully scans: Math, Graphics, IO, Conv, String, File, JSON
+
+**Coverage:**
+- Successfully scans **7 out of 10 modules** (70%)
+  - Conv (13 functions)
+  - File (23 functions)
+  - Graphics (20 functions, 5 types)
+  - IO (12 functions)
+  - Json (25 functions, 1 type)
+  - Math (14 functions)
+  - String (15 functions)
+  - **Total: 122 functions, 6 types discovered**
+
+**Known Limitations:**
+- 3 modules not yet supported (array, option, result)
+- These use generic type parameters (`<T>`) which parser doesn't fully support
+- Silently skipped via `KNOWN_UNSUPPORTED_MODULES` constant
+- No warnings shown for known unsupported modules
 
 ### 🚀 Generated C++ Quality
 
