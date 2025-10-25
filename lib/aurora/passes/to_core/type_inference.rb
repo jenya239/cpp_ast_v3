@@ -8,6 +8,15 @@ module Aurora
       # Auto-extracted from to_core.rb during refactoring
       module TypeInference
       def combine_numeric_type(left_type, right_type)
+        # If both are type variables, return i32 as default numeric type
+        if left_type.is_a?(CoreIR::TypeVariable) && right_type.is_a?(CoreIR::TypeVariable)
+          return CoreIR::Builder.primitive_type("i32")
+        end
+
+        # If one is a type variable, return the concrete type
+        return right_type if left_type.is_a?(CoreIR::TypeVariable)
+        return left_type if right_type.is_a?(CoreIR::TypeVariable)
+
         if type_name(left_type) == type_name(right_type)
           left_type
         elsif float_type?(left_type) || float_type?(right_type)
@@ -302,10 +311,14 @@ module Aurora
       end
 
       def numeric_type?(type)
+        # TypeVariable is assumed to be numeric-compatible (no constraints yet)
+        return true if type.is_a?(CoreIR::TypeVariable)
+
         type_str = normalized_type_name(type_name(type))
         return true if NUMERIC_PRIMITIVES.include?(type_str)
 
         # Check if this is a generic type parameter with Numeric constraint
+        return false unless @current_type_params
         type_param = @current_type_params.find { |tp| tp.name == type_str }
         type_param && type_param.constraint == "Numeric"
       end

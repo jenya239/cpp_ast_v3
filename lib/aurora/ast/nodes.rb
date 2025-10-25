@@ -335,14 +335,15 @@ module Aurora
     
     # Let binding (sugar)
     class Let < Expr
-      attr_reader :name, :value, :body, :mutable
+      attr_reader :name, :value, :body, :mutable, :type
 
-      def initialize(name:, value:, body:, mutable: false, origin: nil)
+      def initialize(name:, value:, body:, mutable: false, type: nil, origin: nil)
         super(kind: :let, data: {name: name, value: value, body: body}, origin: origin)
         @name = name
         @value = value
         @body = body
         @mutable = mutable
+        @type = type  # Optional type annotation
       end
     end
 
@@ -454,13 +455,14 @@ module Aurora
 
     # Variable declaration statement
     class VariableDecl < Stmt
-      attr_reader :name, :value, :mutable
+      attr_reader :name, :value, :mutable, :type
 
-      def initialize(name:, value:, mutable: false, origin: nil)
+      def initialize(name:, value:, mutable: false, type: nil, origin: nil)
         super(origin: origin)
         @name = name
         @value = value
         @mutable = mutable
+        @type = type  # Optional type annotation
       end
     end
 

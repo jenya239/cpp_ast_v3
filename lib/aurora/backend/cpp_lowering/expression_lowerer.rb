@@ -279,14 +279,14 @@ module Aurora
 
       def lower_record(record)
               # For record literals, we need to create a constructor call
-              # This is simplified - real implementation would handle this properly
-              type_name = record.type_name
+              # Use the actual type (which may be generic) instead of just the name
+              type_str = map_type(record.type)
               fields = record.fields
-      
+
               # Create constructor call with field values
               args = fields.values.map { |value| lower_expression(value) }
               CppAst::Nodes::BraceInitializerExpression.new(
-                type: type_name,
+                type: type_str,
                 arguments: args,
                 argument_separators: args.size > 1 ? Array.new(args.size - 1, ", ") : []
               )

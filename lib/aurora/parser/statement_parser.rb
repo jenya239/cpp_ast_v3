@@ -106,11 +106,19 @@ module Aurora
 
       name_token = consume(:IDENTIFIER)
       name = name_token.value
+
+      # Optional type annotation: let x: Type = value
+      type_annotation = nil
+      if current.type == :COLON
+        consume(:COLON)
+        type_annotation = parse_type
+      end
+
       consume(:EQUAL)
       value = parse_expression
       consume(:SEMICOLON) if current.type == :SEMICOLON
 
-      with_origin(name_token) { AST::VariableDecl.new(name: name, value: value, mutable: mutable) }
+      with_origin(name_token) { AST::VariableDecl.new(name: name, value: value, mutable: mutable, type: type_annotation) }
     end
 
     end

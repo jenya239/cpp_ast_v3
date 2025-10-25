@@ -479,23 +479,31 @@ module Aurora
 
       name_token = consume(:IDENTIFIER)
       name = name_token.value
+
+      # Optional type annotation: let x: Type = value
+      type_annotation = nil
+      if current.type == :COLON
+        consume(:COLON)
+        type_annotation = parse_type
+      end
+
       consume(:EQUAL)
       value = parse_if_expression
 
       unless current.type == :SEMICOLON
         body = parse_expression
-        return with_origin(name_token) { AST::Let.new(name: name, value: value, body: body, mutable: mutable) }
+        return with_origin(name_token) { AST::Let.new(name: name, value: value, body: body, mutable: mutable, type: type_annotation) }
       end
 
       consume(:SEMICOLON)
-      statements = [with_origin(name_token) { AST::VariableDecl.new(name: name, value: value, mutable: mutable) }]
+      statements = [with_origin(name_token) { AST::VariableDecl.new(name: name, value: value, mutable: mutable, type: type_annotation) }]
       block = parse_statement_sequence(statements)
       ensure_block_has_result(block, require_value: false)
       block
     end
 
     def parse_let_statement
-      # Parse: let x = value or let mut x = value
+      # Parse: let x = value or let mut x = value or let x: Type = value
       let_token = consume(:LET)
       mutable = false
       if current.type == :MUT
@@ -505,6 +513,14 @@ module Aurora
 
       name_token = consume(:IDENTIFIER)
       name = name_token.value
+
+      # Optional type annotation: let x: Type = value
+      type_annotation = nil
+      if current.type == :COLON
+        consume(:COLON)
+        type_annotation = parse_type
+      end
+
       consume(:EQUAL)
 
       # Value can be any expression including do-blocks
@@ -516,7 +532,7 @@ module Aurora
 
       # In do-blocks, let is a statement that doesn't need 'in'
       # It returns a special LetStmt expression
-      with_origin(let_token) { AST::Let.new(name: name, value: value, body: nil, mutable: mutable) }
+      with_origin(let_token) { AST::Let.new(name: name, value: value, body: nil, mutable: mutable, type: type_annotation) }
     end
 
     def parse_logical_and
