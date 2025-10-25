@@ -315,11 +315,22 @@ module Aurora
             CoreIR::Builder.member(object, expr.member, type)
           when AST::Let
             value = transform_expression(expr.value)
+
+            # Use explicit type annotation if provided, otherwise infer from value
+            var_type = if expr.type
+                         explicit_type = transform_type(expr.type)
+                         # Verify that value type is compatible with explicit type
+                         ensure_compatible_type(value.type, explicit_type, "let binding '#{expr.name}' initialization")
+                         explicit_type
+                       else
+                         value.type
+                       end
+
             previous_type = @var_types[expr.name]
-            @var_types[expr.name] = value.type
+            @var_types[expr.name] = var_type
             body = transform_expression(expr.body)
             statements = [
-              CoreIR::Builder.variable_decl_stmt(expr.name, value.type, value, mutable: expr.mutable)
+              CoreIR::Builder.variable_decl_stmt(expr.name, var_type, value, mutable: expr.mutable)
             ]
             result = CoreIR::Builder.block_expr(statements, body, body.type)
             if previous_type
@@ -330,14 +341,45 @@ module Aurora
             result
           when AST::RecordLit
             fields = expr.fields.transform_values { |value| transform_expression(value) }
-            type = @type_table[expr.type_name]
+            type_decl_or_type = @type_table[expr.type_name]
 
-            unless type
+            # Extract type and type_params from TypeDecl if applicable
+            base_type = if type_decl_or_type.is_a?(CoreIR::TypeDecl)
+                          type_decl_or_type.type
+                        else
+                          type_decl_or_type
+                        end
+
+            type_params_list = if type_decl_or_type.is_a?(CoreIR::TypeDecl)
+                                 type_decl_or_type.type_params
+                               else
+                                 []
+                               end
+
+            unless base_type
               inferred_fields = fields.map { |name, value| {name: name, type: value.type} }
-              type = CoreIR::Builder.record_type(expr.type_name, inferred_fields)
+              base_type = CoreIR::Builder.record_type(expr.type_name, inferred_fields)
             end
 
-            CoreIR::Builder.record(expr.type_name, fields, type)
+            # If type has type parameters, create a GenericType with inferred type arguments
+            record_type = if type_params_list && !type_params_list.empty?
+                            # Infer type arguments from field values
+                            type_args = type_params_list.map do |tp|
+                              # Find a field that uses this type parameter
+                              field_with_param = base_type.fields.find { |f| type_name(f[:type]) == tp.name }
+                              if field_with_param
+                                # Get the corresponding field value's type
+                                fields[field_with_param[:name].to_sym]&.type || CoreIR::Builder.primitive_type("i32")
+                              else
+                                CoreIR::Builder.primitive_type("i32")
+                              end
+                            end
+                            CoreIR::Builder.generic_type(base_type, type_args)
+                          else
+                            base_type
+                          end
+
+            CoreIR::Builder.record(expr.type_name, fields, record_type)
           when AST::IfExpr
             condition = transform_expression(expr.condition)
             then_branch = transform_expression(expr.then_branch)

@@ -385,10 +385,13 @@ module Aurora
             exported: decl.exported
           )
 
-          # Backward compatibility: register in old @type_table
-          @type_table[decl.name] = type
+          # Create TypeDecl
+          type_decl = CoreIR::TypeDecl.new(name: decl.name, type: type, type_params: type_params)
 
-          CoreIR::TypeDecl.new(name: decl.name, type: type, type_params: type_params)
+          # Backward compatibility: register TypeDecl in old @type_table (not just type)
+          @type_table[decl.name] = type_decl
+
+          type_decl
         end
       ensure
         @current_type_params = saved_type_params if defined?(saved_type_params)

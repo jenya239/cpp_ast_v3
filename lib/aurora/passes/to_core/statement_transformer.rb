@@ -133,11 +133,22 @@ module Aurora
               acc.concat(transform_expr_statement(stmt))
             when AST::VariableDecl
               value_ir = transform_expression(stmt.value)
+
+              # Use explicit type annotation if provided, otherwise infer from value
+              var_type = if stmt.type
+                           explicit_type = transform_type(stmt.type)
+                           # Verify that value type is compatible with explicit type
+                           ensure_compatible_type(value_ir.type, explicit_type, "variable '#{stmt.name}' initialization")
+                           explicit_type
+                         else
+                           value_ir.type
+                         end
+
               previous_type = @var_types[stmt.name]
-              @var_types[stmt.name] = value_ir.type
+              @var_types[stmt.name] = var_type
               acc << CoreIR::Builder.variable_decl_stmt(
                 stmt.name,
-                value_ir.type,
+                var_type,
                 value_ir,
                 mutable: stmt.mutable
               )
