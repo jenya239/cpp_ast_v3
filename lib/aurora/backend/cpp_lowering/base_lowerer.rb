@@ -17,8 +17,25 @@ module Aurora
 
       def map_type(type)
               case type
+              when CoreIR::TypeVariable
+                # Type variables map directly to their name (T, U, E, etc.)
+                type.name
+
+              when CoreIR::GenericType
+                # Generic types: Base<Arg1, Arg2, ...>
+                base_name = map_type(type.base_type)
+                type_args = type.type_args.map { |arg| map_type(arg) }.join(", ")
+                "#{base_name}<#{type_args}>"
+
               when CoreIR::ArrayType
                 "std::vector<#{map_type(type.element_type)}>"
+
+              when CoreIR::FunctionType
+                # Function types: std::function<ReturnType(Arg1, Arg2, ...)>
+                param_types = type.params.map { |p| map_type(p[:type]) }.join(", ")
+                ret_type = map_type(type.ret_type)
+                "std::function<#{ret_type}(#{param_types})>"
+
               when CoreIR::OpaqueType
                 # Opaque types: Check TypeRegistry first, or add pointer suffix
                 if @type_registry && @type_registry.has_type?(type.name)
@@ -26,6 +43,25 @@ module Aurora
                 end
                 # Fallback: opaque types are pointers
                 "#{type.name}*"
+
+              when CoreIR::RecordType
+                # NEW: Try TypeRegistry first
+                if @type_registry && @type_registry.has_type?(type.name)
+                  return @type_registry.cpp_name(type.name)
+                end
+
+                # OLD: Fallback to @type_map
+                @type_map[type.name] || type.name
+
+              when CoreIR::SumType
+                # NEW: Try TypeRegistry first
+                if @type_registry && @type_registry.has_type?(type.name)
+                  return @type_registry.cpp_name(type.name)
+                end
+
+                # OLD: Fallback to @type_map
+                @type_map[type.name] || type.name
+
               when CoreIR::Type
                 # NEW: Try TypeRegistry first for accurate C++ names
                 if @type_registry && type.respond_to?(:name) && @type_registry.has_type?(type.name)
@@ -42,24 +78,7 @@ module Aurora
                 else
                   @type_map[type.name] || type.name
                 end
-              when CoreIR::RecordType
-                # NEW: Try TypeRegistry first
-                if @type_registry && @type_registry.has_type?(type.name)
-                  return @type_registry.cpp_name(type.name)
-                end
 
-                # OLD: Fallback to @type_map
-                @type_map[type.name] || type.name
-              when CoreIR::SumType
-                # NEW: Try TypeRegistry first
-                if @type_registry && @type_registry.has_type?(type.name)
-                  return @type_registry.cpp_name(type.name)
-                end
-
-                # OLD: Fallback to @type_map
-                @type_map[type.name] || type.name
-              when CoreIR::FunctionType
-                "auto" # Simplified - real implementation would be more complex
               else
                 "auto"
               end
