@@ -7,6 +7,18 @@ module Aurora
       # Base utilities for C++ code generation
       # Auto-extracted from cpp_lowering.rb during refactoring
       module BaseLowerer
+      CPP_KEYWORDS = %w[
+        alignas alignof and and_eq asm atomic_cancel atomic_commit atomic_noexcept auto bitand
+        bitor bool break case catch char char8_t char16_t char32_t class compl concept const
+        consteval constexpr constinit const_cast continue co_await co_return co_yield
+        decltype default delete do double dynamic_cast else enum explicit export extern false
+        float for friend goto if import inline int long module mutable namespace new noexcept
+        not not_eq nullptr operator or or_eq private protected public register reinterpret_cast
+        requires return short signed sizeof static static_assert static_cast struct switch
+        template this thread_local throw true try typedef typeid typename union unsigned using
+        virtual void volatile wchar_t while xor xor_eq
+      ].freeze
+
       # Helper: Check if expression/type should be lowered as statement (not expression)
       def should_lower_as_statement?(expr_or_type)
         return true if expr_or_type.is_a?(CoreIR::UnitLiteral)
@@ -14,6 +26,17 @@ module Aurora
         return true if expr_or_type.is_a?(CoreIR::IfExpr) && expr_or_type.type.is_a?(CoreIR::UnitType)
         false
       end
+
+      def sanitize_identifier(name)
+              return name unless name.is_a?(String)
+
+              @identifier_map ||= {}
+              @identifier_map[name] ||= cpp_keyword?(name) ? "#{name}_" : name
+            end
+
+      def cpp_keyword?(name)
+              CPP_KEYWORDS.include?(name)
+            end
 
       def map_type(type)
               case type

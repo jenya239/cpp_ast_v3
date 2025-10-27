@@ -8,8 +8,9 @@ module Aurora
       # Auto-extracted from to_core.rb during refactoring
       module TypeInference
       def combine_numeric_type(left_type, right_type)
-        # If both are type variables, return i32 as default numeric type
+        # If both are type variables, preserve the shared variable when possible
         if left_type.is_a?(CoreIR::TypeVariable) && right_type.is_a?(CoreIR::TypeVariable)
+          return left_type if left_type.name == right_type.name
           return CoreIR::Builder.primitive_type("i32")
         end
 
@@ -43,7 +44,16 @@ module Aurora
         return if expected_name == "auto"
         return if generic_type_name?(expected_name)
         return if actual_name == "auto"
+        return if expected.is_a?(CoreIR::TypeVariable)
         return if actual_name == expected_name
+
+        @event_bus&.publish(
+          :type_mismatch,
+          context: context,
+          actual: actual_name,
+          expected: expected_name,
+          origin: node&.origin || @current_node&.origin
+        )
 
         type_error("#{context} expected #{expected_name}, got #{actual_name}", node: node)
       end
@@ -114,24 +124,8 @@ module Aurora
 
           # Check if this is a generic function
           if info.type_params && !info.type_params.empty?
-            # Infer type arguments from call arguments
-            arg_types = args.map(&:type)
-            type_map = infer_type_arguments(info.type_params, info.param_types, arg_types)
-
-            # Substitute type variables in parameter types for validation
-            instantiated_param_types = info.param_types.map { |pt| substitute_type(pt, type_map) }
-
-            # Validate with instantiated types
-            if instantiated_param_types.length != args.length
-              type_error("Function '#{callee.name}' expects #{instantiated_param_types.length} argument(s), got #{args.length}")
-            end
-
-            instantiated_param_types.each_with_index do |type, index|
-              ensure_compatible_type(args[index].type, type, "argument #{index + 1} of '#{callee.name}'")
-            end
-
-            # Substitute type variables in return type
-            substitute_type(info.ret_type, type_map)
+            instantiation = instantiate_signature(info, args, callee.name)
+            instantiation.ret_type
           else
             # Non-generic function - use original logic
             validate_function_call(info, args, callee.name)
@@ -208,20 +202,6 @@ module Aurora
         end
       end
 
-      def infer_effects(body)
-        # Simple effect inference
-        effects = []
-
-        # Check if function is pure (no side effects)
-        if is_pure_expression(body)
-          effects << :constexpr
-        end
-
-        effects << :noexcept
-
-        effects
-      end
-
       def infer_iterable_type(iterable_ir)
         if iterable_ir.type.is_a?(CoreIR::ArrayType)
           iterable_ir.type.element_type
@@ -230,8 +210,24 @@ module Aurora
         end
       end
 
+      def instantiate_signature(info, args, name = nil)
+        @generic_call_resolver.instantiate(info, args, name: name || info.name)
+      end
+
       def infer_member_type(object_type, member)
         type_error("Cannot access member '#{member}' on value without type") unless object_type
+
+        if object_type.is_a?(CoreIR::GenericType)
+          base_name = type_name(object_type.base_type)
+
+          if base_name && @type_registry.has_type?(base_name)
+            base_member_type = @type_registry.resolve_member(base_name, member)
+            if base_member_type
+              instantiated = instantiate_generic_member_type(base_name, base_member_type, object_type.type_args)
+              return instantiated if instantiated
+            end
+          end
+        end
 
         # Try NEW TypeRegistry first for better type resolution
         if object_type.respond_to?(:name) && @type_registry.has_type?(object_type.name)
@@ -318,8 +314,7 @@ module Aurora
         return true if NUMERIC_PRIMITIVES.include?(type_str)
 
         # Check if this is a generic type parameter with Numeric constraint
-        return false unless @current_type_params
-        type_param = @current_type_params.find { |tp| tp.name == type_str }
+        type_param = current_type_params.find { |tp| tp.name == type_str }
         type_param && type_param.constraint == "Numeric"
       end
 
@@ -356,7 +351,13 @@ module Aurora
           if type_map.key?(var_name)
             # Already bound - verify consistency
             existing = type_map[var_name]
-            unless types_compatible?(existing, concrete_type)
+            if existing.is_a?(CoreIR::TypeVariable)
+              type_map[var_name] = concrete_type
+            elsif concrete_type.is_a?(CoreIR::TypeVariable)
+              # keep existing concrete binding
+            elsif normalized_type_name(type_name(existing)) == normalized_type_name(type_name(concrete_type))
+              type_map[var_name] = concrete_type
+            elsif !types_compatible?(existing, concrete_type)
               type_error("Type variable #{var_name} bound to both #{describe_type(existing)} and #{describe_type(concrete_type)}")
             end
           else
@@ -448,6 +449,20 @@ module Aurora
         end
 
         false
+      end
+
+      def instantiate_generic_member_type(base_name, member_type, type_args)
+        type_decl = @type_decl_table[base_name]
+        return member_type unless type_decl && type_decl.type_params.any?
+
+        type_map = {}
+        type_decl.type_params.each_with_index do |tp, index|
+          actual = type_args[index]
+          next unless actual
+          type_map[tp.name] = actual
+        end
+
+        substitute_type(member_type, type_map)
       end
 
       end

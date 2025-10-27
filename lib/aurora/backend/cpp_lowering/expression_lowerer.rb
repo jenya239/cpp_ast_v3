@@ -88,7 +88,14 @@ module Aurora
             end
 
       def lower_variable(var)
-              CppAst::Nodes::Identifier.new(name: var.name)
+              case var.name
+              when "true"
+                CppAst::Nodes::BooleanLiteral.new(value: true)
+              when "false"
+                CppAst::Nodes::BooleanLiteral.new(value: false)
+              else
+                CppAst::Nodes::Identifier.new(name: sanitize_identifier(var.name))
+              end
             end
 
       def lower_binary(binary)
@@ -123,21 +130,23 @@ module Aurora
 
               # Check for stdlib functions with namespace qualification
               if call.callee.is_a?(CoreIR::VarExpr)
-                # Priority 1: Check hardcoded STDLIB_FUNCTIONS first (for special cases like to_f32 => static_cast)
-                qualified_name = STDLIB_FUNCTIONS[call.callee.name]
+                unless @user_functions&.include?(call.callee.name)
+                  # Priority 1: Check hardcoded STDLIB_FUNCTIONS first (for special cases like to_f32 => static_cast)
+                  qualified_name = STDLIB_FUNCTIONS[call.callee.name]
 
-                # Priority 2: If not found in hardcoded, try StdlibScanner for automatic resolution
-                if qualified_name.nil? && @stdlib_scanner
-                  qualified_name = @stdlib_scanner.cpp_function_name(call.callee.name)
-                end
+                  # Priority 2: If not found in hardcoded, try StdlibScanner for automatic resolution
+                  if qualified_name.nil? && @stdlib_scanner
+                    qualified_name = @stdlib_scanner.cpp_function_name(call.callee.name)
+                  end
 
-                if qualified_name
-                  args = call.args.map { |arg| lower_expression(arg) }
-                  return CppAst::Nodes::FunctionCallExpression.new(
-                    callee: CppAst::Nodes::Identifier.new(name: qualified_name),
-                    arguments: args,
-                    argument_separators: Array.new([args.size - 1, 0].max, ", ")
-                  )
+                  if qualified_name
+                    args = call.args.map { |arg| lower_expression(arg) }
+                    return CppAst::Nodes::FunctionCallExpression.new(
+                      callee: CppAst::Nodes::Identifier.new(name: qualified_name),
+                      arguments: args,
+                      argument_separators: Array.new([args.size - 1, 0].max, ", ")
+                    )
+                  end
                 end
               end
 
@@ -273,7 +282,7 @@ module Aurora
               CppAst::Nodes::MemberAccessExpression.new(
                 object: object,
                 operator: ".",
-                member: CppAst::Nodes::Identifier.new(name: member.member)
+                member: CppAst::Nodes::Identifier.new(name: sanitize_identifier(member.member))
               )
             end
 
@@ -752,21 +761,22 @@ module Aurora
               else
                 # Build capture list
                 captures = lambda_expr.captures.map do |cap|
+                  sanitized = sanitize_identifier(cap[:name])
                   case cap[:mode]
                   when :ref
-                    "&#{cap[:name]}"
+                    "&#{sanitized}"
                   when :value
-                    cap[:name]
+                    sanitized
                   else
-                    cap[:name]
+                    sanitized
                   end
                 end
                 capture = captures.join(', ')
               end
-      
+
               # Build parameter list
               params_str = lambda_expr.params.map do |param|
-                "#{map_type(param.type)} #{param.name}"
+                "#{map_type(param.type)} #{sanitize_identifier(param.name)}"
               end.join(", ")
       
               # Lower body

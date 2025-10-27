@@ -196,8 +196,30 @@ module Aurora
           when AST::VariableDecl
             # Variable declaration statement
             value = transform_expression(stmt.value)
-            @var_types[stmt.name] = value.type
-            statements_ir << CoreIR::Builder.variable_decl_stmt(stmt.name, value.type, value, mutable: stmt.mutable)
+
+            # Use explicit type annotation if provided, otherwise infer from value
+            var_type = if stmt.type
+                         explicit_type = transform_type(stmt.type)
+
+                         # If value is an anonymous record and explicit type is provided,
+                         # update the record's type to match the explicit type
+                         if value.is_a?(CoreIR::RecordExpr) && value.type_name == "record"
+                           # Extract the actual type name from explicit_type
+                           actual_type_name = type_name(explicit_type)
+                           # Replace the anonymous record type with the explicit type
+                           value = CoreIR::Builder.record(actual_type_name, value.fields, explicit_type)
+                         else
+                           # Verify that value type is compatible with explicit type
+                           ensure_compatible_type(value.type, explicit_type, "variable '#{stmt.name}' initialization")
+                         end
+
+                         explicit_type
+                       else
+                         value.type
+                       end
+
+            @var_types[stmt.name] = var_type
+            statements_ir << CoreIR::Builder.variable_decl_stmt(stmt.name, var_type, value, mutable: stmt.mutable)
 
           when AST::Assignment
             # Assignment statement
@@ -297,9 +319,9 @@ module Aurora
             expr.args.each_with_index do |arg, index|
               expected_params = expected_lambda_param_types(object_ir, member_name, args, index)
               if arg.is_a?(AST::Lambda)
-                @lambda_param_type_stack.push(expected_params)
-                transformed_arg = transform_expression(arg)
-                @lambda_param_type_stack.pop
+                transformed_arg = with_lambda_param_types(expected_params) do
+                  transform_expression(arg)
+                end
               else
                 transformed_arg = transform_expression(arg)
               end
@@ -319,8 +341,19 @@ module Aurora
             # Use explicit type annotation if provided, otherwise infer from value
             var_type = if expr.type
                          explicit_type = transform_type(expr.type)
-                         # Verify that value type is compatible with explicit type
-                         ensure_compatible_type(value.type, explicit_type, "let binding '#{expr.name}' initialization")
+
+                         # If value is an anonymous record and explicit type is provided,
+                         # update the record's type to match the explicit type
+                         if value.is_a?(CoreIR::RecordExpr) && value.type_name == "record"
+                           # Extract the actual type name from explicit_type
+                           actual_type_name = type_name(explicit_type)
+                           # Replace the anonymous record type with the explicit type
+                           value = CoreIR::Builder.record(actual_type_name, value.fields, explicit_type)
+                         else
+                           # Verify that value type is compatible with explicit type
+                           ensure_compatible_type(value.type, explicit_type, "let binding '#{expr.name}' initialization")
+                         end
+
                          explicit_type
                        else
                          value.type
@@ -340,46 +373,15 @@ module Aurora
             end
             result
           when AST::RecordLit
-            fields = expr.fields.transform_values { |value| transform_expression(value) }
-            type_decl_or_type = @type_table[expr.type_name]
+            fields = expr.fields.transform_keys { |key| key.to_s }.transform_values { |value| transform_expression(value) }
 
-            # Extract type and type_params from TypeDecl if applicable
-            base_type = if type_decl_or_type.is_a?(CoreIR::TypeDecl)
-                          type_decl_or_type.type
-                        else
-                          type_decl_or_type
-                        end
-
-            type_params_list = if type_decl_or_type.is_a?(CoreIR::TypeDecl)
-                                 type_decl_or_type.type_params
-                               else
-                                 []
-                               end
-
-            unless base_type
-              inferred_fields = fields.map { |name, value| {name: name, type: value.type} }
-              base_type = CoreIR::Builder.record_type(expr.type_name, inferred_fields)
+            if expr.type_name == "record"
+              infer_record_from_context(fields) ||
+                infer_record_from_registry(fields) ||
+                build_anonymous_record(fields)
+            else
+              build_named_record(expr.type_name, fields)
             end
-
-            # If type has type parameters, create a GenericType with inferred type arguments
-            record_type = if type_params_list && !type_params_list.empty?
-                            # Infer type arguments from field values
-                            type_args = type_params_list.map do |tp|
-                              # Find a field that uses this type parameter
-                              field_with_param = base_type.fields.find { |f| type_name(f[:type]) == tp.name }
-                              if field_with_param
-                                # Get the corresponding field value's type
-                                fields[field_with_param[:name].to_sym]&.type || CoreIR::Builder.primitive_type("i32")
-                              else
-                                CoreIR::Builder.primitive_type("i32")
-                              end
-                            end
-                            CoreIR::Builder.generic_type(base_type, type_args)
-                          else
-                            base_type
-                          end
-
-            CoreIR::Builder.record(expr.type_name, fields, record_type)
           when AST::IfExpr
             condition = transform_expression(expr.condition)
             then_branch = transform_expression(expr.then_branch)
@@ -397,13 +399,7 @@ module Aurora
 
             CoreIR::Builder.if_expr(condition, then_branch, else_branch, type)
           when AST::MatchExpr
-            scrutinee = transform_expression(expr.scrutinee)
-            arms = expr.arms.map { |arm| transform_match_arm(scrutinee.type, arm) }
-            type = arms.first[:body].type
-            arms.each_with_index do |arm, index|
-              ensure_compatible_type(arm[:body].type, type, "match arm #{index + 1}")
-            end
-            CoreIR::Builder.match_expr(scrutinee, arms, type)
+            transform_match_expr(expr)
           when AST::Lambda
             transform_lambda(expr)
           when AST::Block
@@ -473,7 +469,7 @@ module Aurora
       def transform_lambda(lambda_expr)
         saved_var_types = @var_types.dup
 
-        expected_param_types = @lambda_param_type_stack.last || []
+        expected_param_types = current_lambda_param_types
 
         params = lambda_expr.params.each_with_index.map do |param, index|
           if param.is_a?(AST::LambdaParam)
@@ -550,6 +546,179 @@ module Aurora
         )
       ensure
         @var_types = saved_var_types
+      end
+
+      def infer_record_from_context(fields)
+        nil
+      end
+
+      def infer_record_from_registry(fields)
+        return nil unless @type_registry
+
+        candidates = @type_registry.types.each_value.filter_map do |type_info|
+          next unless type_info.record?
+
+          type_decl = @type_decl_table[type_info.name]
+          construct_record_from_info(type_info.name, type_info, fields, type_decl)
+        end
+
+        select_best_record_candidate(candidates)
+      end
+
+      def build_anonymous_record(fields)
+        inferred_fields = fields.map { |name, value| {name: name.to_s, type: value.type} }
+        record_type = CoreIR::Builder.record_type("record", inferred_fields)
+        CoreIR::Builder.record("record", fields, record_type)
+      end
+
+      def build_named_record(type_name, fields)
+        if @type_registry && (type_info = @type_registry.lookup(type_name))
+          type_decl = @type_decl_table[type_name]
+          constructed = construct_record_from_info(type_name, type_info, fields, type_decl)
+          return constructed[:record] if constructed
+        end
+
+        type_decl_or_type = @type_table[type_name]
+
+        base_type = case type_decl_or_type
+                    when CoreIR::TypeDecl
+                      type_decl_or_type.type
+                    when CoreIR::Type
+                      type_decl_or_type
+                    else
+                      type_decl_or_type.respond_to?(:type) ? type_decl_or_type.type : type_decl_or_type
+                    end
+
+        unless base_type
+          inferred_fields = fields.map { |name, value| {name: name.to_s, type: value.type} }
+          base_type = CoreIR::Builder.record_type(type_name, inferred_fields)
+        end
+
+        CoreIR::Builder.record(type_name, fields, base_type)
+      end
+
+      def construct_record_from_info(type_name, type_info, fields, type_decl)
+        record_fields = Array(type_info.fields)
+        return nil if record_fields.empty?
+
+        literal_field_names = fields.keys.map(&:to_s)
+        info_field_names = record_fields.map { |field| field[:name].to_s }
+        return nil unless literal_field_names == info_field_names
+
+        type_map = {}
+
+        record_fields.each do |field|
+          field_name = field[:name].to_s
+          literal_expr = fields[field_name] || fields[field[:name]]
+          return nil unless literal_expr
+
+          literal_type = literal_expr.type
+          return nil unless literal_type
+
+          matched = unify_type(field[:type], literal_type, type_map, context: "field '#{field_name}' of '#{type_name}'")
+          return nil unless matched
+        end
+
+        type_params = Array(type_decl&.type_params)
+        type_args = if type_params.any?
+                      type_params.map do |tp|
+                        inferred = type_map[tp.name]
+                        return nil unless inferred
+                        inferred
+                      end
+                    else
+                      []
+                    end
+
+        record_type = if type_args.any?
+                        CoreIR::Builder.generic_type(type_info.core_ir_type, type_args)
+                      else
+                        type_info.core_ir_type
+                      end
+
+        record_expr = CoreIR::Builder.record(type_name, fields, record_type)
+        concreteness = type_args.count { |arg| !arg.is_a?(CoreIR::TypeVariable) }
+
+        {record: record_expr, concreteness: concreteness}
+      end
+
+      def select_best_record_candidate(candidates)
+        return nil if candidates.empty?
+        best = candidates.max_by { |candidate| candidate[:concreteness] }
+        best && best[:record]
+      end
+
+      def unify_type(pattern, actual, type_map, context:)
+        return false unless pattern && actual
+
+        case pattern
+        when CoreIR::TypeVariable
+          existing = type_map[pattern.name]
+          if existing
+            type_equivalent?(existing, actual)
+          else
+            type_map[pattern.name] = actual
+            true
+          end
+        when CoreIR::GenericType
+          return false unless actual.is_a?(CoreIR::GenericType)
+          pattern_base = type_name(pattern.base_type)
+          actual_base = type_name(actual.base_type)
+          return false unless pattern_base == actual_base
+
+          pattern.type_args.zip(actual.type_args).all? do |pattern_arg, actual_arg|
+            unify_type(pattern_arg, actual_arg, type_map, context: context)
+          end
+        when CoreIR::ArrayType
+          return false unless actual.is_a?(CoreIR::ArrayType)
+          unify_type(pattern.element_type, actual.element_type, type_map, context: context)
+        else
+          type_equivalent?(pattern, actual)
+        end
+      end
+
+      def type_equivalent?(left, right)
+        return false if left.nil? || right.nil?
+        return true if left.equal?(right)
+
+        if left.is_a?(CoreIR::TypeVariable) && right.is_a?(CoreIR::TypeVariable)
+          return left.name == right.name
+        end
+
+        if left.is_a?(CoreIR::GenericType) && right.is_a?(CoreIR::GenericType)
+          left_base = type_name(left.base_type)
+          right_base = type_name(right.base_type)
+          return false unless left_base == right_base
+          return false unless left.type_args.length == right.type_args.length
+
+          return left.type_args.zip(right.type_args).all? { |l_arg, r_arg| type_equivalent?(l_arg, r_arg) }
+        end
+
+        if left.is_a?(CoreIR::ArrayType) && right.is_a?(CoreIR::ArrayType)
+          return type_equivalent?(left.element_type, right.element_type)
+        end
+
+        type_name(left) == type_name(right)
+      end
+
+      def transform_match_expr(match_expr)
+        scrutinee_ir = transform_expression(match_expr.scrutinee)
+
+        result = @rule_engine.apply(
+          :core_ir_match_expr,
+          match_expr,
+          context: {
+            scrutinee: scrutinee_ir,
+            match_analyzer: @match_analyzer,
+            transform_arm: method(:transform_match_arm)
+          }
+        )
+
+        unless result.is_a?(CoreIR::MatchExpr)
+          raise "Match rule must produce CoreIR::MatchExpr, got #{result.class}"
+        end
+
+        result
       end
 
       def transform_match_arm(scrutinee_type, arm)

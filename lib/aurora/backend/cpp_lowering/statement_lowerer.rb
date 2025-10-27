@@ -31,7 +31,8 @@ module Aurora
                 use_auto = type_requires_auto?(stmt.type, type_str)
                 init_expr = lower_expression(stmt.value)
                 decl_type = use_auto ? "auto" : type_str
-                declarator = "#{stmt.name} = #{init_expr.to_source}"
+                identifier = sanitize_identifier(stmt.name)
+                declarator = "#{identifier} = #{init_expr.to_source}"
                 # Don't add const for pointer types (they end with *)
                 is_pointer = type_str.end_with?("*")
                 prefix = (stmt.mutable || is_pointer) ? "" : "const "
@@ -143,7 +144,7 @@ module Aurora
       def build_range_for(var_name, var_type, iterable_ir, body_ir)
               container = lower_expression(iterable_ir)
               var_type_str = map_type(var_type)
-              variable = ForLoopVariable.new(var_type_str, var_name)
+              variable = ForLoopVariable.new(var_type_str, sanitize_identifier(var_name))
               body_block = lower_for_body(body_ir)
       
               CppAst::Nodes::RangeForStatement.new(

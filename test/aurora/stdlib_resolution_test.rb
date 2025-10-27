@@ -56,10 +56,10 @@ class StdlibResolutionTest < Minitest::Test
   def test_available_modules
     resolver = Aurora::StdlibResolver.new
     modules = resolver.available_modules
-    assert_includes modules, 'Math'
-    assert_includes modules, 'IO'
-    assert_includes modules, 'String'
-    assert_includes modules, 'Conv'
-    assert_equal 4, modules.length
+    expected = %w[Array Conv File Graphics IO Json Math Option Result String]
+    expected.each do |mod|
+      assert_includes modules, mod
+    end
+    assert_equal expected.sort, modules.sort
   end
 end

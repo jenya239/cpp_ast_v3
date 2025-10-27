@@ -58,114 +58,120 @@ module Aurora
 
         # Set type parameters context before transforming types
         type_params = normalize_type_params(func_decl.type_params)
-        saved_type_params = @current_type_params
-        @current_type_params = type_params
 
-        param_types = func_decl.params.map { |param| transform_type(param.type) }
-        ret_type = transform_type(func_decl.ret_type)
-        info = FunctionInfo.new(func_decl.name, param_types, ret_type, type_params)
-        @function_table[func_decl.name] = info
-      ensure
-        @current_type_params = saved_type_params if defined?(saved_type_params)
+        info = nil
+        with_type_params(type_params) do
+          param_types = func_decl.params.map { |param| transform_type(param.type) }
+          ret_type = transform_type(func_decl.ret_type)
+          info = FunctionInfo.new(func_decl.name, param_types, ret_type, type_params)
+          @function_table[func_decl.name] = info
+        end
+
+        info
       end
 
       def register_stdlib_imports(import_decl)
-        # Check if this is a stdlib module
-        resolver = StdlibResolver.new
-        return unless resolver.stdlib_module?(import_decl.path)
+        return unless @stdlib_resolver.stdlib_module?(import_decl.path)
 
-        # Resolve the stdlib module path
-        stdlib_path = resolver.resolve(import_decl.path)
-        return unless stdlib_path
+        @rule_engine.apply(
+          :core_ir_stdlib_import,
+          import_decl,
+          context: {
+            stdlib_registry: @stdlib_registry,
+            register_stdlib_function: method(:register_stdlib_function_metadata),
+            register_stdlib_type: method(:register_stdlib_type_metadata),
+            on_missing_item: lambda do |name, origin|
+              import_origin = origin || import_decl.origin
+              @event_bus.publish(
+                :stdlib_missing_item,
+                module: import_decl.path,
+                item: name,
+                origin: import_origin
+              )
+              type_error("Unknown item '#{name}' in stdlib import '#{import_decl.path}'", node: import_decl, origin: import_origin)
+            end,
+            event_bus: @event_bus
+          }
+        )
+      end
 
-        # Parse the stdlib module
-        source = File.read(stdlib_path)
-        stdlib_ast = Aurora.parse(source)
+      def register_stdlib_function_metadata(decl)
+        return if @function_table.key?(decl.name)
 
-        # Get the list of imported items (or all if import_all)
-        imported_items = if import_decl.import_all
-          # Import all exported functions
-          stdlib_ast.declarations.select { |d| d.is_a?(AST::FuncDecl) && d.exported }.map(&:name)
-        else
-          import_decl.items || []
+        type_params = normalize_type_params(decl.type_params)
+
+        with_current_node(decl) do
+          with_type_params(type_params) do
+            param_types = decl.params.map { |param| transform_type(param.type) }
+            ret_type = transform_type(decl.ret_type)
+            @function_table[decl.name] = FunctionInfo.new(decl.name, param_types, ret_type, type_params)
+          end
+        end
+      end
+
+      def register_stdlib_type_metadata(decl, namespace)
+        return if @type_decl_table.key?(decl.name)
+
+        type_decl_ir = build_type_decl_for_import(decl)
+
+        kind = infer_type_kind(decl, type_decl_ir.type)
+        @type_registry.register(
+          decl.name,
+          ast_node: decl,
+          core_ir_type: type_decl_ir.type,
+          namespace: namespace,
+          kind: kind,
+          exported: decl.exported
+        )
+
+        @type_table[decl.name] = type_decl_ir.type
+        @type_decl_table[decl.name] = decl
+        register_sum_type_constructors(decl.name, type_decl_ir.type) if type_decl_ir.type.is_a?(CoreIR::SumType)
+      end
+
+      def build_type_decl_for_import(decl)
+        type_params = normalize_type_params(decl.type_params)
+
+        type = nil
+
+        with_current_node(decl) do
+          with_type_params(type_params) do
+            type = transform_type(decl.type)
+
+            type = case type
+                   when CoreIR::RecordType
+                     CoreIR::Builder.record_type(decl.name, type.fields)
+                   when CoreIR::SumType
+                     CoreIR::Builder.sum_type(decl.name, type.variants)
+                   else
+                     type
+                   end
+          end
         end
 
-        # Register signatures for imported functions
-        stdlib_ast.declarations.each do |decl|
-          next unless decl.is_a?(AST::FuncDecl)
-          next unless imported_items.include?(decl.name)
-
-          # Set type parameters context before transforming types
-          type_params = normalize_type_params(decl.type_params)
-          saved_type_params = @current_type_params
-          @current_type_params = type_params
-
-          # Register the function signature
-          param_types = decl.params.map { |param| transform_type(param.type) }
-          ret_type = transform_type(decl.ret_type)
-          @function_table[decl.name] = FunctionInfo.new(decl.name, param_types, ret_type, type_params)
-
-          @current_type_params = saved_type_params
-        end
-
-        # Register imported types (for member access support)
-        # Determine namespace from import path
-        namespace = infer_namespace_from_path(import_decl.path)
-
-        stdlib_ast.declarations.each do |decl|
-          next unless decl.is_a?(AST::TypeDecl)
-          next unless imported_items.include?(decl.name)
-
-          # Transform the type
-          type_ir = transform_type_decl(decl)
-
-          # Register in NEW TypeRegistry with namespace info
-          kind = infer_type_kind(decl, type_ir.type)
-          @type_registry.register(
-            decl.name,
-            ast_node: decl,
-            core_ir_type: type_ir.type,
-            namespace: namespace,
-            kind: kind,
-            exported: decl.exported
-          )
-
-          # Also register in OLD @type_table for backward compat
-          @type_table[decl.name] = type_ir.type
-
-          # If it's a sum type, register its constructors
-          register_sum_type_constructors(decl.name, type_ir.type) if type_ir.type.is_a?(CoreIR::SumType)
-        end
+        CoreIR::TypeDecl.new(name: decl.name, type: type, type_params: type_params)
       end
 
       def register_sum_type_constructors(sum_type_name, sum_type)
         return unless sum_type.respond_to?(:variants)
 
+        type_decl = @type_decl_table[sum_type_name]
+        type_params = type_decl ? normalize_type_params(type_decl.type_params) : []
+
+        type_param_vars = type_params.map do |tp|
+          CoreIR::Builder.type_variable(tp.name, constraint: tp.constraint)
+        end
+        generic_ret_type = if type_param_vars.any?
+          CoreIR::Builder.generic_type(sum_type, type_param_vars)
+        else
+          sum_type
+        end
+
         sum_type.variants.each do |variant|
           field_types = (variant[:fields] || []).map { |field| field[:type] }
-          @sum_type_constructors[variant[:name]] = FunctionInfo.new(variant[:name], field_types, sum_type)
+          @sum_type_constructors[variant[:name]] = FunctionInfo.new(variant[:name], field_types, generic_ret_type, type_params)
         end
       end
-
-      # Helper: Infer C++ namespace from module path
-      # @param path [String] Module path (e.g., "Graphics", "Math")
-      # @return [String, nil] C++ namespace (e.g., "aurora::graphics")
-      def infer_namespace_from_path(path)
-        # Map stdlib module names to C++ namespaces
-        STDLIB_NAMESPACE_MAP[path]
-      end
-
-      # Map of stdlib modules to their C++ namespaces
-      STDLIB_NAMESPACE_MAP = {
-        'Graphics' => 'aurora::graphics',
-        'Math' => 'aurora::math',
-        'IO' => 'aurora::io',
-        'String' => 'aurora::string',
-        'Conv' => 'aurora',  # Conv functions are directly in aurora namespace
-        'File' => 'aurora::file',
-        'JSON' => 'aurora::json',
-        'Collections' => 'aurora::collections'
-      }.freeze
 
       # Helper: Infer type kind from AST and CoreIR
       # @param ast_decl [AST::TypeDecl] AST type declaration
@@ -198,113 +204,148 @@ module Aurora
         with_current_node(func) do
           # Normalize and set type params FIRST, before transforming any types
           type_params = normalize_type_params(func.type_params)
-          saved_type_params = @current_type_params
-          @current_type_params = type_params
+          with_type_params(type_params) do
+            signature = ensure_function_signature(func)
+            param_types = signature.param_types
 
-          signature = ensure_function_signature(func)
-          param_types = signature.param_types
+            if param_types.length != func.params.length
+              type_error("Function '#{func.name}' expects #{param_types.length} parameter(s), got #{func.params.length}")
+            end
 
-          if param_types.length != func.params.length
-            type_error("Function '#{func.name}' expects #{param_types.length} parameter(s), got #{func.params.length}")
-          end
+            params = func.params.each_with_index.map do |param, index|
+              CoreIR::Param.new(name: param.name, type: param_types[index])
+            end
 
-          params = func.params.each_with_index.map do |param, index|
-            CoreIR::Param.new(name: param.name, type: param_types[index])
-          end
+            ret_type = signature.ret_type
 
-          ret_type = signature.ret_type
+            # For external functions, skip body transformation
+            if func.external
+              return CoreIR::Func.new(
+                name: func.name,
+                params: params,
+                ret_type: ret_type,
+                body: nil,
+                effects: [],
+                type_params: type_params,
+                external: true
+              )
+            end
 
-          # For external functions, skip body transformation
-          if func.external
-            return CoreIR::Func.new(
-              name: func.name,
-              params: params,
-              ret_type: ret_type,
-              body: nil,
-              effects: [],
-              type_params: type_params,
-              external: true
+            saved_var_types = @var_types.dup
+            result_func = nil
+
+            with_function_return(ret_type) do
+              params.each do |param|
+                @var_types[param.name] = param.type
+              end
+
+              body = transform_expression(func.body)
+
+              unless void_type?(ret_type)
+                ensure_compatible_type(body.type, ret_type, "function '#{func.name}' result")
+              else
+                type_error("function '#{func.name}' should not return a value") unless void_type?(body.type)
+              end
+
+              result_func = CoreIR::Func.new(
+                name: func.name,
+                params: params,
+                ret_type: ret_type,
+                body: body,
+                effects: [],
+                type_params: type_params
+              )
+            end
+
+            result_func = @rule_engine.apply(
+              :core_ir_function,
+              result_func,
+              context: {
+                type_context: @type_context,
+                type_registry: @type_registry,
+                effect_analyzer: @effect_analyzer
+              }
             )
+
+            @var_types = saved_var_types
+            result_func
           end
-
-          saved_var_types = @var_types.dup
-          @function_return_type_stack.push(ret_type)
-
-          params.each do |param|
-            @var_types[param.name] = param.type
-          end
-
-          body = transform_expression(func.body)
-
-          unless void_type?(ret_type)
-            ensure_compatible_type(body.type, ret_type, "function '#{func.name}' result")
-          else
-            type_error("function '#{func.name}' should not return a value") unless void_type?(body.type)
-          end
-
-          CoreIR::Func.new(
-            name: func.name,
-            params: params,
-            ret_type: ret_type,
-            body: body,
-            effects: infer_effects(body),
-            type_params: type_params
-          )
         end
-      ensure
-        @function_return_type_stack.pop if @function_return_type_stack.any?
-        @var_types = saved_var_types if defined?(saved_var_types)
-        @current_type_params = saved_type_params if defined?(saved_type_params)
       end
 
       def transform_program(program)
-        items = []
-        imports = []
+        context = {
+          program: program,
+          imports: [],
+          type_items: [],
+          func_items: [],
+          module_name: program.module_decl ? program.module_decl.name : "main"
+        }
 
-        # Transform imports
+        build_program_pass_manager.run(context)
+
+        items = context[:type_items] + context[:func_items]
+
+        CoreIR::Module.new(
+          name: context[:module_name],
+          items: items,
+          imports: context[:imports]
+        )
+      end
+
+      def build_program_pass_manager
+        Aurora::Passes::PassManager.new.tap do |manager|
+          manager.register(:collect_imports, method(:pass_collect_imports))
+          manager.register(:preregister_types, method(:pass_preregister_types))
+          manager.register(:preregister_functions, method(:pass_preregister_functions))
+          manager.register(:lower_declarations, method(:pass_lower_declarations))
+        end
+      end
+
+      def pass_collect_imports(context)
+        program = context[:program]
+
         program.imports.each do |import_decl|
-          imports << CoreIR::Import.new(
+          context[:imports] << CoreIR::Import.new(
             path: import_decl.path,
             items: import_decl.items
           )
 
-          # Register stdlib function signatures
           register_stdlib_imports(import_decl)
         end
+      end
 
-        # Pre-register type declarations for constraint checks
+      def pass_preregister_types(context)
+        program = context[:program]
+
         program.declarations.each do |decl|
-          @type_decl_table[decl.name] = decl if decl.is_a?(AST::TypeDecl)
+          next unless decl.is_a?(AST::TypeDecl)
+          @type_decl_table[decl.name] = decl
         end
+      end
 
-        # Pre-register function signatures to support recursion and forward references
+      def pass_preregister_functions(context)
+        program = context[:program]
+
         program.declarations.each do |decl|
           register_function_signature(decl) if decl.is_a?(AST::FuncDecl)
         end
+      end
 
-        type_items = []
-        func_items = []
+      def pass_lower_declarations(context)
+        program = context[:program]
 
-        # Transform declarations (types first, then functions)
         program.declarations.each do |decl|
           case decl
           when AST::TypeDecl
             type_decl = transform_type_decl(decl)
-            type_items << type_decl
+            context[:type_items] << type_decl
             @type_table[decl.name] = type_decl.type
             refresh_function_signatures!(decl.name)
           when AST::FuncDecl
-            func_items << transform_function(decl)
+            context[:func_items] << transform_function(decl)
           end
         end
-
-        items.concat(type_items)
-        items.concat(func_items)
-
-        # Get module name from module declaration or default to "main"
-        module_name = program.module_decl ? program.module_decl.name : "main"
-
-        CoreIR::Module.new(name: module_name, items: items, imports: imports)
       end
 
       def transform_type(type)
@@ -312,9 +353,9 @@ module Aurora
           case type
           when AST::PrimType
             # Check if this is a reference to a type parameter
-            if @current_type_params && @current_type_params.any? { |tp| tp.name == type.name }
+            if current_type_params.any? { |tp| tp.name == type.name }
               # This is a type variable (reference to type parameter)
-              constraint_param = @current_type_params.find { |tp| tp.name == type.name }
+              constraint_param = current_type_params.find { |tp| tp.name == type.name }
               CoreIR::Builder.type_variable(type.name, constraint: constraint_param&.constraint)
             else
               CoreIR::Builder.primitive_type(type.name)
@@ -322,6 +363,10 @@ module Aurora
           when AST::OpaqueType
             CoreIR::Builder.opaque_type(type.name)
           when AST::GenericType
+            # Validate generic constraints before lowering
+            base_name = type.base_type.respond_to?(:name) ? type.base_type.name : nil
+            validate_type_constraints(base_name, type.type_params) if base_name
+
             # Transform to CoreIR::GenericType with proper type arguments
             base_type = transform_type(type.base_type)
             type_args = type.type_params.map { |tp| transform_type(tp) }
@@ -357,33 +402,32 @@ module Aurora
           # Normalize type params first
           type_params = normalize_type_params(decl.type_params)
 
-          # Set current type params context for type variable resolution
-          saved_type_params = @current_type_params
-          @current_type_params = type_params
+          type = nil
 
-          # Transform the type definition
-          type = transform_type(decl.type)
+          with_type_params(type_params) do
+            # Transform the type definition
+            type = transform_type(decl.type)
 
-          type = case type
-                 when CoreIR::RecordType
-                   CoreIR::Builder.record_type(decl.name, type.fields)
-                 when CoreIR::SumType
-                   CoreIR::Builder.sum_type(decl.name, type.variants)
-                 else
-                   type
-                 end
-          register_sum_type_constructors(decl.name, type) if type.is_a?(CoreIR::SumType)
+            type = case type
+                   when CoreIR::RecordType
+                     CoreIR::Builder.record_type(decl.name, type.fields)
+                   when CoreIR::SumType
+                     CoreIR::Builder.sum_type(decl.name, type.variants)
+                   else
+                     type
+                   end
 
-          # Register type in TypeRegistry
-          kind = infer_type_kind(decl, type)
-          @type_registry.register(
-            decl.name,
-            ast_node: decl,
-            core_ir_type: type,
-            namespace: nil,  # Main module types have no namespace
-            kind: kind,
-            exported: decl.exported
-          )
+            # Register type in TypeRegistry
+            kind = infer_type_kind(decl, type)
+            @type_registry.register(
+              decl.name,
+              ast_node: decl,
+              core_ir_type: type,
+              namespace: nil,  # Main module types have no namespace
+              kind: kind,
+              exported: decl.exported
+            )
+          end
 
           # Create TypeDecl
           type_decl = CoreIR::TypeDecl.new(name: decl.name, type: type, type_params: type_params)
@@ -391,10 +435,19 @@ module Aurora
           # Backward compatibility: register TypeDecl in old @type_table (not just type)
           @type_table[decl.name] = type_decl
 
+          @rule_engine.apply(
+            :core_ir_type_decl,
+            type_decl,
+            context: {
+              type: type,
+              source_decl: decl,
+              type_registry: @type_registry,
+              register_sum_type_constructors: method(:register_sum_type_constructors)
+            }
+          )
+
           type_decl
         end
-      ensure
-        @current_type_params = saved_type_params if defined?(saved_type_params)
       end
 
       end

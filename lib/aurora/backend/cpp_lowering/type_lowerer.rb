@@ -42,7 +42,7 @@ module Aurora
                 field_type = map_type(field[:type])
                 CppAst::Nodes::VariableDeclaration.new(
                   type: field_type,
-                  declarators: [field[:name]],
+                  declarators: [sanitize_identifier(field[:name])],
                   declarator_separators: [],
                   type_suffix: " ",
                   prefix_modifiers: ""

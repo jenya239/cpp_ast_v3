@@ -85,7 +85,13 @@ module Aurora
       end
 
       def generic_type_name?(name)
-        name && name.match?(/\A[A-Z][A-Za-z0-9_]*\z/)
+        return false unless name
+
+        return true if current_type_params.any? { |tp| tp.name == name }
+
+        current_lambda_param_types.any? do |param_type|
+          type_name(param_type) == name
+        end
       end
 
       def io_return_type(name)

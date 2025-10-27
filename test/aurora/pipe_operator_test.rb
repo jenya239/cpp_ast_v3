@@ -54,7 +54,7 @@ class AuroraPipeOperatorTest < Minitest::Test
 
     cpp_code = Aurora.to_cpp(aurora_source)
 
-    # Pipe should desugar to function call
-    assert_includes cpp_code, "double(x)"
+    # Pipe should desugar to function call (with sanitized identifier)
+    assert_includes cpp_code, "double_(x)"
   end
 end

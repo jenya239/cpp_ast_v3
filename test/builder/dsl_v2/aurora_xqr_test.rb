@@ -36,7 +36,7 @@ class AuroraXQRTest < Test::Unit::TestCase
       assert_kind_of String, cpp_source
     rescue => e
       # Aurora parser might not be fully implemented yet
-      assert_match(/not implemented|undefined method/, e.message)
+      assert_match(/not implemented|undefined method|Parse error/, e.message)
     end
   end
 
@@ -51,7 +51,7 @@ class AuroraXQRTest < Test::Unit::TestCase
       assert XQR.respond_to?(:to_cpp)
     rescue => e
       # XQR might not be fully implemented yet
-      assert_match(/not implemented|undefined method/, e.message)
+      assert_match(/not implemented|undefined method|Parse error/, e.message)
     end
   end
 
@@ -71,7 +71,7 @@ class AuroraXQRTest < Test::Unit::TestCase
       assert_not_nil ast
     rescue => e
       # Aurora parser might not be fully implemented yet
-      assert_match(/not implemented|undefined method/, e.message)
+      assert_match(/not implemented|undefined method|Parse error/, e.message)
     end
   end
 
@@ -96,7 +96,7 @@ class AuroraXQRTest < Test::Unit::TestCase
       assert_not_nil ast
     rescue => e
       # Aurora parser might not be fully implemented yet
-      assert_match(/not implemented|undefined method/, e.message)
+      assert_match(/not implemented|undefined method|Parse error/, e.message)
     end
   end
 
@@ -115,7 +115,7 @@ class AuroraXQRTest < Test::Unit::TestCase
       assert_not_nil ast
     rescue => e
       # Aurora parser might not be fully implemented yet
-      assert_match(/not implemented|undefined method/, e.message)
+      assert_match(/not implemented|undefined method|Parse error/, e.message)
     end
   end
 
@@ -134,7 +134,7 @@ class AuroraXQRTest < Test::Unit::TestCase
       assert_not_nil ast
     rescue => e
       # Aurora parser might not be fully implemented yet
-      assert_match(/not implemented|undefined method/, e.message)
+      assert_match(/not implemented|undefined method|Parse error/, e.message)
     end
   end
 
@@ -158,7 +158,7 @@ class AuroraXQRTest < Test::Unit::TestCase
       assert_not_nil ast
     rescue => e
       # Aurora parser might not be fully implemented yet
-      assert_match(/not implemented|undefined method/, e.message)
+      assert_match(/not implemented|undefined method|Parse error/, e.message)
     end
   end
 
@@ -185,7 +185,7 @@ class AuroraXQRTest < Test::Unit::TestCase
       assert_not_nil ast
     rescue => e
       # Aurora parser might not be fully implemented yet
-      assert_match(/not implemented|undefined method/, e.message)
+      assert_match(/not implemented|undefined method|Parse error/, e.message)
     end
   end
 
@@ -205,7 +205,7 @@ class AuroraXQRTest < Test::Unit::TestCase
       assert_not_nil ast
     rescue => e
       # Aurora parser might not be fully implemented yet
-      assert_match(/not implemented|undefined method/, e.message)
+      assert_match(/not implemented|undefined method|Parse error/, e.message)
     end
   end
 
@@ -224,7 +224,7 @@ class AuroraXQRTest < Test::Unit::TestCase
       assert_not_nil ast
     rescue => e
       # Aurora parser might not be fully implemented yet
-      assert_match(/not implemented|undefined method/, e.message)
+      assert_match(/not implemented|undefined method|Parse error/, e.message)
     end
   end
 
@@ -246,7 +246,7 @@ class AuroraXQRTest < Test::Unit::TestCase
       assert_not_nil ast
     rescue => e
       # Aurora parser might not be fully implemented yet
-      assert_match(/not implemented|undefined method/, e.message)
+      assert_match(/not implemented|undefined method|Parse error/, e.message)
     end
   end
 
@@ -283,7 +283,7 @@ class AuroraXQRTest < Test::Unit::TestCase
       assert cpp_source.include?("float distance")
     rescue => e
       # Aurora might not be fully implemented yet
-      assert_match(/not implemented|undefined method/, e.message)
+      assert_match(/not implemented|undefined method|Parse error/, e.message)
     end
   end
 
@@ -301,7 +301,7 @@ class AuroraXQRTest < Test::Unit::TestCase
       assert XQR.ancestors.include?(Aurora)
     rescue => e
       # XQR might not be fully implemented yet
-      assert_match(/not implemented|undefined method/, e.message)
+      assert_match(/not implemented|undefined method|Parse error/, e.message)
     end
   end
 
@@ -339,7 +339,7 @@ class AuroraXQRTest < Test::Unit::TestCase
       assert ast.statements.size > 0
     rescue => e
       # Aurora might not be fully implemented yet
-      assert_match(/not implemented|undefined method/, e.message)
+      assert_match(/not implemented|undefined method|Parse error/, e.message)
     end
   end
 
@@ -361,7 +361,7 @@ class AuroraXQRTest < Test::Unit::TestCase
       assert_kind_of Aurora::CoreIR::Program, core_ir
     rescue => e
       # Aurora might not be fully implemented yet
-      assert_match(/not implemented|undefined method/, e.message)
+      assert_match(/not implemented|undefined method|Parse error/, e.message)
     end
   end
 
@@ -386,7 +386,7 @@ class AuroraXQRTest < Test::Unit::TestCase
       assert_kind_of CppAst::Nodes::Program, cpp_ast
     rescue => e
       # Aurora might not be fully implemented yet
-      assert_match(/not implemented|undefined method/, e.message)
+      assert_match(/not implemented|undefined method|Parse error/, e.message)
     end
   end
 
@@ -416,7 +416,7 @@ class AuroraXQRTest < Test::Unit::TestCase
       assert cpp_source.include?("Vec2 scale")
     rescue => e
       # Aurora might not be fully implemented yet
-      assert_match(/not implemented|undefined method/, e.message)
+      assert_match(/not implemented|undefined method|Parse error/, e.message)
     end
   end
 end

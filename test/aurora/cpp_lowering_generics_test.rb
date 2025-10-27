@@ -254,4 +254,27 @@ class CppLoweringGenericsTest < Minitest::Test
     # First parameter should be Option<T>
     assert_match(/Option<T>/, source)
   end
+
+  def test_function_effects_are_reflected_in_cpp_signature
+    i32_type = Builder.primitive_type('i32')
+    param = Builder.param('value', i32_type)
+    body = Builder.literal(1, i32_type)
+
+    func = Func.new(
+      name: 'const_one',
+      params: [param],
+      ret_type: i32_type,
+      body: body,
+      effects: [:constexpr, :noexcept]
+    )
+
+    cpp_func = @lowerer.lower_function(func)
+
+    assert_instance_of CppAst::Nodes::FunctionDeclaration, cpp_func
+    source = cpp_func.to_source
+
+    assert_includes source, 'constexpr'
+    assert_includes source, 'noexcept'
+    assert_match(/constexpr\s+int\s+const_one/, source)
+  end
 end

@@ -93,7 +93,7 @@ module Aurora
       end
 
       def transform_return_statement(stmt)
-        expected = @function_return_type_stack.last
+        expected = current_function_return
         type_error("return statement outside of function") unless expected
 
         expr_ir = stmt.expr ? transform_expression(stmt.expr) : nil
@@ -137,8 +137,19 @@ module Aurora
               # Use explicit type annotation if provided, otherwise infer from value
               var_type = if stmt.type
                            explicit_type = transform_type(stmt.type)
-                           # Verify that value type is compatible with explicit type
-                           ensure_compatible_type(value_ir.type, explicit_type, "variable '#{stmt.name}' initialization")
+
+                           # If value is an anonymous record and explicit type is provided,
+                           # update the record's type to match the explicit type
+                           if value_ir.is_a?(CoreIR::RecordExpr) && value_ir.type_name == "record"
+                             # Extract the actual type name from explicit_type
+                             actual_type_name = type_name(explicit_type)
+                             # Replace the anonymous record type with the explicit type
+                             value_ir = CoreIR::Builder.record(actual_type_name, value_ir.fields, explicit_type)
+                           else
+                             # Verify that value type is compatible with explicit type
+                             ensure_compatible_type(value_ir.type, explicit_type, "variable '#{stmt.name}' initialization")
+                           end
+
                            explicit_type
                          else
                            value_ir.type

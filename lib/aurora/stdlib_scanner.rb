@@ -6,14 +6,15 @@ require_relative 'ast/nodes'
 module Aurora
   # Metadata for a stdlib function
   class FunctionMetadata
-    attr_reader :name, :qualified_name, :extern, :params, :return_type
+    attr_reader :name, :qualified_name, :extern, :params, :return_type, :ast_node
 
-    def initialize(name:, qualified_name:, extern:, params:, return_type:)
+    def initialize(name:, qualified_name:, extern:, params:, return_type:, ast_node:)
       @name = name
       @qualified_name = qualified_name
       @extern = extern
       @params = params
       @return_type = return_type
+      @ast_node = ast_node
     end
 
     def extern?
@@ -23,13 +24,14 @@ module Aurora
 
   # Metadata for a stdlib type
   class TypeMetadata
-    attr_reader :name, :qualified_name, :opaque, :fields
+    attr_reader :name, :qualified_name, :opaque, :fields, :ast_node
 
-    def initialize(name:, qualified_name:, opaque:, fields: [])
+    def initialize(name:, qualified_name:, opaque:, fields: [], ast_node:)
       @name = name
       @qualified_name = qualified_name
       @opaque = opaque
       @fields = fields
+      @ast_node = ast_node
     end
 
     def opaque?
@@ -165,7 +167,8 @@ module Aurora
         qualified_name: "#{namespace}::#{decl.name}",
         extern: decl.external,
         params: decl.params.map { |p| { name: p.name, type: p.type } },
-        return_type: decl.ret_type
+        return_type: decl.ret_type,
+        ast_node: decl
       )
     end
 
@@ -178,7 +181,8 @@ module Aurora
         name: decl.name,
         qualified_name: "#{namespace}::#{decl.name}",
         opaque: opaque,
-        fields: fields
+        fields: fields,
+        ast_node: decl
       )
     end
 

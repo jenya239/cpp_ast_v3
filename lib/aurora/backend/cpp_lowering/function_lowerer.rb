@@ -8,6 +8,9 @@ module Aurora
       # Auto-extracted from cpp_lowering.rb during refactoring
       module FunctionLowerer
       def lower_module(module_node)
+              @user_functions = module_node.items.grep(CoreIR::Func).map(&:name)
+              @identifier_map = {}
+
               include_stmt = CppAst::Nodes::IncludeDirective.new(
                 path: "aurora_match.hpp",
                 system: false
@@ -19,15 +22,15 @@ module Aurora
                 result.is_a?(CppAst::Nodes::Program) ? result.statements : [result]
               end
               statements = [include_stmt] + items
-              trailings = ["\n"] + Array.new(items.size, "")
+              trailings = ["\n"] + Array.new(items.size, "\n")
               CppAst::Nodes::Program.new(statements: statements, statement_trailings: trailings)
             end
 
       def lower_function(func)
               return_type = map_type(func.ret_type)
-              name = func.name
-              parameters = func.params.map { |param| "#{map_type(param.type)} #{param.name}" }
-      
+              name = sanitize_identifier(func.name)
+              parameters = func.params.map { |param| "#{map_type(param.type)} #{sanitize_identifier(param.name)}" }
+
               block_body = if func.body.is_a?(CoreIR::BlockExpr)
                              stmts = lower_block_expr_statements(func.body, emit_return: true)
                              CppAst::Nodes::BlockStatement.new(
@@ -58,7 +61,22 @@ module Aurora
                 modifiers_text: "",
                 prefix_modifiers: ""
               )
-      
+
+              func_decl = @rule_engine.apply(
+                :cpp_function_declaration,
+                func_decl,
+                context: {
+                  core_func: func,
+                  event_bus: @event_bus
+                }
+              )
+
+              @event_bus&.publish(
+                :cpp_function_lowered,
+                name: func.name,
+                effects: Array(func.effects)
+              )
+
               # If function has type parameters, wrap with template declaration
               if func.type_params.any?
                 generate_template_function(func.type_params, func_decl)

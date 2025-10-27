@@ -2,11 +2,13 @@
 
 require_relative "../../cpp_ast"
 require_relative "../core_ir/nodes"
+require_relative "../rules/rule_engine"
 require_relative "cpp_lowering/base_lowerer"
 require_relative "cpp_lowering/expression_lowerer"
 require_relative "cpp_lowering/statement_lowerer"
 require_relative "cpp_lowering/type_lowerer"
 require_relative "cpp_lowering/function_lowerer"
+require_relative "cpp_lowering/rules/function_rule"
 
 module Aurora
   module Backend
@@ -134,12 +136,17 @@ module Aurora
         "sleep_ms" => "aurora::graphics::sleep_ms"
       }.freeze
 
-      def initialize(type_registry: nil, stdlib_scanner: nil)
+      attr_reader :rule_engine, :event_bus
+
+      def initialize(type_registry: nil, stdlib_scanner: nil, rule_engine: nil, event_bus: nil)
         # NEW: Use shared TypeRegistry if provided
         @type_registry = type_registry
 
         # NEW: Use StdlibScanner for automatic function name resolution
         @stdlib_scanner = stdlib_scanner
+
+        @rule_engine = rule_engine || build_default_rule_engine
+        @event_bus = event_bus || Aurora::EventBus.new
 
         # OLD: Fallback type_map for backward compatibility
         # Will be deprecated once TypeRegistry is fully integrated
@@ -172,6 +179,14 @@ module Aurora
         else
           raise "Unknown CoreIR node: #{core_ir.class}"
         end
+      end
+
+      private
+
+      def build_default_rule_engine
+        engine = Aurora::Rules::RuleEngine.new
+        engine.register(:cpp_function_declaration, Aurora::Backend::CppLowering::Rules::FunctionRule.new)
+        engine
       end
     end
   end
