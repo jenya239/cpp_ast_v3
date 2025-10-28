@@ -127,7 +127,32 @@ module Aurora
         when CoreIR::RecordExpr
           expr.fields.values.all? { |field| is_pure_expression(field) }
         when CoreIR::BlockExpr
+          pure_block_expr?(expr)
+        else
           false
+        end
+      end
+
+      def pure_block_expr?(block_expr)
+        statements_pure = block_expr.statements.all? { |stmt| pure_statement?(stmt) }
+        result_pure = block_expr.result.nil? || is_pure_expression(block_expr.result)
+        statements_pure && result_pure
+      end
+
+      def pure_statement?(stmt)
+        case stmt
+        when CoreIR::VariableDeclStmt
+          !stmt.mutable && is_pure_expression(stmt.value)
+        when CoreIR::ExprStatement
+          is_pure_expression(stmt.expression)
+        when CoreIR::Block
+          stmt.stmts.all? { |inner| pure_statement?(inner) }
+        when CoreIR::MatchStmt
+          is_pure_expression(stmt.scrutinee) &&
+            stmt.arms.all? do |arm|
+              (arm[:guard].nil? || is_pure_expression(arm[:guard])) &&
+                pure_block_expr?(arm[:body])
+            end
         else
           false
         end

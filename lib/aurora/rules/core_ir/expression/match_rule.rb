@@ -13,7 +13,7 @@ module Aurora
 
           def apply(node, context = {})
             transformer = context.fetch(:transformer)
-            transformer.__send__(:transform_match_expr_core, node)
+            transformer.__send__(:transform_match_expr, node)
           end
         end
       end

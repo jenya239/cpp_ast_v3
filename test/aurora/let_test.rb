@@ -17,4 +17,19 @@ class AuroraLetTest < Minitest::Test
     assert_includes cpp, "const int x = 1;"
     assert_includes cpp, "return x + 1;"
   end
+
+  def test_let_expression_retains_constexpr_effect
+    source = <<~AUR
+      fn main() -> i32 =
+        let x = 1
+        x + 1
+    AUR
+
+    ast = Aurora.parse(source)
+    core_ir, = Aurora.transform_to_core_with_registry(ast)
+    func = core_ir.items.grep(Aurora::CoreIR::Func).first
+
+    refute_nil func
+    assert_includes func.effects, :constexpr
+  end
 end

@@ -46,17 +46,17 @@ class AuroraBlockTest < Minitest::Test
   def test_block_lowering_generates_statements
     source = <<~AUR
       fn apply(xs: i32[]) -> i32 =
+        let mut result = 0;
         for x in xs do
-          let mut value = x;
-          value = value + 1;
-          value
-        end
+          result = x + 1;
+        end;
+        result
     AUR
 
     cpp = Aurora.to_cpp(source)
 
-    assert_includes cpp, "int value = x;"
-    assert_includes cpp, "value = value + 1;"
+    assert_includes cpp, "int result = 0;"
+    assert_includes cpp, "result = x + 1;"
     assert_includes cpp, "for (int x : xs)"
   end
 

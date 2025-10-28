@@ -311,10 +311,21 @@ module Aurora
     # Block of statements
     class Block < Stmt
       attr_reader :stmts
-      
+
       def initialize(stmts:, origin: nil)
         super(origin: origin)
         @stmts = stmts
+      end
+    end
+
+    # Match statement (void-returning match expression)
+    class MatchStmt < Stmt
+      attr_reader :scrutinee, :arms
+
+      def initialize(scrutinee:, arms:, origin: nil)
+        super(origin: origin)
+        @scrutinee = scrutinee
+        @arms = arms
       end
     end
     
@@ -422,31 +433,6 @@ module Aurora
         @statements = statements
         @result = result
         @desugared_expr = nil
-      end
-    end
-
-    # For loop (imperative expression)
-    class ForLoopExpr < Expr
-      attr_reader :var_name, :var_type, :iterable, :body
-
-      def initialize(var_name:, var_type:, iterable:, body:, origin: nil)
-        result_type = body&.type || Type.new(kind: :prim, name: "void")
-        super(kind: :for_loop, data: {}, type: result_type, origin: origin)
-        @var_name = var_name
-        @var_type = var_type   # Inferred element type
-        @iterable = iterable
-        @body = body
-      end
-    end
-
-    # While loop expression
-    class WhileLoopExpr < Expr
-      attr_reader :condition, :body
-
-      def initialize(condition:, body:, origin: nil)
-        super(kind: :while_loop, data: {}, type: Type.new(kind: :prim, name: "void"), origin: origin)
-        @condition = condition
-        @body = body
       end
     end
 

@@ -327,6 +327,7 @@ module Aurora
       end
 
       def void_type?(type)
+        return true if type.is_a?(CoreIR::UnitType)
         normalized_type_name(type_name(type)) == "void"
       end
 

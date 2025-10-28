@@ -117,6 +117,10 @@ module Aurora
         MatchExpr.new(scrutinee: scrutinee, arms: arms, type: type, origin: origin)
       end
 
+      def self.match_stmt(scrutinee, arms, origin: nil)
+        MatchStmt.new(scrutinee: scrutinee, arms: arms, origin: origin)
+      end
+
       def self.block(stmts, origin: nil)
         Block.new(stmts: stmts, origin: origin)
       end
@@ -157,14 +161,6 @@ module Aurora
         ContinueStmt.new(origin: origin)
       end
 
-      def self.for_loop_expr(var_name, var_type, iterable, body, origin: nil)
-        ForLoopExpr.new(var_name: var_name, var_type: var_type, iterable: iterable, body: body, origin: origin)
-      end
-
-      def self.while_loop_expr(condition, body, origin: nil)
-        WhileLoopExpr.new(condition: condition, body: body, origin: origin)
-      end
-      
       def self.type_decl(name, type, origin: nil)
         TypeDecl.new(name: name, type: type, origin: origin)
       end

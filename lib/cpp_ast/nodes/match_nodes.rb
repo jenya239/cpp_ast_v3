@@ -66,5 +66,56 @@ module CppAst
         "[&](auto&& #{var_name}) { return #{body_str}; }"
       end
     end
+
+    # Match statement - generates std::visit visitor returning void
+    class MatchStatement < Statement
+      attr_accessor :value, :arms, :arm_separators
+
+      def initialize(value:, arms:, arm_separators: [])
+        super()
+        @value = value
+        @arms = arms
+        @arm_separators = arm_separators
+      end
+
+      def to_source
+        result = +"std::visit(overloaded{\n"
+
+        arms.each_with_index do |arm, index|
+          result << "  " << arm.to_source
+          result << (index < arms.length - 1 ? ",\n" : "")
+        end
+
+        result << "\n}, #{value.to_source});"
+        result
+      end
+    end
+
+    class MatchArmStatement < Node
+      attr_accessor :case_name, :var_name, :body
+
+      def initialize(case_name:, var_name:, body:)
+        @case_name = case_name
+        @var_name = var_name
+        @body = body
+      end
+
+      def to_source
+        "[&](const #{case_name}& #{var_name}) #{body.to_source}"
+      end
+    end
+
+    class WildcardMatchArmStatement < Node
+      attr_accessor :var_name, :body
+
+      def initialize(var_name:, body:)
+        @var_name = var_name
+        @body = body
+      end
+
+      def to_source
+        "[&](auto&& #{var_name}) #{body.to_source}"
+      end
+    end
   end
 end

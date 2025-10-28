@@ -134,9 +134,9 @@ puts
 puts "Implementation Details:"
 puts "1. Parser: parse_for_loop() already existed"
 puts "2. AST: ForLoop node with var_name, iterable, body"
-puts "3. CoreIR: ForLoopExpr with type inference for loop variable"
+puts "3. CoreIR: ForStmt with type inference for loop variable"
 puts "4. Type Tracking: Loop variable type saved in @var_types"
-puts "5. C++ Lowering: Generates RangeForStatement (C++11 range-based for)"
+puts "5. C++ Lowering: Generates RangeForStatement (C++11 range-based for) без лямбда-IIFE"
 puts "6. Variable Type: Element type extracted from iterable ArrayType"
 puts
 puts "Type Inference:"

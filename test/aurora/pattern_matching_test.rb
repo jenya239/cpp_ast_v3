@@ -31,10 +31,16 @@ class AuroraPatternMatchingTest < Minitest::Test
     # Check first arm (literal pattern)
     arm1 = match_expr.arms[0]
     assert_equal :literal, arm1[:pattern].kind
+    assert_instance_of Aurora::AST::BlockExpr, arm1[:body]
+    assert_empty arm1[:body].statements
+    refute_nil arm1[:body].result_expr
 
     # Check third arm (wildcard pattern)
     arm3 = match_expr.arms[2]
     assert_equal :wildcard, arm3[:pattern].kind
+    assert_instance_of Aurora::AST::BlockExpr, arm3[:body]
+    assert_empty arm3[:body].statements
+    refute_nil arm3[:body].result_expr
   end
 
   def test_parse_constructor_pattern
@@ -61,6 +67,7 @@ class AuroraPatternMatchingTest < Minitest::Test
     assert_equal :constructor, arm1[:pattern].kind
     assert_equal "Circle", arm1[:pattern].data[:name]
     assert_equal 1, arm1[:pattern].data[:fields].length
+    assert_instance_of Aurora::AST::BlockExpr, arm1[:body]
   end
 
   def test_match_lowering_to_cpp
@@ -117,6 +124,27 @@ class AuroraPatternMatchingTest < Minitest::Test
     assert_equal 2, arm1[:pattern].data[:fields].length
     assert_equal "w", arm1[:pattern].data[:fields][0]
     assert_equal "h", arm1[:pattern].data[:fields][1]
+    assert_instance_of Aurora::AST::BlockExpr, arm1[:body]
+  end
+
+  def test_match_statement_lowering_is_void_visit
+    aurora_source = <<~AURORA
+      type Result = Ok(i32) | Err
+
+      fn handle(res: Result) -> void =
+        match res
+          | Ok(value) => do
+            let temp = value;
+          end
+          | Err => do
+          end
+    AURORA
+
+    cpp_code = Aurora.to_cpp(aurora_source)
+
+    assert_includes cpp_code, "std::visit(overloaded"
+    refute_includes cpp_code, "[&]()"
+    assert_includes cpp_code, "auto [value] = ok;"
   end
 end
 

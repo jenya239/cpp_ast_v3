@@ -26,8 +26,8 @@ class AuroraControlFlowStatementTest < Minitest::Test
     if_stmt = block.stmts[1]
     assert_instance_of Aurora::AST::ExprStmt, if_stmt
     assert_instance_of Aurora::AST::IfExpr, if_stmt.expr
-    assert_instance_of Aurora::AST::Block, if_stmt.expr.then_branch
-    assert_instance_of Aurora::AST::Block, if_stmt.expr.else_branch
+    assert_instance_of Aurora::AST::BlockExpr, if_stmt.expr.then_branch
+    assert_instance_of Aurora::AST::BlockExpr, if_stmt.expr.else_branch
 
     cpp = Aurora.to_cpp(source)
     assert_includes cpp, "if (total > 10)"

@@ -128,6 +128,12 @@ module Aurora
           case node
           when AST::Block
             node
+          when AST::BlockExpr
+            stmts = node.statements.dup
+            if node.result_expr && !node.result_expr.is_a?(AST::UnitLit)
+              stmts << AST::ExprStmt.new(expr: node.result_expr)
+            end
+            AST::Block.new(stmts: stmts)
           when AST::Stmt
             AST::Block.new(stmts: [node])
           else

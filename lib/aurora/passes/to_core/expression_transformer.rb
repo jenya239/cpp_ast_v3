@@ -103,159 +103,75 @@ module Aurora
       end
 
       def transform_do_expr(expr)
-        # Transform do-block: do expr1; expr2; ...; exprN end
-        # Returns the value of the last expression
-        return CoreIR::Builder.literal(nil, CoreIR::Builder.primitive_type("void")) if expr.body.empty?
-
+        # Normalise legacy do-blocks into BlockExpr nodes so the statement
+        # transformer can handle all control-flow consistently.
+        if expr.body.empty?
+          block = AST::BlockExpr.new(
+            statements: [],
+            result_expr: AST::UnitLit.new(origin: expr.origin),
+            origin: expr.origin
+          )
+          return transform_block_expr(block)
+        end
 
         statements = []
+        result_expr = nil
 
-        # Process all expressions
-        expr.body.each_with_index do |e, idx|
-          is_last = (idx == expr.body.length - 1)
+        expr.body.each_with_index do |item, index|
+          is_last = (index == expr.body.length - 1)
 
-          if e.is_a?(AST::VariableDecl) && !is_last
-            # Statement-style variable declaration (let x = value or let mut x = value)
-            value = transform_expression(e.value)
-            @var_types[e.name] = value.type
-            statements << CoreIR::Builder.variable_decl_stmt(e.name, value.type, value, mutable: e.mutable)
-          elsif e.is_a?(AST::Let) && e.body.nil? && !is_last
-            # Legacy statement-style let (let x = value without 'in')
-            value = transform_expression(e.value)
-            @var_types[e.name] = value.type
-            statements << CoreIR::Builder.variable_decl_stmt(e.name, value.type, value, mutable: e.mutable)
-          elsif e.is_a?(AST::Assignment) && !is_last
-            # Assignment statement: x = value
-            unless e.target.is_a?(AST::VarRef)
-              type_error("Assignment target must be a variable", node: e)
+          node = if item.is_a?(AST::Let) && item.body.nil?
+                   AST::VariableDecl.new(
+                     name: item.name,
+                     value: item.value,
+                     mutable: item.mutable,
+                     type: item.type,
+                     origin: item.origin
+                   )
+                 else
+                   item
+                 end
+
+          case node
+          when AST::Stmt
+            statements << node
+            result_expr = AST::UnitLit.new(origin: node.origin) if is_last
+          when AST::WhileLoop
+            if is_last
+              statements << AST::ExprStmt.new(expr: node, origin: node.origin)
+              result_expr = AST::UnitLit.new(origin: node.origin)
+            else
+              statements << AST::ExprStmt.new(expr: node, origin: node.origin)
             end
-            target_name = e.target.name
-            existing_type = @var_types[target_name]
-            type_error("Assignment to undefined variable '#{target_name}'", node: e) unless existing_type
-
-            value_ir = transform_expression(e.value)
-            ensure_compatible_type(value_ir.type, existing_type, "assignment to '#{target_name}'")
-            target_ir = CoreIR::Builder.var(target_name, existing_type)
-            statements << CoreIR::Builder.assignment_stmt(target_ir, value_ir)
-          elsif e.is_a?(AST::WhileLoop) && !is_last
-            # While loop is always a statement (returns void)
-            statements << CoreIR::Builder.expr_statement(transform_expression(e))
-          elsif !is_last
-            # Not the last expression - convert to statement
-            statements << CoreIR::Builder.expr_statement(transform_expression(e))
+          else
+            if is_last
+              result_expr = node
+            else
+              statements << AST::ExprStmt.new(expr: node, origin: node.origin)
+            end
           end
         end
 
-        # Last expression is the result value
-        last_expr = expr.body.last
-        if last_expr.is_a?(AST::WhileLoop)
-          # If last is while loop, add as statement and return void
-          statements << CoreIR::Builder.expr_statement(transform_expression(last_expr))
-          result_expr = CoreIR::Builder.literal(nil, CoreIR::Builder.primitive_type("void"))
-        elsif last_expr.is_a?(AST::VariableDecl)
-          # If last is a variable declaration, return void
-          value = transform_expression(last_expr.value)
-          @var_types[last_expr.name] = value.type
-          statements << CoreIR::Builder.variable_decl_stmt(last_expr.name, value.type, value, mutable: last_expr.mutable)
-          result_expr = CoreIR::Builder.literal(nil, CoreIR::Builder.primitive_type("void"))
-        elsif last_expr.is_a?(AST::Let) && last_expr.body.nil?
-          # Legacy: if last is a let statement, return void
-          value = transform_expression(last_expr.value)
-          @var_types[last_expr.name] = value.type
-          statements << CoreIR::Builder.variable_decl_stmt(last_expr.name, value.type, value, mutable: last_expr.mutable)
-          result_expr = CoreIR::Builder.literal(nil, CoreIR::Builder.primitive_type("void"))
-        elsif last_expr.is_a?(AST::Assignment)
-          # If last is an assignment, treat as statement and return void
-          unless last_expr.target.is_a?(AST::VarRef)
-            type_error("Assignment target must be a variable", node: last_expr)
-          end
-          target_name = last_expr.target.name
-          existing_type = @var_types[target_name]
-          type_error("Assignment to undefined variable '#{target_name}'", node: last_expr) unless existing_type
-
-          value_ir = transform_expression(last_expr.value)
-          ensure_compatible_type(value_ir.type, existing_type, "assignment to '#{target_name}'")
-          target_ir = CoreIR::Builder.var(target_name, existing_type)
-          statements << CoreIR::Builder.assignment_stmt(target_ir, value_ir)
-          result_expr = CoreIR::Builder.literal(nil, CoreIR::Builder.primitive_type("void"))
-        else
-          result_expr = transform_expression(last_expr)
-        end
-
-        CoreIR::Builder.block_expr(statements, result_expr, result_expr.type)
+        result_expr ||= AST::UnitLit.new(origin: expr.origin)
+        block = AST::BlockExpr.new(statements: statements, result_expr: result_expr, origin: expr.origin)
+        transform_block_expr(block)
       end
 
       def transform_block_expr(block_expr)
-        # Transform BlockExpr: unified block construct with statements and result_expr
-        # This is the new unified architecture replacing DoExpr
-        statements_ir = []
+        # Block expressions reuse the statement pipeline so that we handle the full
+        # range of statements (return, break, nested blocks, etc.) consistently.
+        # We preserve scope during transformation to allow the trailing expression
+        # to see variables defined in the statement portion, and restore the outer
+        # scope afterwards to avoid leaking bindings.
+        saved_var_types = @var_types.dup
 
-        # Transform all statements
-        block_expr.statements.each do |stmt|
-          case stmt
-          when AST::VariableDecl
-            # Variable declaration statement
-            value = transform_expression(stmt.value)
-
-            # Use explicit type annotation if provided, otherwise infer from value
-            var_type = if stmt.type
-                         explicit_type = transform_type(stmt.type)
-
-                         # If value is an anonymous record and explicit type is provided,
-                         # update the record's type to match the explicit type
-                         if value.is_a?(CoreIR::RecordExpr) && value.type_name == "record"
-                           # Extract the actual type name from explicit_type
-                           actual_type_name = type_name(explicit_type)
-                           # Replace the anonymous record type with the explicit type
-                           value = CoreIR::Builder.record(actual_type_name, value.fields, explicit_type)
-                         else
-                           # Verify that value type is compatible with explicit type
-                           ensure_compatible_type(value.type, explicit_type, "variable '#{stmt.name}' initialization")
-                         end
-
-                         explicit_type
-                       else
-                         value.type
-                       end
-
-            @var_types[stmt.name] = var_type
-            statements_ir << CoreIR::Builder.variable_decl_stmt(stmt.name, var_type, value, mutable: stmt.mutable)
-
-          when AST::Assignment
-            # Assignment statement
-            unless stmt.target.is_a?(AST::VarRef)
-              type_error("Assignment target must be a variable", node: stmt)
-            end
-            target_name = stmt.target.name
-            existing_type = @var_types[target_name]
-            type_error("Assignment to undefined variable '#{target_name}'", node: stmt) unless existing_type
-
-            value_ir = transform_expression(stmt.value)
-            ensure_compatible_type(value_ir.type, existing_type, "assignment to '#{target_name}'")
-            target_ir = CoreIR::Builder.var(target_name, existing_type)
-            statements_ir << CoreIR::Builder.assignment_stmt(target_ir, value_ir)
-
-          when AST::Break
-            # Break statement
-            statements_ir << CoreIR::Builder.break_stmt
-
-          when AST::Continue
-            # Continue statement
-            statements_ir << CoreIR::Builder.continue_stmt
-
-          when AST::ExprStmt
-            # Expression statement (expression used for side effects)
-            statements_ir << CoreIR::Builder.expr_statement(transform_expression(stmt.expr))
-
-          else
-            type_error("Unknown statement type in BlockExpr: #{stmt.class}", node: stmt)
-          end
-        end
-
-        # Transform result expression
+        statements_ir = transform_statements(block_expr.statements)
         result_ir = transform_expression(block_expr.result_expr)
+        block_type = result_ir&.type || CoreIR::Builder.unit_type
 
-        CoreIR::Builder.block_expr(statements_ir, result_ir, result_ir.type)
+        CoreIR::Builder.block_expr(statements_ir, result_ir, block_type)
+      ensure
+        @var_types = saved_var_types
       end
 
       def module_member_function_entry(object_node, member_name)
@@ -332,25 +248,14 @@ module Aurora
       end
 
       def transform_for_loop(for_loop)
-        iterable = transform_expression(for_loop.iterable)
-        saved = @var_types[for_loop.var_name]
-        var_type = infer_iterable_type(iterable)
-        @var_types[for_loop.var_name] = var_type
-
-        body = within_loop_scope { transform_expression(for_loop.body) }
-
-        CoreIR::ForLoopExpr.new(
-          var_name: for_loop.var_name,
-          var_type: var_type,
-          iterable: iterable,
-          body: body
+        loop_stmt = transform_for_statement(for_loop)
+        unit_result = CoreIR::Builder.unit_literal(origin: for_loop.origin)
+        CoreIR::Builder.block_expr(
+          [loop_stmt],
+          unit_result,
+          unit_result.type,
+          origin: for_loop.origin
         )
-      ensure
-        if saved
-          @var_types[for_loop.var_name] = saved
-        else
-          @var_types.delete(for_loop.var_name)
-        end
       end
 
       def transform_literal(expr)
@@ -452,34 +357,24 @@ module Aurora
       end
 
       def transform_let(expr)
-        value = transform_expression(expr.value)
+        # Re-express `let` bindings as block expressions so statement handling
+        # (type annotations, mutability checks, scope management) flows through
+        # the same code paths as regular blocks.
+        variable_decl = AST::VariableDecl.new(
+          name: expr.name,
+          value: expr.value,
+          mutable: expr.mutable,
+          type: expr.type,
+          origin: expr.origin
+        )
 
-        var_type = if expr.type
-                     explicit_type = transform_type(expr.type)
-                     if value.is_a?(CoreIR::RecordExpr) && value.type_name == "record"
-                       actual_type_name = type_name(explicit_type)
-                       value = CoreIR::Builder.record(actual_type_name, value.fields, explicit_type)
-                     else
-                       ensure_compatible_type(value.type, explicit_type, "let binding '#{expr.name}' initialization")
-                     end
-                     explicit_type
-                   else
-                     value.type
-                   end
+        block = AST::BlockExpr.new(
+          statements: [variable_decl],
+          result_expr: expr.body,
+          origin: expr.origin
+        )
 
-        previous_type = @var_types[expr.name]
-        @var_types[expr.name] = var_type
-        body = transform_expression(expr.body)
-        statements = [
-          CoreIR::Builder.variable_decl_stmt(expr.name, var_type, value, mutable: expr.mutable)
-        ]
-        result = CoreIR::Builder.block_expr(statements, body, body.type)
-        if previous_type
-          @var_types[expr.name] = previous_type
-        else
-          @var_types.delete(expr.name)
-        end
-        result
+        transform_block_expr(block)
       end
 
       def transform_record_literal(expr)
@@ -495,18 +390,28 @@ module Aurora
       end
 
       def transform_if_expr(expr)
-        condition = transform_expression(expr.condition)
-        then_branch = transform_expression(expr.then_branch)
-        else_branch = expr.else_branch ? transform_expression(expr.else_branch) : nil
+        condition_ir = transform_expression(expr.condition)
+        ensure_boolean_type(condition_ir.type, "if condition", node: expr.condition)
 
-        type = if else_branch
-                 ensure_compatible_type(else_branch.type, then_branch.type, "if expression branches")
-                 then_branch.type
-               else
-                 CoreIR::Builder.unit_type
-               end
+        if unit_branch_ast?(expr.then_branch) && (expr.else_branch.nil? || unit_branch_ast?(expr.else_branch))
+          then_block_ir = transform_statement_block(expr.then_branch)
+          else_block_ir = expr.else_branch ? transform_statement_block(expr.else_branch) : nil
+          if_stmt = CoreIR::Builder.if_stmt(condition_ir, then_block_ir, else_block_ir)
+          unit_literal = CoreIR::Builder.unit_literal
+          CoreIR::Builder.block_expr([if_stmt], unit_literal, unit_literal.type)
+        else
+          then_branch_ir = transform_expression(expr.then_branch)
+          else_branch_ir = expr.else_branch ? transform_expression(expr.else_branch) : nil
 
-        CoreIR::Builder.if_expr(condition, then_branch, else_branch, type)
+          type = if else_branch_ir
+                   ensure_compatible_type(else_branch_ir.type, then_branch_ir.type, "if expression branches")
+                   then_branch_ir.type
+                 else
+                   CoreIR::Builder.unit_type
+                 end
+
+          CoreIR::Builder.if_expr(condition_ir, then_branch_ir, else_branch_ir, type)
+        end
       end
 
       def transform_index_access(index_access)
@@ -756,11 +661,17 @@ module Aurora
       end
 
       def transform_match_expr(match_expr)
-        transform_match_expr_core(match_expr)
+        scrutinee_ir = transform_expression(match_expr.scrutinee)
+
+        if match_stmt_applicable?(match_expr)
+          return transform_match_expr_to_statement(match_expr, scrutinee_ir)
+        end
+
+        transform_match_expr_core(match_expr, scrutinee_ir)
       end
 
-      def transform_match_expr_core(match_expr)
-        scrutinee_ir = transform_expression(match_expr.scrutinee)
+      def transform_match_expr_core(match_expr, scrutinee_ir = nil)
+        scrutinee_ir ||= transform_expression(match_expr.scrutinee)
 
         result = @rule_engine.apply(
           :core_ir_match_expr,
@@ -779,6 +690,16 @@ module Aurora
         result
       end
 
+      def transform_match_expr_to_statement(match_expr, scrutinee_ir)
+        arms = match_expr.arms.map do |arm|
+          transform_match_arm_statement(scrutinee_ir.type, arm)
+        end
+
+        match_stmt = CoreIR::Builder.match_stmt(scrutinee_ir, arms, origin: match_expr.origin)
+        unit_literal = CoreIR::Builder.unit_literal(origin: match_expr.origin)
+        CoreIR::Builder.block_expr([match_stmt], unit_literal, unit_literal.type, origin: match_expr.origin)
+      end
+
       def transform_match_arm(scrutinee_type, arm)
         saved_var_types = @var_types.dup
         pattern = transform_pattern(arm[:pattern])
@@ -786,6 +707,17 @@ module Aurora
         guard = arm[:guard] ? transform_expression(arm[:guard]) : nil
         body = transform_expression(arm[:body])
         {pattern: pattern, guard: guard, body: body}
+      ensure
+        @var_types = saved_var_types
+      end
+
+      def transform_match_arm_statement(scrutinee_type, arm)
+        saved_var_types = @var_types.dup
+        pattern = transform_pattern(arm[:pattern])
+        bind_pattern_variables(pattern, scrutinee_type)
+        guard_ir = arm[:guard] ? transform_expression(arm[:guard]) : nil
+        body_ir = transform_statement_block(arm[:body])
+        {pattern: pattern, guard: guard_ir, body: body_ir}
       ensure
         @var_types = saved_var_types
       end
@@ -840,10 +772,33 @@ module Aurora
         end
       end
 
+      def unit_branch_ast?(node)
+        node.is_a?(AST::BlockExpr) && node.result_expr.is_a?(AST::UnitLit)
+      end
+
+      def match_stmt_applicable?(match_expr)
+        match_expr.arms.all? do |arm|
+          unit_branch_ast?(arm[:body]) &&
+            arm[:guard].nil? &&
+            match_stmt_safe_pattern?(arm[:pattern])
+        end
+      end
+
+      def match_stmt_safe_pattern?(pattern)
+        kind = pattern.kind
+        return false if kind == :regex
+        %i[constructor wildcard var].include?(kind)
+      end
+
       def transform_while_loop(while_loop)
-        condition = transform_expression(while_loop.condition)
-        body = within_loop_scope { transform_expression(while_loop.body) }
-        CoreIR::Builder.while_loop_expr(condition, body)
+        loop_stmt = transform_while_statement(while_loop.condition, while_loop.body)
+        unit_result = CoreIR::Builder.unit_literal(origin: while_loop.origin)
+        CoreIR::Builder.block_expr(
+          [loop_stmt],
+          unit_result,
+          unit_result.type,
+          origin: while_loop.origin
+        )
       end
 
       end

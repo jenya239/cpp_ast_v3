@@ -10,11 +10,7 @@ module Aurora
       def lower_coreir_statement(stmt)
               case stmt
               when CoreIR::ExprStatement
-                if stmt.expression.is_a?(CoreIR::ForLoopExpr)
-                  lower_for_loop_statement(stmt.expression)
-                elsif stmt.expression.is_a?(CoreIR::WhileLoopExpr)
-                  lower_while_loop_statement(stmt.expression)
-                elsif should_lower_as_statement?(stmt.expression)
+                if should_lower_as_statement?(stmt.expression)
                   # Expression with unit type should be lowered as statement
                   # Currently only IfExpr with unit type
                   if stmt.expression.is_a?(CoreIR::IfExpr)
@@ -58,6 +54,8 @@ module Aurora
                 lower_while_stmt(stmt)
               when CoreIR::ForStmt
                 lower_for_stmt(stmt)
+              when CoreIR::MatchStmt
+                lower_match_stmt(stmt)
               when CoreIR::Return
                 if stmt.expr
                   expr = lower_expression(stmt.expr)
@@ -128,19 +126,6 @@ module Aurora
               )
             end
 
-      def lower_for_loop_statement(for_loop)
-              build_range_for(for_loop.var_name, for_loop.var_type, for_loop.iterable, for_loop.body)
-            end
-
-      def lower_while_loop_statement(while_loop)
-              temp_stmt = CoreIR::WhileStmt.new(
-                condition: while_loop.condition,
-                body: while_loop.body,
-                origin: while_loop.origin
-              )
-              lower_while_stmt(temp_stmt)
-            end
-
       def build_range_for(var_name, var_type, iterable_ir, body_ir)
               container = lower_expression(iterable_ir)
               var_type_str = map_type(var_type)
@@ -192,6 +177,70 @@ module Aurora
                   rbrace_prefix: ""
                 )
               end
+            end
+
+      def lower_match_stmt(match_stmt)
+              scrutinee = lower_expression(match_stmt.scrutinee)
+              arms = match_stmt.arms.map { |arm| lower_match_arm_statement(arm) }
+              CppAst::Nodes::MatchStatement.new(
+                value: scrutinee,
+                arms: arms,
+                arm_separators: Array.new([arms.length - 1, 0].max, ",\n")
+              )
+            end
+
+      def lower_match_arm_statement(arm)
+              pattern = arm[:pattern]
+              body_block = lower_statement_block(arm[:body])
+
+              case pattern[:kind]
+              when :constructor
+                case_name = pattern[:name]
+                var_name = sanitize_identifier(case_name.downcase)
+                bindings = Array(pattern[:bindings] || pattern[:fields]).compact.reject { |name| name == "_" }
+                sanitized_bindings = bindings.map { |name| sanitize_identifier(name) }
+                block_with_binding = sanitized_bindings.any? ? add_structured_binding(body_block, sanitized_bindings, var_name) : body_block
+                CppAst::Nodes::MatchArmStatement.new(
+                  case_name: case_name,
+                  var_name: var_name,
+                  body: block_with_binding
+                )
+              when :wildcard
+                CppAst::Nodes::WildcardMatchArmStatement.new(
+                  var_name: "_unused",
+                  body: body_block
+                )
+              when :var
+                var_name = sanitize_identifier(pattern[:name])
+                CppAst::Nodes::WildcardMatchArmStatement.new(
+                  var_name: var_name,
+                  body: body_block
+                )
+              else
+                raise "Unsupported pattern kind for statement match: #{pattern[:kind]}"
+              end
+            end
+
+      def add_structured_binding(block_stmt, bindings, source_var)
+              binding_list = bindings.join(", ")
+              declarator = "[#{binding_list}] = #{source_var}"
+              declaration = CppAst::Nodes::VariableDeclaration.new(
+                type: "auto",
+                declarators: [declarator],
+                declarator_separators: [],
+                type_suffix: " ",
+                prefix_modifiers: ""
+              )
+
+              statements = [declaration] + block_stmt.statements
+              trailings = ["\n"] + block_stmt.statement_trailings
+
+              CppAst::Nodes::BlockStatement.new(
+                statements: statements,
+                statement_trailings: trailings,
+                lbrace_suffix: block_stmt.lbrace_suffix,
+                rbrace_prefix: block_stmt.rbrace_prefix
+              )
             end
 
       end

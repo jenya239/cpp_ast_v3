@@ -376,12 +376,6 @@ module Aurora
           end
           Array(expr.filters).each { |filter| collect_modules_from_expr(filter, registry, current_module) }
           collect_modules_from_expr(expr.output_expr, registry, current_module)
-        when Aurora::CoreIR::ForLoopExpr
-          collect_modules_from_expr(expr.iterable, registry, current_module)
-          collect_modules_from_expr(expr.body, registry, current_module)
-        when Aurora::CoreIR::WhileLoopExpr
-          collect_modules_from_expr(expr.condition, registry, current_module)
-          collect_modules_from_expr(expr.body, registry, current_module)
         when Aurora::CoreIR::Block
           expr.stmts.each { |stmt| collect_modules_from_statement(stmt, registry, current_module) }
         when Aurora::CoreIR::VarExpr, Aurora::CoreIR::LiteralExpr, Aurora::CoreIR::UnitLiteral, Aurora::CoreIR::RegexExpr
@@ -414,6 +408,12 @@ module Aurora
         when Aurora::CoreIR::WhileStmt
           collect_modules_from_expr(stmt.condition, registry, current_module)
           collect_modules_from_statement(stmt.body, registry, current_module)
+        when Aurora::CoreIR::MatchStmt
+          collect_modules_from_expr(stmt.scrutinee, registry, current_module)
+          stmt.arms.each do |arm|
+            collect_modules_from_expr(arm[:guard], registry, current_module) if arm[:guard]
+            collect_modules_from_expr(arm[:body], registry, current_module)
+          end
         when Aurora::CoreIR::Block
           stmt.stmts.each { |inner| collect_modules_from_statement(inner, registry, current_module) }
         end

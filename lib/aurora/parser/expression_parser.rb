@@ -366,25 +366,44 @@ module Aurora
 
     def parse_if_branch_expression
       if current.type == :LBRACE
-        parse_block_expression
+        block = parse_block_expression
+        wrap_block_like_expr(block)
       elsif current.type == :DO
-        parse_do_expression
+        wrap_block_like_expr(parse_do_expression)
       else
         # Allow single statement/expression without 'do'
         # This handles: if x then y = 1
         # as well as:    if x then 42
         item = parse_do_statement
+        wrap_block_like_expr(item)
+      end
+    end
 
-        # Wrap single statement in BlockExpr for consistency
-        if item.is_a?(AST::Stmt)
-          AST::BlockExpr.new(
-            statements: [item],
-            result_expr: AST::UnitLit.new  # Unit type
-          )
-        else
-          # For expressions, return as-is
-          item
-        end
+    def wrap_block_like_expr(node)
+      case node
+      when AST::BlockExpr
+        node
+      when AST::Block
+        origin = node.origin
+        AST::BlockExpr.new(
+          statements: node.stmts,
+          result_expr: AST::UnitLit.new(origin: origin),
+          origin: origin
+        )
+      when AST::Stmt
+        origin = node.origin
+        AST::BlockExpr.new(
+          statements: [node],
+          result_expr: AST::UnitLit.new(origin: origin),
+          origin: origin
+        )
+      else
+        origin = node.respond_to?(:origin) ? node.origin : nil
+        AST::BlockExpr.new(
+          statements: [],
+          result_expr: node,
+          origin: origin
+        )
       end
     end
 
@@ -591,7 +610,11 @@ module Aurora
           end
 
           # Parse body
-          body = parse_if_expression
+          body = if current.type == :DO
+                    wrap_block_like_expr(parse_do_expression)
+                  else
+                    wrap_block_like_expr(parse_if_expression)
+                  end
 
           arms << {pattern: pattern, guard: guard, body: body}
 
@@ -630,7 +653,11 @@ module Aurora
           end
 
           # Parse body
-          body = parse_if_expression
+          body = if current.type == :DO
+                    wrap_block_like_expr(parse_do_expression)
+                  else
+                    wrap_block_like_expr(parse_if_expression)
+                  end
 
           arms << {pattern: pattern, guard: guard, body: body}
         end

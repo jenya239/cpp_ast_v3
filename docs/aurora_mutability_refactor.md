@@ -72,25 +72,25 @@ This document tracks the refactor plan, status, and findings.
 
 2. **CoreIR Transformation (`Aurora.transform_to_core`)**
    - `Passes::ToCore#transform` traverses AST.
-   - `AST::Let` lowered to `CoreIR::LetExpr`; binding type stored in `@var_types` then cleared.
-   - `AST::ForLoop` becomes `CoreIR::ForLoopExpr` with `var_type` inferred from iterable.
-   - No CoreIR representation for statements or assignments.
+- `AST::Let` lowered до unit-valued `BlockExpr` с `CoreIR::VariableDeclStmt` внутри; binding type хранится в `@var_types`.
+- `AST::ForLoop` -> `CoreIR::ForStmt` (через блок-обёртку для expression-кейсов), `AST::WhileLoop` -> `CoreIR::WhileStmt`.
+- `AST::MatchExpr` → `CoreIR::MatchStmt` для unit-веток (через блок-обёртку), иначе остаётся выражением.
+   - Statement-путь закрывает `VariableDecl`, `Assignment`, `Return`, `Break/Continue`.
 
 3. **C++ Lowering (`Aurora.lower_to_cpp`)**
    - `Backend::CppLowering#lower_module` returns `CppAst::Nodes::Program`.
-   - `CoreIR::LetExpr` → lambda IIFE that declares `auto name = ...; return body;`.
-   - `CoreIR::ForLoopExpr` → `for (T var : container) { <body expr as statement>; }`.
-   - All constructs expected to evaluate to expressions; blocks simulated with lambda-return pattern.
+   - `CoreIR::VariableDeclStmt` → обычные объявления/`auto`, `ForStmt` → `for (T var : container) { ... }` без лямбда-IIFE.
+   - `CoreIR::BlockExpr` всё ещё по умолчанию сворачивается в `[&]() { ... }()` если нужно значение.
 
 4. **Code Emission (`CppAst::Nodes#to_source`)**
    - Serialises to C++.
    - Because of lambda/IIFE desugaring, generated code contains nested `[&]() { ... }()` constructs.
 
 ### Key Couplings to Address
-- `CoreIR::LetExpr` assumes expression semantics and cleans `@var_types`, making multi-step mutation impossible.
-- Cpp lowering for `ForLoopExpr` assumes `body` is expression; no storage for statements.
-- `Backend::CppLowering#lower_record` recently adjusted to brace-initialiser, but still expression-focused.
-- Lack of `CoreIR::Assignment` means there is no place for `lhs = rhs` even if parser produced one.
+- `CoreIR::LetExpr` остаётся в AST ради обратной совместимости; нужно полностью перевести старые call-sites на statement-блоки.
+- `CoreIR::BlockExpr` → `lower_block_expr` всё ещё генерирует `[&]() { ... }()` для получения значения; требуется единая стратегия без IIFE.
+- `Backend::CppLowering#lower_record` недавно переведён на brace-init, но остальной backend всё ещё оптимизирован под expression-модель.
+- Эффект-система (`EffectAnalyzer`) по умолчанию помечает `BlockExpr` как импьюрный, что ломает `:constexpr` для чистых блоков.
 
 ## Phase 0.2 – Example Reproduction
 
@@ -258,17 +258,23 @@ This script is representative of the desired behaviour the refactor must enable.
 | `CoreIR::AssignmentStmt` | Mutation of an existing binding | Fields: `target`, `value` |
 | `CoreIR::ReturnStmt` (optional) | Early exit in block/function | Useful once blocks support statements |
 | `CoreIR::ExprStmt` | Wrap expression used as statement | Bridge for compatibility |
-| `CoreIR::ForStmt` | Statement form of `for` | Introduced; `ForLoopExpr` remains only for expression contexts |
+| `CoreIR::ForStmt` | Statement form of `for` | Полностью заменяет прежний `ForLoopExpr` выражений |
 
-Existing expression nodes (`LetExpr`, `ForLoopExpr`) remain for now, but should eventually be replaced:
-- `LetExpr` → Declaration + block.
-- `ForLoopExpr` → `ForStmt` that accepts block body statements.
+Legacy expression nodes (`LetExpr`) остаются ради совместимости, но постепенно сводятся к statement-блокам:
+- `LetExpr` → Declaration + block (уже реализовано через `BlockExpr`).
 
 **Status:** statement nodes подключены, блоки и мутабельные присваивания уже работают, но остаются задачи:
 - Переписать `LetExpr` на statement-based lowering (Phase 3b).
 - Расширить statement-поддержку на `if`/`else`, `while` и другие конструкции; в expression-контексте оставить тонкий слой совместимости.
 - Доработать lowering, чтобы expression-`for` тоже выдавал корректный `return` без искусственных лямбд.
 - Проработать «честный» statement-путь для функций с несколькими блоками (фазовый переход к полноценному AST → CoreIR statements → C++ statements).
+
+#### Самые сложные хвосты
+- **Match как выражение.** Для веток с `unit` уже используем `MatchStmt`; остаётся общий переход на statement-пайплайн для выражений, где нужен результат, и зачистка IIFE.
+- **Анализ эффектов.** `TypeSystem::EffectAnalyzer` маркирует любой `BlockExpr` как импьюрный. После перехода на statement-пайплайн придётся заново определить критерии `:constexpr`, иначе функции теряют оптимизации.
+- **Граница expression/statement.** Парсер пока разрешает смешанные ветки (`if`/`match` с выражением и statement). Требуется финальный проход по грамматике, чтобы явно фиксировать statement-контексты.
+- **Backend без неявных `return`.** `lower_block_expr` и смежные пути добавляют `return` для хвостового выражения. Для statement-блоков нужен чистый список операторов, иначе остаются лишние `return`.
+- **Документация и e2e-тесты.** После завершения миграции нужно обновить CLI/интеграционные проверки и языкосправочники, чтобы описывать реальные блоки и мутабельность, а не legacy do-выражения.
 
 ### Transformation Strategy (AST → CoreIR)
 1. **Context Tracking**
@@ -288,6 +294,7 @@ Existing expression nodes (`LetExpr`, `ForLoopExpr`) remain for now, but should 
 ### Effect System Adjustments
 - Any block containing assignment should drop `:constexpr` effect.
 - Introduce a new `:impure` or similar tag to inform later lowering decisions.
+- ✅ Блоки с только неизменяемыми declarations и чистыми выражениями теперь считаются `:constexpr` (анализатор эффектов смотрит на statements).
 
 ### Migration Steps
 1. Implement new CoreIR statement nodes with builders.

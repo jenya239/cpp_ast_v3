@@ -41,10 +41,6 @@ module Aurora
                 lower_array_literal(expr)
               when CoreIR::IndexExpr
                 lower_index(expr)
-              when CoreIR::ForLoopExpr
-                lower_for_loop_expr(expr)
-              when CoreIR::WhileLoopExpr
-                lower_while_loop_expr(expr)
               when CoreIR::ListCompExpr
                 lower_list_comprehension(expr)
               when CoreIR::BlockExpr
@@ -565,54 +561,6 @@ module Aurora
               CppAst::Nodes::ArraySubscriptExpression.new(
                 array: array,
                 index: index
-              )
-            end
-
-      def lower_for_loop_expr(for_loop)
-              stmt = build_range_for(for_loop.var_name, for_loop.var_type, for_loop.iterable, for_loop.body)
-              body_lines = ["  #{stmt.to_source}"]
-              lambda_body = "\n#{body_lines.join("\n")}\n"
-      
-              lambda_expr = CppAst::Nodes::LambdaExpression.new(
-                capture: "&",
-                parameters: "",
-                specifiers: "",
-                body: lambda_body,
-                capture_suffix: "",
-                params_suffix: ""
-              )
-      
-              CppAst::Nodes::FunctionCallExpression.new(
-                callee: lambda_expr,
-                arguments: [],
-                argument_separators: []
-              )
-            end
-
-      def lower_while_loop_expr(while_loop)
-              temp_stmt = CoreIR::WhileStmt.new(
-                condition: while_loop.condition,
-                body: while_loop.body,
-                origin: while_loop.origin
-              )
-      
-              stmt = lower_while_stmt(temp_stmt)
-              body_lines = ["  #{stmt.to_source}"]
-              lambda_body = "\n#{body_lines.join("\n")}\n"
-      
-              lambda_expr = CppAst::Nodes::LambdaExpression.new(
-                capture: "&",
-                parameters: "",
-                specifiers: "",
-                body: lambda_body,
-                capture_suffix: "",
-                params_suffix: ""
-              )
-      
-              CppAst::Nodes::FunctionCallExpression.new(
-                callee: lambda_expr,
-                arguments: [],
-                argument_separators: []
               )
             end
 
