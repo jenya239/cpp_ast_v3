@@ -145,10 +145,17 @@ module Aurora
 
           function_type.ret_type
         when CoreIR::MemberExpr
+          member = callee.member
+
+          if callee.object.is_a?(CoreIR::VarExpr)
+            if (info = module_member_info(callee.object.name, member))
+              validate_function_call(info, args, member)
+              return info.ret_type
+            end
+          end
+
           object_type = callee.object&.type
           type_error("Cannot call member on value without type") unless object_type
-
-          member = callee.member
 
           if object_type.is_a?(CoreIR::ArrayType)
             case member
@@ -229,17 +236,14 @@ module Aurora
           end
         end
 
-        # Try NEW TypeRegistry first for better type resolution
         if object_type.respond_to?(:name) && @type_registry.has_type?(object_type.name)
           member_type = @type_registry.resolve_member(object_type.name, member)
           return member_type if member_type
-        end
 
-        # Fallback to OLD type_table for backward compat
-        if object_type.respond_to?(:name) && @type_table.key?(object_type.name)
-          resolved_type = @type_table[object_type.name]
-          # Recursively resolve with the actual type definition
-          return infer_member_type(resolved_type, member) if resolved_type != object_type
+          resolved_type = @type_registry.lookup(object_type.name)&.core_ir_type
+          if resolved_type && resolved_type != object_type
+            return infer_member_type(resolved_type, member)
+          end
         end
 
         if object_type.record?

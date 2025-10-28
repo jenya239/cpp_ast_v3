@@ -128,23 +128,26 @@ module Aurora
                 return lower_io_function(call)
               end
 
-              # Check for stdlib functions with namespace qualification
               if call.callee.is_a?(CoreIR::VarExpr)
-                unless @user_functions&.include?(call.callee.name)
-                  # Priority 1: Check hardcoded STDLIB_FUNCTIONS first (for special cases like to_f32 => static_cast)
-                  qualified_name = STDLIB_FUNCTIONS[call.callee.name]
+                name = call.callee.name
 
-                  # Priority 2: If not found in hardcoded, try StdlibScanner for automatic resolution
+                if (override_expr = lower_stdlib_override(name, call))
+                  return override_expr
+                end
+
+                unless @user_functions&.include?(name)
+                  qualified_name = qualified_function_name(name)
                   if qualified_name.nil? && @stdlib_scanner
-                    qualified_name = @stdlib_scanner.cpp_function_name(call.callee.name)
+                    qualified_name = @stdlib_scanner.cpp_function_name(name)
                   end
 
                   if qualified_name
                     args = call.args.map { |arg| lower_expression(arg) }
+                    num_separators = [args.size - 1, 0].max
                     return CppAst::Nodes::FunctionCallExpression.new(
                       callee: CppAst::Nodes::Identifier.new(name: qualified_name),
                       arguments: args,
-                      argument_separators: Array.new([args.size - 1, 0].max, ", ")
+                      argument_separators: Array.new(num_separators, ", ")
                     )
                   end
                 end
@@ -268,12 +271,29 @@ module Aurora
               callee = CppAst::Nodes::Identifier.new(name: target)
               args = call.args.map { |arg| lower_expression(arg) }
               num_separators = [args.size - 1, 0].max
-      
+
               CppAst::Nodes::FunctionCallExpression.new(
                 callee: callee,
                 arguments: args,
                 argument_separators: Array.new(num_separators, ", ")
               )
+            end
+
+      def lower_stdlib_override(name, call)
+              override = STDLIB_FUNCTION_OVERRIDES[name]
+              return nil unless override
+
+              case name
+              when "to_f32"
+                arg = call.args.first ? lower_expression(call.args.first) : CppAst::Nodes::Identifier.new(name: "0")
+                CppAst::Nodes::FunctionCallExpression.new(
+                  callee: CppAst::Nodes::Identifier.new(name: override),
+                  arguments: [arg],
+                  argument_separators: []
+                )
+              else
+                nil
+              end
             end
 
       def lower_member(member)

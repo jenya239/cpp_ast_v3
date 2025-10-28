@@ -7,6 +7,18 @@ module Aurora
       # Statement transformation and control flow
       # Auto-extracted from to_core.rb during refactoring
       module StatementTransformer
+      def apply_statement_rules(stmt)
+        context = {
+          transformer: self,
+          type_registry: @type_registry,
+          function_registry: @function_registry,
+          rule_engine: @rule_engine
+        }
+        result = @rule_engine.apply(:core_ir_statement, stmt, context: context)
+        return nil if result.equal?(stmt)
+        result.is_a?(Array) ? result : [result]
+      end
+
       def transform_block(block, require_value: true, preserve_scope: false)
         with_current_node(block) do
           saved_var_types = @var_types.dup unless preserve_scope
@@ -128,68 +140,12 @@ module Aurora
       def transform_statements(statements)
         statements.each_with_object([]) do |stmt, acc|
           with_current_node(stmt) do
+            if (rule_result = apply_statement_rules(stmt))
+              acc.concat(rule_result)
+              next
+            end
+
             case stmt
-            when AST::ExprStmt
-              acc.concat(transform_expr_statement(stmt))
-            when AST::VariableDecl
-              value_ir = transform_expression(stmt.value)
-
-              # Use explicit type annotation if provided, otherwise infer from value
-              var_type = if stmt.type
-                           explicit_type = transform_type(stmt.type)
-
-                           # If value is an anonymous record and explicit type is provided,
-                           # update the record's type to match the explicit type
-                           if value_ir.is_a?(CoreIR::RecordExpr) && value_ir.type_name == "record"
-                             # Extract the actual type name from explicit_type
-                             actual_type_name = type_name(explicit_type)
-                             # Replace the anonymous record type with the explicit type
-                             value_ir = CoreIR::Builder.record(actual_type_name, value_ir.fields, explicit_type)
-                           else
-                             # Verify that value type is compatible with explicit type
-                             ensure_compatible_type(value_ir.type, explicit_type, "variable '#{stmt.name}' initialization")
-                           end
-
-                           explicit_type
-                         else
-                           value_ir.type
-                         end
-
-              previous_type = @var_types[stmt.name]
-              @var_types[stmt.name] = var_type
-              acc << CoreIR::Builder.variable_decl_stmt(
-                stmt.name,
-                var_type,
-                value_ir,
-                mutable: stmt.mutable
-              )
-            when AST::Assignment
-              unless stmt.target.is_a?(AST::VarRef)
-                type_error("Assignment target must be a variable", node: stmt)
-              end
-              target_name = stmt.target.name
-              existing_type = @var_types[target_name]
-              type_error("Assignment to undefined variable '#{target_name}'", node: stmt) unless existing_type
-
-              value_ir = transform_expression(stmt.value)
-              ensure_compatible_type(value_ir.type, existing_type, "assignment to '#{target_name}'")
-              @var_types[target_name] = existing_type
-              target_ir = CoreIR::Builder.var(target_name, existing_type)
-              acc << CoreIR::Builder.assignment_stmt(target_ir, value_ir)
-            when AST::ForLoop
-              acc << transform_for_statement(stmt)
-            when AST::IfStmt
-              acc << transform_if_statement(stmt.condition, stmt.then_branch, stmt.else_branch)
-            when AST::WhileStmt
-              acc << transform_while_statement(stmt.condition, stmt.body)
-            when AST::Return
-              acc << transform_return_statement(stmt)
-            when AST::Break
-              type_error("'break' used outside of loop", node: stmt) if @loop_depth.to_i <= 0
-              acc << CoreIR::Builder.break_stmt
-            when AST::Continue
-              type_error("'continue' used outside of loop", node: stmt) if @loop_depth.to_i <= 0
-              acc << CoreIR::Builder.continue_stmt
             when AST::Block
               nested = transform_block(stmt, require_value: false)
               acc.concat(nested.statements)
@@ -205,6 +161,63 @@ module Aurora
         ensure_boolean_type(condition_ir.type, "while condition", node: condition_node)
         body_ir = within_loop_scope { transform_statement_block(body_node, preserve_scope: true) }
         CoreIR::Builder.while_stmt(condition_ir, body_ir)
+      end
+
+      def transform_variable_decl_statement(stmt)
+        value_ir = transform_expression(stmt.value)
+
+        var_type = if stmt.type
+                     explicit_type = transform_type(stmt.type)
+                     if value_ir.is_a?(CoreIR::RecordExpr) && value_ir.type_name == "record"
+                       actual_type_name = type_name(explicit_type)
+                       value_ir = CoreIR::Builder.record(actual_type_name, value_ir.fields, explicit_type)
+                     else
+                       ensure_compatible_type(value_ir.type, explicit_type, "variable '#{stmt.name}' initialization")
+                     end
+                     explicit_type
+                   else
+                     value_ir.type
+                   end
+
+        @var_types[stmt.name] = var_type
+
+        [CoreIR::Builder.variable_decl_stmt(
+          stmt.name,
+          var_type,
+          value_ir,
+          mutable: stmt.mutable
+        )]
+      end
+
+      def transform_assignment_statement(stmt)
+        unless stmt.target.is_a?(AST::VarRef)
+          type_error("Assignment target must be a variable", node: stmt)
+        end
+
+        target_name = stmt.target.name
+        existing_type = @var_types[target_name]
+        type_error("Assignment to undefined variable '#{target_name}'", node: stmt) unless existing_type
+
+        value_ir = transform_expression(stmt.value)
+        ensure_compatible_type(value_ir.type, existing_type, "assignment to '#{target_name}'")
+        @var_types[target_name] = existing_type
+        target_ir = CoreIR::Builder.var(target_name, existing_type)
+        [CoreIR::Builder.assignment_stmt(target_ir, value_ir)]
+      end
+
+      def transform_break_statement(stmt)
+        type_error("'break' used outside of loop", node: stmt) if @loop_depth.to_i <= 0
+        [CoreIR::Builder.break_stmt]
+      end
+
+      def transform_continue_statement(stmt)
+        type_error("'continue' used outside of loop", node: stmt) if @loop_depth.to_i <= 0
+        [CoreIR::Builder.continue_stmt]
+      end
+
+      def transform_block_statement(stmt)
+        nested = transform_block(stmt, require_value: false)
+        nested.statements
       end
 
       def within_loop_scope

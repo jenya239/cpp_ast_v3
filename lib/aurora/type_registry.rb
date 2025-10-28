@@ -18,7 +18,7 @@ module Aurora
   # 5. Stdlib type auto-registration
 
   class TypeInfo
-    attr_reader :name, :ast_node, :core_ir_type, :cpp_name, :namespace, :kind, :exported
+    attr_reader :name, :ast_node, :core_ir_type, :cpp_name, :namespace, :kind, :exported, :module_name
     attr_accessor :fields, :variants
 
     # @param name [String] Type name in Aurora (e.g., "Event", "Window")
@@ -27,17 +27,19 @@ module Aurora
     # @param namespace [String, nil] C++ namespace (e.g., "aurora::graphics")
     # @param kind [Symbol] :primitive, :record, :sum, :opaque, :function, :array
     # @param exported [Boolean] Is this type exported from module?
-    def initialize(name:, ast_node: nil, core_ir_type:, namespace: nil, kind:, exported: false)
+    def initialize(name:, ast_node: nil, core_ir_type:, namespace: nil, kind:, exported: false, module_name: nil)
       @name = name
       @ast_node = ast_node
       @core_ir_type = core_ir_type
       @namespace = namespace
       @kind = kind
       @exported = exported
+      @module_name = module_name
 
       # Cache fields/variants for faster access
       @fields = extract_fields(core_ir_type)
       @variants = extract_variants(core_ir_type)
+      @referenced_type_names = extract_referenced_type_names(core_ir_type)
 
       # Compute C++ qualified name
       @cpp_name = compute_cpp_name(name, namespace, kind, core_ir_type)
@@ -71,6 +73,21 @@ module Aurora
       @variants&.any? { |v| v[:name] == variant_name }
     end
 
+    def referenced_type_names
+      @referenced_type_names
+    end
+
+    def referenced_module_names(type_registry, include_self: false)
+      return [] unless type_registry
+
+      referenced_type_names.each_with_object([]) do |type_name, acc|
+        next if type_name == name && !include_self
+        info = type_registry.lookup(type_name)
+        next unless info
+        acc << info.module_name if info.module_name && !info.module_name.empty?
+      end.uniq
+    end
+
     private
 
     def extract_fields(type)
@@ -81,6 +98,42 @@ module Aurora
     def extract_variants(type)
       return nil unless type.respond_to?(:variants)
       type.variants
+    end
+
+    def extract_referenced_type_names(type)
+      names = []
+      collect_type_names(type, names)
+      names.delete(name)
+      names.uniq
+    end
+
+    def collect_type_names(type, names)
+      return unless type
+
+      case type
+      when CoreIR::GenericType
+        collect_type_names(type.base_type, names)
+        type.type_args.each { |arg| collect_type_names(arg, names) }
+      when CoreIR::ArrayType
+        collect_type_names(type.element_type, names)
+      when CoreIR::FunctionType
+        type.params.each { |param| collect_type_names(param[:type], names) }
+        collect_type_names(type.ret_type, names)
+      when CoreIR::RecordType
+        type.fields.each do |field|
+          collect_type_names(field[:type], names)
+        end
+      when CoreIR::SumType
+        type.variants.each do |variant|
+          Array(variant[:fields]).each do |field|
+            collect_type_names(field[:type], names)
+          end
+        end
+      when CoreIR::TypeVariable
+        # ignore
+      when CoreIR::Type
+        names << type.name if type.name
+      end
     end
 
     def compute_cpp_name(name, namespace, kind, type)
@@ -101,11 +154,20 @@ module Aurora
 
     # Standard primitive type mappings
     PRIMITIVE_TYPE_MAP = {
-      'i32' => 'int',
-      'f32' => 'float',
       'bool' => 'bool',
       'void' => 'void',
-      'unit' => 'void',  # Unit type maps to void in C++
+      'unit' => 'void',          # Unit type maps to void in C++
+      'i8' => 'int8_t',
+      'u8' => 'uint8_t',
+      'i16' => 'int16_t',
+      'u16' => 'uint16_t',
+      'i32' => 'int',
+      'u32' => 'uint32_t',
+      'i64' => 'int64_t',
+      'u64' => 'uint64_t',
+      'f32' => 'float',
+      'f64' => 'double',
+      'usize' => 'size_t',
       'str' => 'aurora::String',
       'string' => 'aurora::String',
       'regex' => 'aurora::Regex'
@@ -118,6 +180,8 @@ module Aurora
     def initialize
       @types = {}  # name => TypeInfo
       @namespaces = {}  # namespace => [type_names]
+      # module_name => [type_names]
+      @modules = Hash.new { |hash, key| hash[key] = [] }
 
       # Register built-in primitive types
       register_primitives
@@ -130,15 +194,19 @@ module Aurora
     # @param namespace [String, nil] C++ namespace
     # @param kind [Symbol] Type kind
     # @param exported [Boolean] Is exported?
-    def register(name, ast_node: nil, core_ir_type:, namespace: nil, kind:, exported: false)
+    def register(name, ast_node: nil, core_ir_type:, namespace: nil, kind:, exported: false, module_name: nil)
       type_info = TypeInfo.new(
         name: name,
         ast_node: ast_node,
         core_ir_type: core_ir_type,
         namespace: namespace,
         kind: kind,
-        exported: exported
+        exported: exported,
+        module_name: module_name
       )
+
+      previous = @types[name]
+      remove_from_module_index(previous.module_name, name) if previous&.module_name && previous.module_name != module_name
 
       @types[name] = type_info
 
@@ -147,6 +215,8 @@ module Aurora
         @namespaces[namespace] ||= []
         @namespaces[namespace] << name unless @namespaces[namespace].include?(name)
       end
+
+      track_module_membership(module_name, name)
 
       type_info
     end
@@ -199,6 +269,29 @@ module Aurora
       type_names.map { |name| @types[name] }.compact
     end
 
+    # Get all types defined in a module
+    # @param module_name [String]
+    # @return [Array<TypeInfo>]
+    def types_in_module(module_name, exported_only: false)
+      return [] if module_name.nil? || module_name.empty?
+      names = @modules[module_name]
+      return [] unless names
+
+      result = names.filter_map { |name| @types[name] }
+      exported_only ? result.select(&:exported) : result
+    end
+
+    # Convenience helper returning only exported types for a module.
+    # @param module_name [String]
+    # @return [Array<TypeInfo>]
+    def exported_types_in_module(module_name)
+      types_in_module(module_name, exported_only: true)
+    end
+
+    def module_name_for(type_name)
+      @types[type_name]&.module_name
+    end
+
     # Get all exported types
     # @return [Array<TypeInfo>]
     def exported_types
@@ -209,6 +302,7 @@ module Aurora
     def clear
       @types.clear
       @namespaces.clear
+      @modules.clear
       register_primitives
     end
 
@@ -232,6 +326,21 @@ module Aurora
           exported: false
         )
       end
+    end
+
+    def track_module_membership(module_name, type_name)
+      return if module_name.nil? || module_name.empty?
+
+      members = @modules[module_name]
+      members << type_name unless members.include?(type_name)
+    end
+
+    def remove_from_module_index(module_name, type_name)
+      return if module_name.nil? || module_name.empty?
+
+      members = @modules[module_name]
+      members.delete(type_name)
+      @modules.delete(module_name) if members.empty?
     end
   end
 end

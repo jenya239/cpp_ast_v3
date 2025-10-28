@@ -14,6 +14,7 @@ require_relative "aurora/backend/header_generator"
 require_relative "aurora/stdlib_resolver"
 require_relative "aurora/stdlib_scanner"
 require_relative "aurora/stdlib_signature_registry"
+require_relative "aurora/function_registry"
 
 module Aurora
   class ParseError < StandardError; end
@@ -52,10 +53,10 @@ module Aurora
       to_core = app.build_to_core
 
       # 3. Transform to CoreIR (with type_registry)
-      core_ir, type_registry = transform_to_core_with_registry(ast, transformer: to_core)
+      core_ir, type_registry, function_registry = transform_to_core_with_registry(ast, transformer: to_core)
 
       # 4. Lower to C++ AST (with shared type_registry and stdlib_scanner)
-      cpp_lowerer = app.build_cpp_lowering(type_registry: type_registry, stdlib_scanner: stdlib_scanner)
+      cpp_lowerer = app.build_cpp_lowering(type_registry: type_registry, function_registry: function_registry, stdlib_scanner: stdlib_scanner)
       cpp_ast = cpp_lowerer.lower(core_ir)
 
       cpp_ast
@@ -81,7 +82,7 @@ module Aurora
     # Returns: [core_ir, type_registry]
     def transform_to_core_with_registry(ast, transformer: Passes::ToCore.new)
       core_ir = transformer.transform(ast)
-      [core_ir, transformer.type_registry]
+      [core_ir, transformer.type_registry, transformer.function_registry]
     rescue CompileError
       raise
     rescue => e
@@ -93,9 +94,10 @@ module Aurora
     # @param core_ir [CoreIR::Module] CoreIR module
     # @param type_registry [TypeRegistry] Shared type registry from ToCore
     # @param stdlib_scanner [StdlibScanner] Scanner for automatic stdlib function resolution
-    def lower_to_cpp(core_ir, type_registry: nil, stdlib_scanner: nil, event_bus: nil)
+    def lower_to_cpp(core_ir, type_registry: nil, function_registry: nil, stdlib_scanner: nil, event_bus: nil)
       lowerer = Backend::CppLowering.new(
         type_registry: type_registry,
+        function_registry: function_registry,
         stdlib_scanner: stdlib_scanner,
         event_bus: event_bus
       )
@@ -118,13 +120,13 @@ module Aurora
     def to_hpp_cpp(source, filename: nil)
       # Parse and transform to CoreIR
       ast = parse(source, filename: filename)
-      core_ir, type_registry = transform_to_core_with_registry(ast)
+      core_ir, type_registry, function_registry = transform_to_core_with_registry(ast)
 
       # Create StdlibScanner
       stdlib_scanner = StdlibScanner.new
 
       # Generate header and implementation
-      lowering = Backend::CppLowering.new(type_registry: type_registry, stdlib_scanner: stdlib_scanner)
+      lowering = Backend::CppLowering.new(type_registry: type_registry, function_registry: function_registry, stdlib_scanner: stdlib_scanner)
       generator = Backend::HeaderGenerator.new(lowering)
       generator.generate(core_ir)
     rescue CompileError

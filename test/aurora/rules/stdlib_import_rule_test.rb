@@ -15,7 +15,7 @@ class StdlibImportRuleTest < Minitest::Test
 
     @rule.apply(import, {
       stdlib_registry: @registry,
-      register_stdlib_function: ->(decl) { functions << decl.name },
+      register_stdlib_function: ->(metadata, _module_info, _alias_name) { functions << metadata.name },
       event_bus: build_event_bus(events)
     })
 
@@ -41,18 +41,22 @@ class StdlibImportRuleTest < Minitest::Test
   end
 
   def test_handles_import_all
-    import = Aurora::AST::ImportDecl.new(path: "IO", import_all: true)
+    import = Aurora::AST::ImportDecl.new(path: "Graphics", import_all: true)
     functions = []
+    types = []
     events = []
 
     @rule.apply(import, {
       stdlib_registry: @registry,
-      register_stdlib_function: ->(decl) { functions << decl.name },
+      register_stdlib_function: ->(metadata, _module_info, _alias_name) { functions << metadata.name },
+      register_stdlib_type: ->(decl, _ns, _module_name) { types << decl.name },
       event_bus: build_event_bus(events)
     })
 
     refute_empty functions
+    refute_empty types
     assert events.any? { |event| event[:event] == :stdlib_function_imported }
+    assert events.any? { |event| event[:event] == :stdlib_type_imported }
   end
 
   private
@@ -64,6 +68,9 @@ class StdlibImportRuleTest < Minitest::Test
       end
       bus.subscribe(:stdlib_missing_item) do |payload|
         events << {event: :stdlib_missing_item, payload: payload}
+      end
+      bus.subscribe(:stdlib_type_imported) do |payload|
+        events << {event: :stdlib_type_imported, payload: payload}
       end
     end
   end

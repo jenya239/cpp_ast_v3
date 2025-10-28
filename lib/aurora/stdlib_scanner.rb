@@ -203,6 +203,8 @@ module Aurora
     # Special cases handled here
     def infer_namespace(module_name)
       case module_name
+      when 'Array'
+        'aurora::collections'
       when 'Conv'
         # Conv functions are in aurora namespace (aurora_string.hpp)
         'aurora'

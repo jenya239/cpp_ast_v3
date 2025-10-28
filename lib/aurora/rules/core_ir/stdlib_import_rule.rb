@@ -23,12 +23,13 @@ module Aurora
           type_handler = context[:register_stdlib_type]
           missing_handler = context[:on_missing_item]
           event_bus = context[:event_bus]
+          module_alias = context[:module_alias]
 
           missing_items = []
 
           if import_all
             module_info.functions.each_value do |metadata|
-              function_handler&.call(metadata.ast_node)
+              function_handler&.call(metadata, module_info, module_alias)
               event_bus&.publish(
                 :stdlib_function_imported,
                 module: module_info.name,
@@ -36,10 +37,20 @@ module Aurora
                 origin: import_decl.origin
               )
             end
+
+            module_info.types.each_value do |metadata|
+              type_handler&.call(metadata.ast_node, module_info.namespace, module_info.name)
+              event_bus&.publish(
+                :stdlib_type_imported,
+                module: module_info.name,
+                type: metadata.name,
+                origin: import_decl.origin
+              )
+            end
           else
             requested_items.each do |name|
               if (func_meta = module_info.functions[name])
-                function_handler&.call(func_meta.ast_node)
+                function_handler&.call(func_meta, module_info, module_alias)
                 event_bus&.publish(
                   :stdlib_function_imported,
                   module: module_info.name,
@@ -47,7 +58,7 @@ module Aurora
                   origin: import_decl.origin
                 )
               elsif (type_meta = module_info.types[name])
-                type_handler&.call(type_meta.ast_node, module_info.namespace)
+                type_handler&.call(type_meta.ast_node, module_info.namespace, module_info.name)
                 event_bus&.publish(
                   :stdlib_type_imported,
                   module: module_info.name,

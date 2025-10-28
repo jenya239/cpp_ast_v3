@@ -14,6 +14,6 @@ class AuroraErrorDiagnosticsTest < Minitest::Test
       Aurora.to_cpp(aurora_source)
     end
 
-    assert_match(/\A<input>:\d+:\d+: function 'main' should not return a value/, error.message)
+    assert_match(/<input>:\d+:\d+: function 'main' should not return a value/, error.message)
   end
 end

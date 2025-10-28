@@ -34,6 +34,22 @@ module Aurora
               @identifier_map[name] ||= cpp_keyword?(name) ? "#{name}_" : name
             end
 
+      def qualified_function_name(name)
+        return nil unless @function_registry
+
+        entry = @function_registry.fetch_entry(name)
+        return nil unless entry
+
+        base_name = sanitize_identifier(entry.name)
+        namespace = entry.namespace
+
+        if namespace && !namespace.empty?
+          "#{namespace}::#{base_name}"
+        else
+          base_name
+        end
+      end
+
       def cpp_keyword?(name)
               CPP_KEYWORDS.include?(name)
             end

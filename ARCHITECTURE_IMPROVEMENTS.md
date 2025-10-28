@@ -33,6 +33,11 @@ class TypeRegistry
   def cpp_name(name)
     # Автоматическая генерация namespace::Type или Type*
   end
+
+  # Module-level introspection
+  def types_in_module(name, exported_only: false)
+    # Быстрый доступ к типам конкретного модуля
+  end
 end
 ```
 
@@ -40,6 +45,8 @@ end
 - `lib/aurora/passes/to_core.rb` - создание @type_registry в initialize
 - `lib/aurora/passes/to_core/function_transformer.rb` - автоматическая регистрация импортированных типов с namespace
 - `lib/aurora/passes/to_core/type_inference.rb` - использование TypeRegistry для member access
+- `lib/aurora/rules/core_ir/stdlib_import_rule.rb` публикует событие `:stdlib_type_imported` и регистрирует типы в реестре, а интеграционный тест `test/aurora/stdlib_scanner_integration_test.rb:48` гарантирует корректное C++ имя `aurora::graphics::Event`
+- `lib/aurora/backend/cpp_lowering.rb` теперь полагается на `StdlibScanner` для namespace-квалификации функций; вручную поддерживается только `to_f32 => static_cast<float>`
 
 **Результат:**
 - ✅ Добавление нового stdlib модуля требует только:
@@ -153,6 +160,18 @@ fn main() -> i32 = do
 end
 ```
 
+### 6. HeaderGenerator: точное управление зависимостями ✅
+
+**Что изменилось:**
+- HeaderGenerator один раз вычисляет зависимости и делит их на три множества: `header`, `implementation`, `forward`.
+- Включения (`#include`) формируются только для модулей, которые реально нужны в заголовке/реализации; forward-declaration генерируются, если достаточно упоминания типа.
+- Новые хелперы `mark_module_dependency` и `requires_definition?` используют `FunctionRegistry` и `TypeRegistry`, чтобы отличать случаи «нужно определение» от «хватает объявления».
+
+**Результат:**
+- Сокращены лишние include между пользовательскими модулями.
+- Уменьшен риск циклических зависимостей за счёт автоматических forward-declaration.
+- Повторное использование TypeRegistry для анализа рекурсивных зависимостей типов закреплено в коде.
+
 ## Архитектура TypeRegistry
 
 ```
@@ -196,6 +215,78 @@ end
 | **Регистрация типа** | Вручную в 3-4 местах | Автоматически через TypeRegistry |
 | **Member access** | Через helper функции | Прямо: `evt.button` |
 | **C++ namespace** | Hardcoded в @type_map | Автоматически из STDLIB_NAMESPACE_MAP |
+
+## Roadmap: Полный переход на модульную архитектуру
+
+### Этап 1 — Консолидация реестров (в процессе)
+
+1. **TypeRegistry**
+   - [x] Сохраняем `module_name` для каждого типа (нужно для генерации includes).
+   - [x] Для записей и сумм: хранить зависимости полей (чтобы понимать, какие другие типы подтягивать). `TypeInfo#referenced_type_names` теперь используется HeaderGenerator’ом, который строит include/forward списки.
+   - [x] Добавить API `types_in_module(module_name)` для быстрого поиска экспортированных типов (supports `exported_only` флаг + `exported_types_in_module`).
+
+2. **FunctionRegistry**
+   - [x] Aliases для `Module.func` и `import * as Alias`.
+   - [ ] Хранить информацию об используемых типах параметров/результатов (связь с TypeRegistry).
+   - [ ] Расширить события EventBus (`function_registered`, `alias_registered`) для наблюдателей.
+
+3. **Shared Utilities**
+   - [x] `resolve_module_alias` + `module_member_info` вынесены в BaseTransformer.
+   - [ ] Вынести аналогичные функции в CppLowering (сейчас они реализованы отдельно).
+   - [ ] Добавить единую утилиту для обхода CoreIR AST (повторяется в HeaderGenerator, тестах, будущих правилах).
+
+### Этап 2 — Правила на всех стадиях
+
+1. **ToCore**
+   - [ ] Перевести ExpressionTransformer/StatementTransformer на RuleEngine (сейчас в основном прямой Ruby-код).
+   - [ ] Разбить большие методы (`transform_expression`, `transform_function`) на правила по конструкциям AST.
+   - [ ] Ввести phase-пайплайн: парсинг → нормализация → анализ → трансформации, где каждая стадия — набор правил.
+
+2. **Type Inference / Effects**
+   - [ ] Оформить проверки (`ensure_*`, `infer_*`) как rules или policy-объекты, чтобы можно было легко добавлять новые проверки.
+   - [ ] Ввести таблицу diagnostics с кодами ошибок и уровнем (warning/error).
+
+3. **CppLowering**
+   - [ ] Перевести `ExpressionLowerer` и `StatementLowerer` на rule-подход (`cpp_call_expr`, `cpp_member_expr`, ...).
+   - [ ] Сделать HeaderGenerator правилом `cpp_module_header`, чтобы переиспользовать логику зависимостей.
+
+### Этап 3 — Управление зависимостями и сборкой artefacts
+
+1. **Includes & Namespaces**
+   - [x] Минимизируем include’ы на основе `FunctionRegistry`.
+   - [x] Добавить анализ типов (record/sum) → включать заголовки, если тип来自 другого модуля. HeaderGenerator использует `mark_module_dependency` для автоматического include.
+   - [x] Сгенерировать forward-declarations вместо include, если тип используется только по ссылке.
+
+2. **Artifacts**
+   - [ ] Объединить генерацию `.hpp`/`.cpp`/`CMakeLists` под общий builder (multi-target pipeline).
+   - [ ] Добавить фазы: `collect_dependencies`, `emit_headers`, `emit_sources`, каждая через rules.
+
+### Этап 4 — Тестовая инфраструктура
+
+1. **Unit level**
+   - [ ] Расширить набор snapshot-тестов для C++ (против специально подготовленных фикстур).
+   - [ ] Добавить coverage для частичных импортов (record fields, sum variants, методы stdlib).
+
+2. **Integration level**
+   - [ ] Пайплайн «AST → CoreIR → C++ → clang-format» с проверкой компиляции (как smoke-тест).
+   - [ ] Прогнать main demo-проекты (OpenGL, GTK) через новый пайплайн в CI.
+
+### Этап 5 — Финальный рефакторинг
+
+1. **Удалить legacy**
+   - [ ] `STDLIB_FUNCTION_OVERRIDES` оставить только для special cases, остальные — через StdlibScanner.
+   - [ ] Очистить `@type_map`, `@user_functions` и прочие временные структуры в Lowering.
+   - [ ] Удалить `to_core.rb.backup` как только все стадии переписаны на модули.
+
+2. **Документация**
+   - [ ] Подготовить «Compiler Architecture Guide» с описанием новых правил.
+   - [ ] Обновить README (developer mode vs release mode, как добавлять stdlib).
+
+3. **CI & Tooling**
+   - [ ] Настроить линтеры (RuboCop/Standard) на новые директории.
+   - [ ] Добавить метрики (время парсинга/трансформации/генерации).
+
+С учётом текущего состояния, после завершения Этапов 1–3 можно объявлять «полный переход на rule-based архитектуру». Этапы 4–5 — стабилизация и удаление устаревшего кода.
 | **Opaque types** | Ad-hoc как PrimType | Proper support с kind=:opaque |
 | **Добавление stdlib** | 6 шагов | 2 шага |
 

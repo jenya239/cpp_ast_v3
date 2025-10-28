@@ -45,6 +45,24 @@ class StdlibScannerIntegrationTest < Minitest::Test
     assert_includes cpp, "aurora::graphics::flush_window"
   end
 
+  def test_imported_graphics_record_type_uses_namespace
+    source = <<~AURORA
+      import { Event } from "Graphics"
+
+      fn handle(evt: Event) -> i32 =
+        evt.x
+
+      fn main() -> i32 =
+        0
+    AURORA
+
+    cpp = Aurora.compile(source).to_source
+
+    assert_includes cpp, "int handle(aurora::graphics::Event evt)"
+    refute_includes cpp, "aurora::graphics::Event*"
+    assert_includes cpp, "return evt.x;"
+  end
+
   def test_compile_with_io_functions
     source = <<~AURORA
       import IO::{ println }
@@ -141,8 +159,7 @@ class StdlibScannerIntegrationTest < Minitest::Test
     assert_includes cpp, "aurora::io::println"
   end
 
-  def test_backward_compatibility_with_hardcoded_functions
-    # Even if scanner fails, should fall back to hardcoded STDLIB_FUNCTIONS
+  def test_scanner_resolves_math_functions_without_overrides
     source = <<~AURORA
       import Math::{ abs }
 
@@ -157,8 +174,21 @@ class StdlibScannerIntegrationTest < Minitest::Test
 
     cpp = Aurora.compile(source).to_source
 
-    # Should use proper namespace
+    # Should use proper namespace provided by StdlibScanner
     assert_includes cpp, "aurora::math::abs"
+  end
+
+  def test_conv_to_f32_uses_static_cast_override
+    source = <<~AURORA
+      import Conv::{ to_f32 }
+
+      fn main() -> f32 =
+        to_f32(42)
+    AURORA
+
+    cpp = Aurora.compile(source).to_source
+
+    assert_includes cpp, "return static_cast<float>(42);"
   end
 
   def test_scanner_handles_extern_functions

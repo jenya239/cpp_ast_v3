@@ -7,16 +7,61 @@ module Aurora
       # Function and type declaration transformation
       # Auto-extracted from to_core.rb during refactoring
       module FunctionTransformer
+      def with_current_module(module_name)
+        previous_name = @current_module_name
+        previous_namespace = @current_module_namespace
+        @current_module_name = module_name
+        @current_module_namespace = derive_module_namespace(module_name)
+        yield
+      ensure
+        @current_module_name = previous_name
+        @current_module_namespace = previous_namespace
+      end
+
+      def current_module_name
+        @current_module_name
+      end
+
+      def current_module_namespace
+        @current_module_namespace
+      end
+
+      def derive_module_namespace(module_name)
+        return nil if module_name.nil? || module_name.empty? || module_name == "main"
+
+        module_name
+          .gsub("/", "::")
+          .split("::")
+          .map(&:downcase)
+          .join("::")
+      end
+
+      def build_module_alias_keys(function_name, module_info, module_alias)
+        return [] unless function_name
+
+        prefixes = module_alias_prefixes(module_info&.name, module_alias)
+        prefixes.map { |prefix| "#{prefix}.#{function_name}" }
+      end
+
+      def module_alias_prefixes(module_name, module_alias)
+        prefixes = []
+        prefixes << module_name if module_name && !module_name.empty?
+        prefixes << module_alias if module_alias && !module_alias.empty?
+        prefixes.uniq
+      end
+
       def ensure_function_signature(func_decl)
         register_function_signature(func_decl)
-        @function_table[func_decl.name]
+        @function_registry.fetch(func_decl.name)
       end
 
       def refresh_function_signatures!(resolved_name)
-        resolved = @type_table[resolved_name]
-        return unless resolved
+        type_info = @type_registry.lookup(resolved_name)
+        return unless type_info
 
-        @function_table.each_value do |info|
+        resolved = type_info.core_ir_type
+
+        @function_registry.each do |info|
           info.param_types = info.param_types.map do |type|
             refresh_type_reference(type, resolved_name, resolved)
           end
@@ -52,8 +97,8 @@ module Aurora
       end
 
       def register_function_signature(func_decl)
-        if @function_table.key?(func_decl.name)
-          return @function_table[func_decl.name]
+        if @function_registry.registered?(func_decl.name)
+          return @function_registry.fetch(func_decl.name)
         end
 
         # Set type parameters context before transforming types
@@ -64,7 +109,16 @@ module Aurora
           param_types = func_decl.params.map { |param| transform_type(param.type) }
           ret_type = transform_type(func_decl.ret_type)
           info = FunctionInfo.new(func_decl.name, param_types, ret_type, type_params)
-          @function_table[func_decl.name] = info
+          @function_registry.register(
+            func_decl.name,
+            info,
+            module_name: current_module_name,
+            namespace: current_module_namespace,
+            exported: func_decl.exported,
+            external: func_decl.external,
+            ast_node: func_decl,
+            origin: func_decl.origin
+          )
         end
 
         info
@@ -78,6 +132,7 @@ module Aurora
           import_decl,
           context: {
             stdlib_registry: @stdlib_registry,
+            module_alias: import_decl.alias,
             register_stdlib_function: method(:register_stdlib_function_metadata),
             register_stdlib_type: method(:register_stdlib_type_metadata),
             on_missing_item: lambda do |name, origin|
@@ -95,8 +150,10 @@ module Aurora
         )
       end
 
-      def register_stdlib_function_metadata(decl)
-        return if @function_table.key?(decl.name)
+      def register_stdlib_function_metadata(metadata, module_info, module_alias = nil)
+        decl = metadata&.ast_node
+        return unless decl
+        return if @function_registry.registered?(decl.name)
 
         type_params = normalize_type_params(decl.type_params)
 
@@ -104,12 +161,49 @@ module Aurora
           with_type_params(type_params) do
             param_types = decl.params.map { |param| transform_type(param.type) }
             ret_type = transform_type(decl.ret_type)
-            @function_table[decl.name] = FunctionInfo.new(decl.name, param_types, ret_type, type_params)
+            alias_keys = build_module_alias_keys(decl.name, module_info, module_alias)
+            @function_registry.register(
+              decl.name,
+              FunctionInfo.new(decl.name, param_types, ret_type, type_params),
+              module_name: module_info&.name,
+              namespace: module_info&.namespace,
+              exported: decl.exported,
+              external: decl.external,
+              ast_node: decl,
+              origin: decl.origin,
+              aliases: alias_keys
+            )
           end
         end
       end
 
-      def register_stdlib_type_metadata(decl, namespace)
+      def register_module_import(import_decl, current_module)
+        module_name = import_decl.path
+        prefixes = module_alias_prefixes(module_name, import_decl.alias)
+        return if prefixes.empty?
+
+        selected_items = import_decl.items
+
+        @function_registry.names.each do |canonical_name|
+          entry = @function_registry.fetch_entry(canonical_name)
+          next unless entry&.module_name == module_name
+          next if selected_items && !selected_items.include?(entry.name)
+
+          alias_keys = prefixes.map { |prefix| "#{prefix}.#{entry.name}" }
+          alias_keys << entry.name if selected_items
+
+          alias_keys.each do |alias_key|
+            next if alias_key == entry.name
+            begin
+              @function_registry.register_alias(alias_key, entry.name)
+            rescue ArgumentError
+              next
+            end
+          end
+        end
+      end
+
+      def register_stdlib_type_metadata(decl, namespace, module_name = nil)
         return if @type_decl_table.key?(decl.name)
 
         type_decl_ir = build_type_decl_for_import(decl)
@@ -121,10 +215,10 @@ module Aurora
           core_ir_type: type_decl_ir.type,
           namespace: namespace,
           kind: kind,
-          exported: decl.exported
+          exported: decl.exported,
+          module_name: module_name
         )
 
-        @type_table[decl.name] = type_decl_ir.type
         @type_decl_table[decl.name] = decl
         register_sum_type_constructors(decl.name, type_decl_ir.type) if type_decl_ir.type.is_a?(CoreIR::SumType)
       end
@@ -220,7 +314,7 @@ module Aurora
 
             # For external functions, skip body transformation
             if func.external
-              return CoreIR::Func.new(
+              result_func = CoreIR::Func.new(
                 name: func.name,
                 params: params,
                 ret_type: ret_type,
@@ -229,6 +323,14 @@ module Aurora
                 type_params: type_params,
                 external: true
               )
+              if @function_registry.registered?(func.name)
+                @function_registry.update(
+                  func.name,
+                  effects: result_func.effects,
+                  external: true
+                )
+              end
+              return result_func
             end
 
             saved_var_types = @var_types.dup
@@ -253,11 +355,12 @@ module Aurora
                 ret_type: ret_type,
                 body: body,
                 effects: [],
-                type_params: type_params
+                type_params: type_params,
+                external: func.external
               )
             end
 
-            result_func = @rule_engine.apply(
+            rule_result = @rule_engine.apply(
               :core_ir_function,
               result_func,
               context: {
@@ -267,6 +370,26 @@ module Aurora
               }
             )
 
+            case rule_result
+            when Aurora::CoreIR::Func
+              result_func = rule_result
+            when Array
+              replacement = rule_result.find { |node| node.is_a?(Aurora::CoreIR::Func) && node.name == result_func.name }
+              result_func = replacement if replacement
+            when nil
+              # keep original
+            else
+              result_func = rule_result if rule_result.is_a?(Aurora::CoreIR::Func)
+            end
+
+            if @function_registry.registered?(func.name)
+              @function_registry.update(
+                func.name,
+                effects: result_func.effects,
+                external: func.external
+              )
+            end
+
             @var_types = saved_var_types
             result_func
           end
@@ -274,15 +397,21 @@ module Aurora
       end
 
       def transform_program(program)
+        module_name = program.module_decl ? program.module_decl.name : "main"
         context = {
           program: program,
           imports: [],
           type_items: [],
           func_items: [],
-          module_name: program.module_decl ? program.module_decl.name : "main"
+          module_name: module_name,
+          import_aliases: {}
         }
 
-        build_program_pass_manager.run(context)
+        with_current_module(module_name) do
+          with_import_aliases(context[:import_aliases]) do
+            build_program_pass_manager.run(context)
+          end
+        end
 
         items = context[:type_items] + context[:func_items]
 
@@ -302,16 +431,29 @@ module Aurora
         end
       end
 
+      def with_import_aliases(aliases)
+        previous = @current_import_aliases
+        @current_import_aliases = aliases
+        yield
+      ensure
+        @current_import_aliases = previous
+      end
+
       def pass_collect_imports(context)
         program = context[:program]
 
         program.imports.each do |import_decl|
+          context[:import_aliases][import_decl.alias] = import_decl.path if import_decl.alias
           context[:imports] << CoreIR::Import.new(
             path: import_decl.path,
             items: import_decl.items
           )
 
-          register_stdlib_imports(import_decl)
+          if @stdlib_resolver.stdlib_module?(import_decl.path)
+            register_stdlib_imports(import_decl)
+          else
+            register_module_import(import_decl, context[:module_name])
+          end
         end
       end
 
@@ -331,7 +473,6 @@ module Aurora
           register_function_signature(decl) if decl.is_a?(AST::FuncDecl)
         end
       end
-
       def pass_lower_declarations(context)
         program = context[:program]
 
@@ -340,7 +481,6 @@ module Aurora
           when AST::TypeDecl
             type_decl = transform_type_decl(decl)
             context[:type_items] << type_decl
-            @type_table[decl.name] = type_decl.type
             refresh_function_signatures!(decl.name)
           when AST::FuncDecl
             context[:func_items] << transform_function(decl)
@@ -425,15 +565,13 @@ module Aurora
               core_ir_type: type,
               namespace: nil,  # Main module types have no namespace
               kind: kind,
-              exported: decl.exported
+              exported: decl.exported,
+              module_name: current_module_name
             )
           end
 
           # Create TypeDecl
           type_decl = CoreIR::TypeDecl.new(name: decl.name, type: type, type_params: type_params)
-
-          # Backward compatibility: register TypeDecl in old @type_table (not just type)
-          @type_table[decl.name] = type_decl
 
           @rule_engine.apply(
             :core_ir_type_decl,

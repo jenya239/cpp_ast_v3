@@ -23,9 +23,10 @@ module Aurora
       Passes::ToCore.new(rule_engine: @rule_engine, event_bus: @event_bus)
     end
 
-    def build_cpp_lowering(type_registry:, stdlib_scanner: StdlibScanner.new)
+    def build_cpp_lowering(type_registry:, function_registry: nil, stdlib_scanner: StdlibScanner.new)
       Backend::CppLowering.new(
         type_registry: type_registry,
+        function_registry: function_registry,
         stdlib_scanner: stdlib_scanner,
         rule_engine: @rule_engine,
         event_bus: @event_bus
