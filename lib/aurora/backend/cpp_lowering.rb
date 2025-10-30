@@ -102,11 +102,17 @@ module Aurora
         # NEW: Use StdlibScanner for automatic function name resolution
         @stdlib_scanner = stdlib_scanner
 
-        @rule_engine = rule_engine || build_default_rule_engine
+        @rule_engine = rule_engine || Aurora::Rules::RuleEngine.new
         @event_bus = event_bus || Aurora::EventBus.new
 
         # NEW: Runtime policy for lowering strategies
         @runtime_policy = runtime_policy || RuntimePolicy.new
+
+        # IMPORTANT: Register C++ lowering rules if not already registered
+        # (Check if :cpp_expression category has any rules)
+        if @rule_engine.registry[:cpp_expression].nil? || @rule_engine.registry[:cpp_expression].empty?
+          register_cpp_rules(@rule_engine)
+        end
       end
 
       def lower(core_ir)
@@ -124,8 +130,7 @@ module Aurora
 
       private
 
-      def build_default_rule_engine
-        engine = Aurora::Rules::RuleEngine.new
+      def register_cpp_rules(engine)
         # Function-level rules
         engine.register(:cpp_function_declaration, Aurora::Backend::CppLowering::Rules::FunctionRule.new)
 
@@ -157,8 +162,6 @@ module Aurora
         engine.register(:cpp_statement, Aurora::Rules::Cpp::Statement::WhileRule.new)
         engine.register(:cpp_statement, Aurora::Rules::Cpp::Statement::ForRule.new)
         engine.register(:cpp_statement, Aurora::Rules::Cpp::Statement::MatchRule.new)
-
-        engine
       end
     end
   end
