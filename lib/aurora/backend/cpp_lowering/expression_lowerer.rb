@@ -13,6 +13,7 @@ module Aurora
           lowerer: self,
           type_registry: @type_registry,
           function_registry: @function_registry,
+          type_map: @type_map,
           rule_engine: @rule_engine,
           runtime_policy: @runtime_policy,
           event_bus: @event_bus

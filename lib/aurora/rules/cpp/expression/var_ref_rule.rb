@@ -10,7 +10,7 @@ module Aurora
         # Rule for lowering CoreIR variable references to C++ identifiers
         # Pure function - all logic contained, no delegation
         class VarRefRule < BaseRule
-          include Aurora::Backend::CppLowering::Helpers
+          include Aurora::Backend::CppLoweringHelpers
 
           def applies?(node, _context = {})
             node.is_a?(Aurora::CoreIR::VarExpr)

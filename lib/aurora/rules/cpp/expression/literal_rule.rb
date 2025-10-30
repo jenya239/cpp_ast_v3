@@ -10,7 +10,7 @@ module Aurora
         # Rule for lowering CoreIR literal expressions to C++ literals
         # Pure function - all logic contained, no delegation
         class LiteralRule < BaseRule
-          include Aurora::Backend::CppLowering::Helpers
+          include Aurora::Backend::CppLoweringHelpers
 
           def applies?(node, _context = {})
             node.is_a?(Aurora::CoreIR::LiteralExpr)

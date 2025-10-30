@@ -24,19 +24,19 @@
   - [x] `build_template_signature`, `build_requires_clause`
   - [x] `should_lower_as_statement?`, `cpp_keyword?`
 
-### 2. Expression Rules (5/15) - IN PROGRESS
+### 2. Expression Rules (8/15) - IN PROGRESS
 
-#### ✅ Completed (5)
+#### ✅ Completed (8)
 - [x] LiteralRule - ПОЛНОСТЬЮ ПЕРЕПИСАН (использует Helpers, нет делегации)
 - [x] VarRefRule - ПОЛНОСТЬЮ ПЕРЕПИСАН (использует Helpers, нет делегации)
 - [x] RegexRule - ПОЛНОСТЬЮ ПЕРЕПИСАН (использует Helpers, нет делегации)
+- [x] MemberRule - ПОЛНОСТЬЮ ПЕРЕПИСАН (использует Helpers для sanitize_identifier)
+- [x] IndexRule - ПОЛНОСТЬЮ ПЕРЕПИСАН (содержит логику, рекурсия через lowerer)
+- [x] ArrayLiteralRule - ПОЛНОСТЬЮ ПЕРЕПИСАН (использует Helpers.map_type, рекурсия через lowerer)
 - [x] BinaryRule - обновлен (убран `return unless applies?`, рекурсия через lowerer)
 - [x] UnaryRule - обновлен (убран `return unless applies?`, рекурсия через lowerer)
 
-#### 🔄 Need Rewrite (10)
-- [ ] MemberRule - убрать делегацию
-- [ ] IndexRule - убрать делегацию
-- [ ] ArrayLiteralRule - убрать делегацию
+#### 🔄 Need Rewrite (7)
 - [ ] RecordRule - убрать делегацию
 - [ ] IfRule - убрать делегацию
 - [ ] BlockRule - убрать делегацию (интеграция с RuntimePolicy)
@@ -73,11 +73,22 @@
 
 ## Текущая задача
 
-**СЕЙЧАС:** Переписывание оставшихся expression rules (10/15 осталось)
+**СЕЙЧАС:** Переписывание оставшихся expression rules (7/15 осталось)
 
-**СЛЕДУЮЩЕЕ:** MemberRule, IndexRule, ArrayLiteralRule - простые rules
+**ПРОГРЕСС:** 8/15 completed (53%)
+
+**СЛЕДУЮЩЕЕ:** RecordRule, IfRule (простые/средние), потом сложные (CallRule, MatchRule, BlockRule, etc)
 
 ## Notes
+
+### Context передача
+Rules получают context с:
+- `lowerer` - для рекурсивных вызовов `lower_expression`
+- `type_map` - для map_type helper
+- `type_registry` - для TypeRegistry lookups
+- `function_registry` - для qualified function names
+- `runtime_policy` - для стратегий lowering
+- `event_bus` - для событий
 
 ### Рекурсивные вызовы
 Некоторые rules должны вызывать `lower_expression` рекурсивно (Binary, Unary, etc).

@@ -10,7 +10,7 @@ module Aurora
         # Rule for lowering CoreIR regex expressions to C++ aurora::Regex objects
         # Pure function - all logic contained, no delegation
         class RegexRule < BaseRule
-          include Aurora::Backend::CppLowering::Helpers
+          include Aurora::Backend::CppLoweringHelpers
 
           def applies?(node, _context = {})
             node.is_a?(Aurora::CoreIR::RegexExpr)

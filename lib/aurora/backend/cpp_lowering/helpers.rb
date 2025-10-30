@@ -2,10 +2,9 @@
 
 module Aurora
   module Backend
-    module CppLowering
-      # Pure helper functions for C++ code generation
-      # All functions are stateless and testable independently
-      module Helpers
+    # Pure helper functions for C++ code generation
+    # All functions are stateless and testable independently
+    module CppLoweringHelpers
         CPP_KEYWORDS = %w[
           alignas alignof and and_eq asm atomic_cancel atomic_commit atomic_noexcept auto bitand
           bitor bool break case catch char char8_t char16_t char32_t class compl concept const
@@ -188,13 +187,12 @@ module Aurora
           clauses.join(" && ")
         end
 
-        # Check if expression/type should be lowered as statement (not expression)
-        def should_lower_as_statement?(expr_or_type)
-          return true if expr_or_type.is_a?(CoreIR::UnitLiteral)
-          return true if expr_or_type.is_a?(CoreIR::UnitType)
-          return true if expr_or_type.is_a?(CoreIR::IfExpr) && expr_or_type.type.is_a?(CoreIR::UnitType)
-          false
-        end
+      # Check if expression/type should be lowered as statement (not expression)
+      def should_lower_as_statement?(expr_or_type)
+        return true if expr_or_type.is_a?(CoreIR::UnitLiteral)
+        return true if expr_or_type.is_a?(CoreIR::UnitType)
+        return true if expr_or_type.is_a?(CoreIR::IfExpr) && expr_or_type.type.is_a?(CoreIR::UnitType)
+        false
       end
     end
   end

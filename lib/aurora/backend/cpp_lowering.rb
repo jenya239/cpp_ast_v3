@@ -74,7 +74,7 @@ module Aurora
         "to_f32" => "static_cast<float>"
       }.freeze
 
-      attr_reader :rule_engine, :event_bus, :function_registry, :type_registry, :runtime_policy
+      attr_reader :rule_engine, :event_bus, :function_registry, :type_registry, :runtime_policy, :type_map
 
       def initialize(type_registry: nil, function_registry: nil, stdlib_scanner: nil, rule_engine: nil, event_bus: nil, runtime_policy: nil)
         # NEW: Use shared TypeRegistry if provided
