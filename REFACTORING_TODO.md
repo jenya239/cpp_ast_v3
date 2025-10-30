@@ -43,18 +43,18 @@
 - [x] MatchRule - ПОЛНОСТЬЮ ПЕРЕПИСАН (214 строк, regex + std::visit, IIFE для regex, MatchExpression для sum types)
 - [x] CallRule - ПОЛНОСТЬЮ ПЕРЕПИСАН (246 строк, IO functions, stdlib overrides, qualified names, array methods)
 
-### 3. Statement Rules (0/10) - NOT STARTED
+### 3. Statement Rules (10/10) - ✅ COMPLETED
 
-- [ ] ExprStatementRule
-- [ ] VariableDeclRule
-- [ ] AssignmentRule
-- [ ] ReturnRule
-- [ ] BreakRule
-- [ ] ContinueRule
-- [ ] IfRule
-- [ ] WhileRule
-- [ ] ForRule
-- [ ] MatchRule
+- [x] ExprStatementRule - ПОЛНОСТЬЮ ПЕРЕПИСАН (lower_if_expr_as_statement delegation)
+- [x] VariableDeclRule - ПОЛНОСТЬЮ ПЕРЕПИСАН (map_type через lowerer)
+- [x] AssignmentRule - ПОЛНОСТЬЮ ПЕРЕПИСАН (простая логика)
+- [x] ReturnRule - ПОЛНОСТЬЮ ПЕРЕПИСАН (с/без expression)
+- [x] BreakRule - ПОЛНОСТЬЮ ПЕРЕПИСАН (простая логика)
+- [x] ContinueRule - ПОЛНОСТЬЮ ПЕРЕПИСАН (простая логика)
+- [x] IfRule - ПОЛНОСТЬЮ ПЕРЕПИСАН (condition + then/else branches)
+- [x] WhileRule - ПОЛНОСТЬЮ ПЕРЕПИСАН (condition + body)
+- [x] ForRule - ПОЛНОСТЬЮ ПЕРЕПИСАН (range-for with body lowering)
+- [x] MatchRule - ПОЛНОСТЬЮ ПЕРЕПИСАН (structured bindings для constructors)
 
 ### 4. Cleanup (0/4) - NOT STARTED
 
@@ -71,11 +71,13 @@
 
 ## Текущая задача
 
-**СЕЙЧАС:** ВСЕ EXPRESSION RULES ЗАВЕРШЕНЫ! 🎉
+**СЕЙЧАС:** C++ BACKEND RULES ПОЛНОСТЬЮ ЗАВЕРШЕНЫ! 🎉🎉
 
-**ПРОГРЕСС:** 15/15 completed (100%) ✅
+**ПРОГРЕСС:** 25/25 rules completed (100%) ✅
+- Expression Rules: 15/15 ✅
+- Statement Rules: 10/10 ✅
 
-**СЛЕДУЮЩЕЕ:** Statement Rules (0/10) - ExprStatementRule, VariableDeclRule, AssignmentRule, ReturnRule, BreakRule, ContinueRule, IfRule, WhileRule, ForRule, MatchRule
+**СЛЕДУЮЩЕЕ:** Cleanup или ToCore refactoring
 
 ## Notes
 
