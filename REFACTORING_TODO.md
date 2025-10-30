@@ -71,13 +71,17 @@
 
 ## Текущая задача
 
-**СЕЙЧАС:** C++ BACKEND RULES ПОЛНОСТЬЮ ЗАВЕРШЕНЫ! 🎉🎉
+**СЕЙЧАС:** C++ BACKEND CLEANUP COMPLETED! 🎉🎉
 
-**ПРОГРЕСС:** 25/25 rules completed (100%) ✅
-- Expression Rules: 15/15 ✅
-- Statement Rules: 10/10 ✅
+**ПРОГРЕСС:**
+- C++ Backend Rules: 25/25 (100%) ✅
+- Cleanup Phase: COMPLETED ✅
+  - Removed 1066 lines of fallback code
+  - Fixed rule registration bug
+  - ExpressionLowerer: 858→60 lines (93% reduction)
+  - StatementLowerer: 332→80 lines (76% reduction)
 
-**СЛЕДУЮЩЕЕ:** Cleanup или ToCore refactoring
+**СЛЕДУЮЩЕЕ:** ToCore refactoring (2476 строк, 30+ rules)
 
 ## Notes
 
