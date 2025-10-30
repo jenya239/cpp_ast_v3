@@ -90,7 +90,7 @@ module Aurora
             end
 
             # Add result expression as final statement (no return needed in GCC expr)
-            if block_expr.result && !block_expr.result.is_a?(CoreIR::UnitLiteral)
+            if block_expr.result && !block_expr.result.is_a?(Aurora::CoreIR::UnitLiteral)
               result_expr = lowerer.send(:lower_expression, block_expr.result)
               statements << CppAst::Nodes::ExpressionStatement.new(expression: result_expr)
             end
@@ -112,7 +112,7 @@ module Aurora
 
             if block_expr.result
               # Skip unit literals - they represent void/no value
-              unless block_expr.result.is_a?(CoreIR::UnitLiteral)
+              unless block_expr.result.is_a?(Aurora::CoreIR::UnitLiteral)
                 result_expr = lowerer.send(:lower_expression, block_expr.result)
                 if emit_return
                   statements << CppAst::Nodes::ReturnStatement.new(expression: result_expr)

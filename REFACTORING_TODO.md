@@ -24,9 +24,9 @@
   - [x] `build_template_signature`, `build_requires_clause`
   - [x] `should_lower_as_statement?`, `cpp_keyword?`
 
-### 2. Expression Rules (13/15) - IN PROGRESS
+### 2. Expression Rules (15/15) - ✅ COMPLETED
 
-#### ✅ Completed (13)
+#### ✅ Completed (15)
 - [x] LiteralRule - ПОЛНОСТЬЮ ПЕРЕПИСАН (использует Helpers, нет делегации)
 - [x] VarRefRule - ПОЛНОСТЬЮ ПЕРЕПИСАН (использует Helpers, нет делегации)
 - [x] RegexRule - ПОЛНОСТЬЮ ПЕРЕПИСАН (использует Helpers, нет делегации)
@@ -40,10 +40,8 @@
 - [x] LambdaRule - ПОЛНОСТЬЮ ПЕРЕПИСАН (использует Helpers, обрабатывает captures, params, body)
 - [x] BlockRule - ПОЛНОСТЬЮ ПЕРЕПИСАН (RuntimePolicy интеграция, 4 стратегии: IIFE/GCC/scope_tmp/inline)
 - [x] ListCompRule - ПОЛНОСТЬЮ ПЕРЕПИСАН (IIFE generation, nested loops, filters)
-
-#### 🔄 Need Rewrite (2)
-- [ ] MatchRule - убрать делегацию (сложная - std::visit)
-- [ ] CallRule - убрать делегацию (очень сложная ~200 строк)
+- [x] MatchRule - ПОЛНОСТЬЮ ПЕРЕПИСАН (214 строк, regex + std::visit, IIFE для regex, MatchExpression для sum types)
+- [x] CallRule - ПОЛНОСТЬЮ ПЕРЕПИСАН (246 строк, IO functions, stdlib overrides, qualified names, array methods)
 
 ### 3. Statement Rules (0/10) - NOT STARTED
 
@@ -73,11 +71,11 @@
 
 ## Текущая задача
 
-**СЕЙЧАС:** Переписывание оставшихся expression rules (2/15 осталось)
+**СЕЙЧАС:** ВСЕ EXPRESSION RULES ЗАВЕРШЕНЫ! 🎉
 
-**ПРОГРЕСС:** 13/15 completed (87%)
+**ПРОГРЕСС:** 15/15 completed (100%) ✅
 
-**СЛЕДУЮЩЕЕ:** Самые сложные rules - MatchRule (~200 строк, std::visit), CallRule (~200 строк, IO functions, stdlib, method calls)
+**СЛЕДУЮЩЕЕ:** Statement Rules (0/10) - ExprStatementRule, VariableDeclRule, AssignmentRule, ReturnRule, BreakRule, ContinueRule, IfRule, WhileRule, ForRule, MatchRule
 
 ## Notes
 
