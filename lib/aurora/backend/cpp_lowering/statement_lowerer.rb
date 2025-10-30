@@ -7,7 +7,25 @@ module Aurora
       # Statement lowering to C++
       # Auto-extracted from cpp_lowering.rb during refactoring
       module StatementLowerer
+      # Apply C++ statement lowering rules
+      def apply_cpp_statement_rules(stmt)
+        context = {
+          lowerer: self,
+          type_registry: @type_registry,
+          function_registry: @function_registry,
+          rule_engine: @rule_engine,
+          runtime_policy: @runtime_policy,
+          event_bus: @event_bus
+        }
+        @rule_engine.apply(:cpp_statement, stmt, context: context)
+      end
+
       def lower_coreir_statement(stmt)
+              # Try rules first
+              result = apply_cpp_statement_rules(stmt)
+              return result unless result.equal?(stmt)
+
+              # Fallback to imperative lowering
               case stmt
               when CoreIR::ExprStatement
                 if should_lower_as_statement?(stmt.expression)
@@ -242,6 +260,70 @@ module Aurora
                 rbrace_prefix: block_stmt.rbrace_prefix
               )
             end
+
+      # Extracted statement lowering methods for rule delegation
+
+      def lower_expr_statement(stmt)
+        if should_lower_as_statement?(stmt.expression)
+          # Expression with unit type should be lowered as statement
+          # Currently only IfExpr with unit type
+          if stmt.expression.is_a?(CoreIR::IfExpr)
+            lower_if_expr_as_statement(stmt.expression)
+          else
+            raise "Unknown statement-like expression: #{stmt.expression.class}"
+          end
+        else
+          expr = lower_expression(stmt.expression)
+          CppAst::Nodes::ExpressionStatement.new(expression: expr)
+        end
+      end
+
+      def lower_variable_decl_stmt(stmt)
+        type_str = map_type(stmt.type)
+        use_auto = type_requires_auto?(stmt.type, type_str)
+        init_expr = lower_expression(stmt.value)
+        decl_type = use_auto ? "auto" : type_str
+        identifier = sanitize_identifier(stmt.name)
+        declarator = "#{identifier} = #{init_expr.to_source}"
+        # Don't add const for pointer types (they end with *)
+        is_pointer = type_str.end_with?("*")
+        prefix = (stmt.mutable || is_pointer) ? "" : "const "
+        CppAst::Nodes::VariableDeclaration.new(
+          type: decl_type,
+          declarators: [declarator],
+          declarator_separators: [],
+          type_suffix: " ",
+          prefix_modifiers: prefix
+        )
+      end
+
+      def lower_assignment_stmt(stmt)
+        left_expr = lower_expression(stmt.target)
+        right_expr = lower_expression(stmt.value)
+        assignment = CppAst::Nodes::AssignmentExpression.new(
+          left: left_expr,
+          operator: "=",
+          right: right_expr
+        )
+        CppAst::Nodes::ExpressionStatement.new(expression: assignment)
+      end
+
+      def lower_return_stmt(stmt)
+        if stmt.expr
+          expr = lower_expression(stmt.expr)
+          CppAst::Nodes::ReturnStatement.new(expression: expr)
+        else
+          CppAst::Nodes::ReturnStatement.new(expression: nil, keyword_suffix: " ")
+        end
+      end
+
+      def lower_break_stmt(stmt)
+        CppAst::Nodes::BreakStatement.new
+      end
+
+      def lower_continue_stmt(stmt)
+        CppAst::Nodes::ContinueStatement.new
+      end
 
       end
     end

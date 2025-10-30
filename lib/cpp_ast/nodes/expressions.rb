@@ -376,18 +376,32 @@ module CppAst
     # SizeofExpression
     class SizeofExpression < Expression
       attr_accessor :expression
-      
+
       def initialize(expression:)
         @expression = expression
       end
-      
+
       # Alias for backward compatibility
       def type
         expression
       end
-      
+
       def to_source
         "sizeof(#{expression.to_source})"
+      end
+    end
+
+    # RawExpression - for custom C++ code (e.g., GCC statement expressions)
+    class RawExpression < Expression
+      attr_accessor :code
+
+      def initialize(code:, leading_trivia: "")
+        super(leading_trivia: leading_trivia)
+        @code = code
+      end
+
+      def to_source
+        "#{leading_trivia}#{code}"
       end
     end
   end

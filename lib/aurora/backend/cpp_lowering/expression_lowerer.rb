@@ -7,9 +7,27 @@ module Aurora
       # Expression lowering to C++
       # Auto-extracted from cpp_lowering.rb during refactoring
       module ExpressionLowerer
+      # Apply registered C++ expression rules before falling back to imperative code
+      def apply_cpp_expression_rules(expr)
+        context = {
+          lowerer: self,
+          type_registry: @type_registry,
+          function_registry: @function_registry,
+          rule_engine: @rule_engine,
+          runtime_policy: @runtime_policy,
+          event_bus: @event_bus
+        }
+        @rule_engine.apply(:cpp_expression, expr, context: context)
+      end
+
       def lower_expression(expr)
               return CppAst::Nodes::NumberLiteral.new(value: "0") if expr.nil?
 
+              # Try rules first
+              result = apply_cpp_expression_rules(expr)
+              return result unless result.equal?(expr)
+
+              # Fallback to imperative lowering
               case expr
               when CoreIR::UnitLiteral
                 # Unit literal should not appear in expression context
@@ -682,10 +700,34 @@ module Aurora
             end
 
       def lower_block_expr(block_expr)
+              # Analyze block complexity to choose lowering strategy
+              analyzer = Aurora::Backend::BlockComplexityAnalyzer.new(block_expr)
+              strategy = @runtime_policy.strategy_for_block(analyzer)
+
+              case strategy
+              when :iife
+                lower_block_expr_as_iife(block_expr)
+              when :scope_tmp
+                lower_block_expr_as_scope_tmp(block_expr)
+              when :gcc_expr
+                lower_block_expr_as_gcc_expr(block_expr)
+              when :inline
+                # For trivial blocks, just return the result expression
+                lower_expression(block_expr.result) if block_expr.result
+              else
+                # Fallback to IIFE (conservative)
+                lower_block_expr_as_iife(block_expr)
+              end
+            end
+
+      private
+
+      # IIFE strategy: [&]() { ... return val; }()
+      def lower_block_expr_as_iife(block_expr)
               statements = lower_block_expr_statements(block_expr, emit_return: true)
               body_lines = statements.map { |stmt| "  #{stmt.to_source}" }
               lambda_body = "\n#{body_lines.join("\n")}\n"
-      
+
               lambda_expr = CppAst::Nodes::LambdaExpression.new(
                 capture: "&",
                 parameters: "",
@@ -694,13 +736,56 @@ module Aurora
                 capture_suffix: "",
                 params_suffix: ""
               )
-      
+
               CppAst::Nodes::FunctionCallExpression.new(
                 callee: lambda_expr,
                 arguments: [],
                 argument_separators: []
               )
             end
+
+      # Scope + tmp strategy: ({ ... val; })
+      def lower_block_expr_as_scope_tmp(block_expr)
+              # For expression context, we need GCC extension or IIFE
+              # Prefer GCC extension if enabled
+              if @runtime_policy.use_gcc_extensions
+                lower_block_expr_as_gcc_expr(block_expr)
+              else
+                # For standard C++, use IIFE (compiler will optimize)
+                lower_block_expr_as_iife(block_expr)
+              end
+            end
+
+      # GCC expression statement: ({ ... })
+      def lower_block_expr_as_gcc_expr(block_expr)
+              # GCC/Clang extension: ({ statement; ... value; })
+              # This creates a compound statement that returns a value
+              # Example: ({ int x = 1; int y = 2; x + y; })
+
+              statements = []
+
+              # Lower all statements
+              block_expr.statements.each do |stmt|
+                statements << lower_coreir_statement(stmt)
+              end
+
+              # Add result expression as final statement (no return needed in GCC expr)
+              if block_expr.result && !block_expr.result.is_a?(CoreIR::UnitLiteral)
+                result_expr = lower_expression(block_expr.result)
+                statements << CppAst::Nodes::ExpressionStatement.new(expression: result_expr)
+              end
+
+              # Generate compound expression: ({ ... })
+              # Format with proper indentation
+              body_lines = statements.map { |stmt| "  #{stmt.to_source}" }
+              compound_body = "\n#{body_lines.join("\n")}\n"
+
+              # Return as raw code wrapped in parentheses
+              # We'll use a special node for this
+              CppAst::Nodes::RawExpression.new(code: "(#{compound_body})")
+            end
+
+      public
 
       def lower_block_expr_statements(block_expr, emit_return: true)
               statements = block_expr.statements.map { |stmt| lower_coreir_statement(stmt) }
