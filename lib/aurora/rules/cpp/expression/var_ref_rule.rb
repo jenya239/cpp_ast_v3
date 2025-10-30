@@ -1,29 +1,29 @@
 # frozen_string_literal: true
 
 require_relative "../../base_rule"
+require_relative "../../../backend/cpp_lowering/helpers"
 
 module Aurora
   module Rules
     module Cpp
       module Expression
         # Rule for lowering CoreIR variable references to C++ identifiers
+        # Pure function - all logic contained, no delegation
         class VarRefRule < BaseRule
+          include Aurora::Backend::CppLowering::Helpers
+
           def applies?(node, _context = {})
             node.is_a?(Aurora::CoreIR::VarExpr)
           end
 
-          def apply(node, context = {})
-            return node unless applies?(node, context)
-
-            lowerer = context[:lowerer]
-
+          def apply(node, _context = {})
             case node.name
             when "true"
               CppAst::Nodes::BooleanLiteral.new(value: true)
             when "false"
               CppAst::Nodes::BooleanLiteral.new(value: false)
             else
-              CppAst::Nodes::Identifier.new(name: lowerer.send(:sanitize_identifier, node.name))
+              CppAst::Nodes::Identifier.new(name: sanitize_identifier(node.name))
             end
           end
         end

@@ -7,15 +7,16 @@ module Aurora
     module Cpp
       module Expression
         # Rule for lowering CoreIR unary expressions to C++ unary operators
+        # Contains logic, but delegates recursion to lowerer for operand
         class UnaryRule < BaseRule
           def applies?(node, _context = {})
             node.is_a?(Aurora::CoreIR::UnaryExpr)
           end
 
           def apply(node, context = {})
-            return node unless applies?(node, context)
-
             lowerer = context[:lowerer]
+
+            # Recursively lower operand
             operand = lowerer.send(:lower_expression, node.operand)
 
             CppAst::Nodes::UnaryExpression.new(
