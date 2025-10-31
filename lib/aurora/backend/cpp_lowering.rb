@@ -12,33 +12,33 @@ require_relative "cpp_lowering/function_lowerer"
 require_relative "cpp_lowering/rules/function_rule"
 require_relative "runtime_policy"
 require_relative "block_complexity_analyzer"
-require_relative "../rules/cpp/cpp_expression_rule"
-require_relative "../rules/cpp/expression/literal_rule"
-require_relative "../rules/cpp/expression/var_ref_rule"
-require_relative "../rules/cpp/expression/binary_rule"
-require_relative "../rules/cpp/expression/unary_rule"
-require_relative "../rules/cpp/expression/call_rule"
-require_relative "../rules/cpp/expression/regex_rule"
-require_relative "../rules/cpp/expression/member_rule"
-require_relative "../rules/cpp/expression/index_rule"
-require_relative "../rules/cpp/expression/array_literal_rule"
-require_relative "../rules/cpp/expression/record_rule"
-require_relative "../rules/cpp/expression/if_rule"
-require_relative "../rules/cpp/expression/block_rule"
-require_relative "../rules/cpp/expression/lambda_rule"
-require_relative "../rules/cpp/expression/match_rule"
-require_relative "../rules/cpp/expression/list_comp_rule"
-require_relative "../rules/cpp/cpp_statement_rule"
-require_relative "../rules/cpp/statement/expr_statement_rule"
-require_relative "../rules/cpp/statement/variable_decl_rule"
-require_relative "../rules/cpp/statement/assignment_rule"
-require_relative "../rules/cpp/statement/return_rule"
-require_relative "../rules/cpp/statement/break_rule"
-require_relative "../rules/cpp/statement/continue_rule"
-require_relative "../rules/cpp/statement/if_rule"
-require_relative "../rules/cpp/statement/while_rule"
-require_relative "../rules/cpp/statement/for_rule"
-require_relative "../rules/cpp/statement/match_rule"
+require_relative "../rules/codegen/cpp_expression_rule"
+require_relative "../rules/codegen/expression/literal_rule"
+require_relative "../rules/codegen/expression/var_ref_rule"
+require_relative "../rules/codegen/expression/binary_rule"
+require_relative "../rules/codegen/expression/unary_rule"
+require_relative "../rules/codegen/expression/call_rule"
+require_relative "../rules/codegen/expression/regex_rule"
+require_relative "../rules/codegen/expression/member_rule"
+require_relative "../rules/codegen/expression/index_rule"
+require_relative "../rules/codegen/expression/array_literal_rule"
+require_relative "../rules/codegen/expression/record_rule"
+require_relative "../rules/codegen/expression/if_rule"
+require_relative "../rules/codegen/expression/block_rule"
+require_relative "../rules/codegen/expression/lambda_rule"
+require_relative "../rules/codegen/expression/match_rule"
+require_relative "../rules/codegen/expression/list_comp_rule"
+require_relative "../rules/codegen/cpp_statement_rule"
+require_relative "../rules/codegen/statement/expr_statement_rule"
+require_relative "../rules/codegen/statement/variable_decl_rule"
+require_relative "../rules/codegen/statement/assignment_rule"
+require_relative "../rules/codegen/statement/return_rule"
+require_relative "../rules/codegen/statement/break_rule"
+require_relative "../rules/codegen/statement/continue_rule"
+require_relative "../rules/codegen/statement/if_rule"
+require_relative "../rules/codegen/statement/while_rule"
+require_relative "../rules/codegen/statement/for_rule"
+require_relative "../rules/codegen/statement/match_rule"
 
 module Aurora
   module Backend
@@ -135,33 +135,33 @@ module Aurora
         engine.register(:cpp_function_declaration, Aurora::Backend::CppLowering::Rules::FunctionRule.new)
 
         # C++ expression lowering rules (all 15 expression types)
-        engine.register(:cpp_expression, Aurora::Rules::Cpp::Expression::LiteralRule.new)
-        engine.register(:cpp_expression, Aurora::Rules::Cpp::Expression::VarRefRule.new)
-        engine.register(:cpp_expression, Aurora::Rules::Cpp::Expression::BinaryRule.new)
-        engine.register(:cpp_expression, Aurora::Rules::Cpp::Expression::UnaryRule.new)
-        engine.register(:cpp_expression, Aurora::Rules::Cpp::Expression::CallRule.new)
-        engine.register(:cpp_expression, Aurora::Rules::Cpp::Expression::RegexRule.new)
-        engine.register(:cpp_expression, Aurora::Rules::Cpp::Expression::MemberRule.new)
-        engine.register(:cpp_expression, Aurora::Rules::Cpp::Expression::IndexRule.new)
-        engine.register(:cpp_expression, Aurora::Rules::Cpp::Expression::ArrayLiteralRule.new)
-        engine.register(:cpp_expression, Aurora::Rules::Cpp::Expression::RecordRule.new)
-        engine.register(:cpp_expression, Aurora::Rules::Cpp::Expression::IfRule.new)
-        engine.register(:cpp_expression, Aurora::Rules::Cpp::Expression::BlockRule.new)
-        engine.register(:cpp_expression, Aurora::Rules::Cpp::Expression::LambdaRule.new)
-        engine.register(:cpp_expression, Aurora::Rules::Cpp::Expression::MatchRule.new)
-        engine.register(:cpp_expression, Aurora::Rules::Cpp::Expression::ListCompRule.new)
+        engine.register(:cpp_expression, Aurora::Rules::CodeGen::Expression::LiteralRule.new)
+        engine.register(:cpp_expression, Aurora::Rules::CodeGen::Expression::VarRefRule.new)
+        engine.register(:cpp_expression, Aurora::Rules::CodeGen::Expression::BinaryRule.new)
+        engine.register(:cpp_expression, Aurora::Rules::CodeGen::Expression::UnaryRule.new)
+        engine.register(:cpp_expression, Aurora::Rules::CodeGen::Expression::CallRule.new)
+        engine.register(:cpp_expression, Aurora::Rules::CodeGen::Expression::RegexRule.new)
+        engine.register(:cpp_expression, Aurora::Rules::CodeGen::Expression::MemberRule.new)
+        engine.register(:cpp_expression, Aurora::Rules::CodeGen::Expression::IndexRule.new)
+        engine.register(:cpp_expression, Aurora::Rules::CodeGen::Expression::ArrayLiteralRule.new)
+        engine.register(:cpp_expression, Aurora::Rules::CodeGen::Expression::RecordRule.new)
+        engine.register(:cpp_expression, Aurora::Rules::CodeGen::Expression::IfRule.new)
+        engine.register(:cpp_expression, Aurora::Rules::CodeGen::Expression::BlockRule.new)
+        engine.register(:cpp_expression, Aurora::Rules::CodeGen::Expression::LambdaRule.new)
+        engine.register(:cpp_expression, Aurora::Rules::CodeGen::Expression::MatchRule.new)
+        engine.register(:cpp_expression, Aurora::Rules::CodeGen::Expression::ListCompRule.new)
 
         # C++ statement lowering rules (all 10 statement types)
-        engine.register(:cpp_statement, Aurora::Rules::Cpp::Statement::ExprStatementRule.new)
-        engine.register(:cpp_statement, Aurora::Rules::Cpp::Statement::VariableDeclRule.new)
-        engine.register(:cpp_statement, Aurora::Rules::Cpp::Statement::AssignmentRule.new)
-        engine.register(:cpp_statement, Aurora::Rules::Cpp::Statement::ReturnRule.new)
-        engine.register(:cpp_statement, Aurora::Rules::Cpp::Statement::BreakRule.new)
-        engine.register(:cpp_statement, Aurora::Rules::Cpp::Statement::ContinueRule.new)
-        engine.register(:cpp_statement, Aurora::Rules::Cpp::Statement::IfRule.new)
-        engine.register(:cpp_statement, Aurora::Rules::Cpp::Statement::WhileRule.new)
-        engine.register(:cpp_statement, Aurora::Rules::Cpp::Statement::ForRule.new)
-        engine.register(:cpp_statement, Aurora::Rules::Cpp::Statement::MatchRule.new)
+        engine.register(:cpp_statement, Aurora::Rules::CodeGen::Statement::ExprStatementRule.new)
+        engine.register(:cpp_statement, Aurora::Rules::CodeGen::Statement::VariableDeclRule.new)
+        engine.register(:cpp_statement, Aurora::Rules::CodeGen::Statement::AssignmentRule.new)
+        engine.register(:cpp_statement, Aurora::Rules::CodeGen::Statement::ReturnRule.new)
+        engine.register(:cpp_statement, Aurora::Rules::CodeGen::Statement::BreakRule.new)
+        engine.register(:cpp_statement, Aurora::Rules::CodeGen::Statement::ContinueRule.new)
+        engine.register(:cpp_statement, Aurora::Rules::CodeGen::Statement::IfRule.new)
+        engine.register(:cpp_statement, Aurora::Rules::CodeGen::Statement::WhileRule.new)
+        engine.register(:cpp_statement, Aurora::Rules::CodeGen::Statement::ForRule.new)
+        engine.register(:cpp_statement, Aurora::Rules::CodeGen::Statement::MatchRule.new)
       end
     end
   end

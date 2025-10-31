@@ -45,7 +45,7 @@ class RulesRuleEngineTest < Minitest::Test
 
   def test_sum_constructor_rule_registers_variants
     engine = Aurora::Rules::RuleEngine.new
-    engine.register(:core_ir_type_decl, Aurora::Rules::CoreIR::SumConstructorRule.new)
+    engine.register(:core_ir_type_decl, Aurora::Rules::IRGen::SumConstructorRule.new)
 
     source = <<~AURORA
       type Option<T> = Some(T) | None
@@ -62,7 +62,7 @@ class RulesRuleEngineTest < Minitest::Test
 
   def test_match_rule_builds_core_ir_match_expression
     engine = Aurora::Rules::RuleEngine.new
-    engine.register(:core_ir_match_expr, Aurora::Rules::CoreIR::MatchRule.new)
+    engine.register(:core_ir_match_expr, Aurora::Rules::IRGen::MatchRule.new)
 
     source = <<~AURORA
       type Option<T> = Some(T) | None
@@ -83,7 +83,7 @@ class RulesRuleEngineTest < Minitest::Test
 
   def test_function_effect_rule_sets_effects
     engine = Aurora::Rules::RuleEngine.new
-    engine.register(:core_ir_function, Aurora::Rules::CoreIR::FunctionEffectRule.new)
+    engine.register(:core_ir_function, Aurora::Rules::IRGen::FunctionEffectRule.new)
 
     source = <<~AURORA
       fn identity(x: i32) -> i32 = x

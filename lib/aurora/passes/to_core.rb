@@ -12,39 +12,39 @@ require_relative "to_core/base_transformer"
 require_relative "to_core/type_context"
 require_relative "pass_manager"
 require_relative "../rules/rule_engine"
-require_relative "../rules/core_ir/sum_constructor_rule"
-require_relative "../rules/core_ir/match_rule"
-require_relative "../rules/core_ir/function_effect_rule"
-require_relative "../rules/core_ir/stdlib_import_rule"
-require_relative "../rules/core_ir/expression/literal_rule"
-require_relative "../rules/core_ir/expression/var_ref_rule"
-require_relative "../rules/core_ir/expression/member_rule"
-require_relative "../rules/core_ir/expression/call_rule"
-require_relative "../rules/core_ir/expression/unary_rule"
-require_relative "../rules/core_ir/expression/binary_rule"
-require_relative "../rules/core_ir/expression/pipe_rule"
-require_relative "../rules/core_ir/expression/let_rule"
-require_relative "../rules/core_ir/expression/record_literal_rule"
-require_relative "../rules/core_ir/expression/if_rule"
-require_relative "../rules/core_ir/expression/array_literal_rule"
-require_relative "../rules/core_ir/expression/do_rule"
-require_relative "../rules/core_ir/expression/block_rule"
-require_relative "../rules/core_ir/expression/match_rule"
-require_relative "../rules/core_ir/expression/lambda_rule"
-require_relative "../rules/core_ir/expression/index_access_rule"
-require_relative "../rules/core_ir/expression/for_loop_rule"
-require_relative "../rules/core_ir/expression/while_loop_rule"
-require_relative "../rules/core_ir/expression/list_comprehension_rule"
-require_relative "../rules/core_ir/statement/expr_stmt_rule"
-require_relative "../rules/core_ir/statement/variable_decl_rule"
-require_relative "../rules/core_ir/statement/assignment_rule"
-require_relative "../rules/core_ir/statement/for_rule"
-require_relative "../rules/core_ir/statement/if_rule"
-require_relative "../rules/core_ir/statement/while_rule"
-require_relative "../rules/core_ir/statement/return_rule"
-require_relative "../rules/core_ir/statement/break_rule"
-require_relative "../rules/core_ir/statement/continue_rule"
-require_relative "../rules/core_ir/statement/block_rule"
+require_relative "../rules/irgen/sum_constructor_rule"
+require_relative "../rules/irgen/match_rule"
+require_relative "../rules/irgen/function_effect_rule"
+require_relative "../rules/irgen/stdlib_import_rule"
+require_relative "../rules/irgen/expression/literal_rule"
+require_relative "../rules/irgen/expression/var_ref_rule"
+require_relative "../rules/irgen/expression/member_rule"
+require_relative "../rules/irgen/expression/call_rule"
+require_relative "../rules/irgen/expression/unary_rule"
+require_relative "../rules/irgen/expression/binary_rule"
+require_relative "../rules/irgen/expression/pipe_rule"
+require_relative "../rules/irgen/expression/let_rule"
+require_relative "../rules/irgen/expression/record_literal_rule"
+require_relative "../rules/irgen/expression/if_rule"
+require_relative "../rules/irgen/expression/array_literal_rule"
+require_relative "../rules/irgen/expression/do_rule"
+require_relative "../rules/irgen/expression/block_rule"
+require_relative "../rules/irgen/expression/match_rule"
+require_relative "../rules/irgen/expression/lambda_rule"
+require_relative "../rules/irgen/expression/index_access_rule"
+require_relative "../rules/irgen/expression/for_loop_rule"
+require_relative "../rules/irgen/expression/while_loop_rule"
+require_relative "../rules/irgen/expression/list_comprehension_rule"
+require_relative "../rules/irgen/statement/expr_stmt_rule"
+require_relative "../rules/irgen/statement/variable_decl_rule"
+require_relative "../rules/irgen/statement/assignment_rule"
+require_relative "../rules/irgen/statement/for_rule"
+require_relative "../rules/irgen/statement/if_rule"
+require_relative "../rules/irgen/statement/while_rule"
+require_relative "../rules/irgen/statement/return_rule"
+require_relative "../rules/irgen/statement/break_rule"
+require_relative "../rules/irgen/statement/continue_rule"
+require_relative "../rules/irgen/statement/block_rule"
 require_relative "../type_system/type_constraint_solver"
 require_relative "../type_system/generic_call_resolver"
 require_relative "../type_system/match_analyzer"
@@ -153,76 +153,76 @@ module Aurora
 
       def build_default_rule_engine
         engine = Rules::RuleEngine.new
-        engine.register(:core_ir_type_decl, Rules::CoreIR::SumConstructorRule.new)
-        engine.register(:core_ir_match_expr, Rules::CoreIR::MatchRule.new)
-        engine.register(:core_ir_function, Rules::CoreIR::FunctionEffectRule.new)
-        engine.register(:core_ir_stdlib_import, Rules::CoreIR::StdlibImportRule.new)
-        engine.register(:core_ir_expression, Rules::CoreIR::Expression::LiteralRule.new)
-        engine.register(:core_ir_expression, Rules::CoreIR::Expression::VarRefRule.new)
-        engine.register(:core_ir_expression, Rules::CoreIR::Expression::MemberRule.new)
-        engine.register(:core_ir_expression, Rules::CoreIR::Expression::CallRule.new)
-        engine.register(:core_ir_expression, Rules::CoreIR::Expression::UnaryRule.new)
-        engine.register(:core_ir_expression, Rules::CoreIR::Expression::PipeRule.new)
-        engine.register(:core_ir_expression, Rules::CoreIR::Expression::BinaryRule.new)
-        engine.register(:core_ir_expression, Rules::CoreIR::Expression::LetRule.new)
-        engine.register(:core_ir_expression, Rules::CoreIR::Expression::RecordLiteralRule.new)
-        engine.register(:core_ir_expression, Rules::CoreIR::Expression::IfRule.new)
-        engine.register(:core_ir_expression, Rules::CoreIR::Expression::ArrayLiteralRule.new)
-        engine.register(:core_ir_expression, Rules::CoreIR::Expression::DoRule.new)
-        engine.register(:core_ir_expression, Rules::CoreIR::Expression::BlockRule.new)
-        engine.register(:core_ir_expression, Rules::CoreIR::Expression::MatchRule.new)
-        engine.register(:core_ir_expression, Rules::CoreIR::Expression::LambdaRule.new)
-        engine.register(:core_ir_expression, Rules::CoreIR::Expression::IndexAccessRule.new)
-        engine.register(:core_ir_expression, Rules::CoreIR::Expression::ForLoopRule.new)
-        engine.register(:core_ir_expression, Rules::CoreIR::Expression::WhileLoopRule.new)
-        engine.register(:core_ir_expression, Rules::CoreIR::Expression::ListComprehensionRule.new)
-        engine.register(:core_ir_statement, Rules::CoreIR::Statement::ExprStmtRule.new)
-        engine.register(:core_ir_statement, Rules::CoreIR::Statement::VariableDeclRule.new)
-        engine.register(:core_ir_statement, Rules::CoreIR::Statement::AssignmentRule.new)
-        engine.register(:core_ir_statement, Rules::CoreIR::Statement::ForRule.new)
-        engine.register(:core_ir_statement, Rules::CoreIR::Statement::IfRule.new)
-        engine.register(:core_ir_statement, Rules::CoreIR::Statement::WhileRule.new)
-        engine.register(:core_ir_statement, Rules::CoreIR::Statement::ReturnRule.new)
-        engine.register(:core_ir_statement, Rules::CoreIR::Statement::BreakRule.new)
-        engine.register(:core_ir_statement, Rules::CoreIR::Statement::ContinueRule.new)
-        engine.register(:core_ir_statement, Rules::CoreIR::Statement::BlockRule.new)
+        engine.register(:core_ir_type_decl, Rules::IRGen::SumConstructorRule.new)
+        engine.register(:core_ir_match_expr, Rules::IRGen::MatchRule.new)
+        engine.register(:core_ir_function, Rules::IRGen::FunctionEffectRule.new)
+        engine.register(:core_ir_stdlib_import, Rules::IRGen::StdlibImportRule.new)
+        engine.register(:core_ir_expression, Rules::IRGen::Expression::LiteralRule.new)
+        engine.register(:core_ir_expression, Rules::IRGen::Expression::VarRefRule.new)
+        engine.register(:core_ir_expression, Rules::IRGen::Expression::MemberRule.new)
+        engine.register(:core_ir_expression, Rules::IRGen::Expression::CallRule.new)
+        engine.register(:core_ir_expression, Rules::IRGen::Expression::UnaryRule.new)
+        engine.register(:core_ir_expression, Rules::IRGen::Expression::PipeRule.new)
+        engine.register(:core_ir_expression, Rules::IRGen::Expression::BinaryRule.new)
+        engine.register(:core_ir_expression, Rules::IRGen::Expression::LetRule.new)
+        engine.register(:core_ir_expression, Rules::IRGen::Expression::RecordLiteralRule.new)
+        engine.register(:core_ir_expression, Rules::IRGen::Expression::IfRule.new)
+        engine.register(:core_ir_expression, Rules::IRGen::Expression::ArrayLiteralRule.new)
+        engine.register(:core_ir_expression, Rules::IRGen::Expression::DoRule.new)
+        engine.register(:core_ir_expression, Rules::IRGen::Expression::BlockRule.new)
+        engine.register(:core_ir_expression, Rules::IRGen::Expression::MatchRule.new)
+        engine.register(:core_ir_expression, Rules::IRGen::Expression::LambdaRule.new)
+        engine.register(:core_ir_expression, Rules::IRGen::Expression::IndexAccessRule.new)
+        engine.register(:core_ir_expression, Rules::IRGen::Expression::ForLoopRule.new)
+        engine.register(:core_ir_expression, Rules::IRGen::Expression::WhileLoopRule.new)
+        engine.register(:core_ir_expression, Rules::IRGen::Expression::ListComprehensionRule.new)
+        engine.register(:core_ir_statement, Rules::IRGen::Statement::ExprStmtRule.new)
+        engine.register(:core_ir_statement, Rules::IRGen::Statement::VariableDeclRule.new)
+        engine.register(:core_ir_statement, Rules::IRGen::Statement::AssignmentRule.new)
+        engine.register(:core_ir_statement, Rules::IRGen::Statement::ForRule.new)
+        engine.register(:core_ir_statement, Rules::IRGen::Statement::IfRule.new)
+        engine.register(:core_ir_statement, Rules::IRGen::Statement::WhileRule.new)
+        engine.register(:core_ir_statement, Rules::IRGen::Statement::ReturnRule.new)
+        engine.register(:core_ir_statement, Rules::IRGen::Statement::BreakRule.new)
+        engine.register(:core_ir_statement, Rules::IRGen::Statement::ContinueRule.new)
+        engine.register(:core_ir_statement, Rules::IRGen::Statement::BlockRule.new)
         engine
       end
 
       def ensure_required_rules!
-        ensure_rule_registered(:core_ir_type_decl, Rules::CoreIR::SumConstructorRule)
-        ensure_rule_registered(:core_ir_match_expr, Rules::CoreIR::MatchRule)
-        ensure_rule_registered(:core_ir_function, Rules::CoreIR::FunctionEffectRule)
-        ensure_rule_registered(:core_ir_stdlib_import, Rules::CoreIR::StdlibImportRule)
-        ensure_rule_registered(:core_ir_expression, Rules::CoreIR::Expression::LiteralRule)
-        ensure_rule_registered(:core_ir_expression, Rules::CoreIR::Expression::VarRefRule)
-        ensure_rule_registered(:core_ir_expression, Rules::CoreIR::Expression::MemberRule)
-        ensure_rule_registered(:core_ir_expression, Rules::CoreIR::Expression::CallRule)
-        ensure_rule_registered(:core_ir_expression, Rules::CoreIR::Expression::UnaryRule)
-        ensure_rule_registered(:core_ir_expression, Rules::CoreIR::Expression::PipeRule)
-        ensure_rule_registered(:core_ir_expression, Rules::CoreIR::Expression::BinaryRule)
-        ensure_rule_registered(:core_ir_expression, Rules::CoreIR::Expression::LetRule)
-        ensure_rule_registered(:core_ir_expression, Rules::CoreIR::Expression::RecordLiteralRule)
-        ensure_rule_registered(:core_ir_expression, Rules::CoreIR::Expression::IfRule)
-        ensure_rule_registered(:core_ir_expression, Rules::CoreIR::Expression::ArrayLiteralRule)
-        ensure_rule_registered(:core_ir_expression, Rules::CoreIR::Expression::DoRule)
-        ensure_rule_registered(:core_ir_expression, Rules::CoreIR::Expression::BlockRule)
-        ensure_rule_registered(:core_ir_expression, Rules::CoreIR::Expression::MatchRule)
-        ensure_rule_registered(:core_ir_expression, Rules::CoreIR::Expression::LambdaRule)
-        ensure_rule_registered(:core_ir_expression, Rules::CoreIR::Expression::IndexAccessRule)
-        ensure_rule_registered(:core_ir_expression, Rules::CoreIR::Expression::ForLoopRule)
-        ensure_rule_registered(:core_ir_expression, Rules::CoreIR::Expression::WhileLoopRule)
-        ensure_rule_registered(:core_ir_expression, Rules::CoreIR::Expression::ListComprehensionRule)
-        ensure_rule_registered(:core_ir_statement, Rules::CoreIR::Statement::ExprStmtRule)
-        ensure_rule_registered(:core_ir_statement, Rules::CoreIR::Statement::VariableDeclRule)
-        ensure_rule_registered(:core_ir_statement, Rules::CoreIR::Statement::AssignmentRule)
-        ensure_rule_registered(:core_ir_statement, Rules::CoreIR::Statement::ForRule)
-        ensure_rule_registered(:core_ir_statement, Rules::CoreIR::Statement::IfRule)
-        ensure_rule_registered(:core_ir_statement, Rules::CoreIR::Statement::WhileRule)
-        ensure_rule_registered(:core_ir_statement, Rules::CoreIR::Statement::ReturnRule)
-        ensure_rule_registered(:core_ir_statement, Rules::CoreIR::Statement::BreakRule)
-        ensure_rule_registered(:core_ir_statement, Rules::CoreIR::Statement::ContinueRule)
-        ensure_rule_registered(:core_ir_statement, Rules::CoreIR::Statement::BlockRule)
+        ensure_rule_registered(:core_ir_type_decl, Rules::IRGen::SumConstructorRule)
+        ensure_rule_registered(:core_ir_match_expr, Rules::IRGen::MatchRule)
+        ensure_rule_registered(:core_ir_function, Rules::IRGen::FunctionEffectRule)
+        ensure_rule_registered(:core_ir_stdlib_import, Rules::IRGen::StdlibImportRule)
+        ensure_rule_registered(:core_ir_expression, Rules::IRGen::Expression::LiteralRule)
+        ensure_rule_registered(:core_ir_expression, Rules::IRGen::Expression::VarRefRule)
+        ensure_rule_registered(:core_ir_expression, Rules::IRGen::Expression::MemberRule)
+        ensure_rule_registered(:core_ir_expression, Rules::IRGen::Expression::CallRule)
+        ensure_rule_registered(:core_ir_expression, Rules::IRGen::Expression::UnaryRule)
+        ensure_rule_registered(:core_ir_expression, Rules::IRGen::Expression::PipeRule)
+        ensure_rule_registered(:core_ir_expression, Rules::IRGen::Expression::BinaryRule)
+        ensure_rule_registered(:core_ir_expression, Rules::IRGen::Expression::LetRule)
+        ensure_rule_registered(:core_ir_expression, Rules::IRGen::Expression::RecordLiteralRule)
+        ensure_rule_registered(:core_ir_expression, Rules::IRGen::Expression::IfRule)
+        ensure_rule_registered(:core_ir_expression, Rules::IRGen::Expression::ArrayLiteralRule)
+        ensure_rule_registered(:core_ir_expression, Rules::IRGen::Expression::DoRule)
+        ensure_rule_registered(:core_ir_expression, Rules::IRGen::Expression::BlockRule)
+        ensure_rule_registered(:core_ir_expression, Rules::IRGen::Expression::MatchRule)
+        ensure_rule_registered(:core_ir_expression, Rules::IRGen::Expression::LambdaRule)
+        ensure_rule_registered(:core_ir_expression, Rules::IRGen::Expression::IndexAccessRule)
+        ensure_rule_registered(:core_ir_expression, Rules::IRGen::Expression::ForLoopRule)
+        ensure_rule_registered(:core_ir_expression, Rules::IRGen::Expression::WhileLoopRule)
+        ensure_rule_registered(:core_ir_expression, Rules::IRGen::Expression::ListComprehensionRule)
+        ensure_rule_registered(:core_ir_statement, Rules::IRGen::Statement::ExprStmtRule)
+        ensure_rule_registered(:core_ir_statement, Rules::IRGen::Statement::VariableDeclRule)
+        ensure_rule_registered(:core_ir_statement, Rules::IRGen::Statement::AssignmentRule)
+        ensure_rule_registered(:core_ir_statement, Rules::IRGen::Statement::ForRule)
+        ensure_rule_registered(:core_ir_statement, Rules::IRGen::Statement::IfRule)
+        ensure_rule_registered(:core_ir_statement, Rules::IRGen::Statement::WhileRule)
+        ensure_rule_registered(:core_ir_statement, Rules::IRGen::Statement::ReturnRule)
+        ensure_rule_registered(:core_ir_statement, Rules::IRGen::Statement::BreakRule)
+        ensure_rule_registered(:core_ir_statement, Rules::IRGen::Statement::ContinueRule)
+        ensure_rule_registered(:core_ir_statement, Rules::IRGen::Statement::BlockRule)
       end
 
       def ensure_rule_registered(stage, rule_class)

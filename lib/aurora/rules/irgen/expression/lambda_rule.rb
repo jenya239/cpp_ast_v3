@@ -1,0 +1,74 @@
+# frozen_string_literal: true
+
+require_relative "../../base_rule"
+
+module Aurora
+  module Rules
+    module IRGen
+      module Expression
+        # LambdaRule: Transform AST lambda expressions to CoreIR lambda expressions
+        # Contains FULL logic (no delegation to transformer)
+        # Manages parameter type inference and scoping
+        class LambdaRule < BaseRule
+          def applies?(node, _context = {})
+            node.is_a?(Aurora::AST::Lambda)
+          end
+
+          def apply(node, context = {})
+            transformer = context.fetch(:transformer)
+
+            # Save current var_types for scoping
+            saved_var_types = transformer.instance_variable_get(:@var_types).dup
+
+            # Get expected parameter types from context (for map/filter/fold)
+            expected_param_types = transformer.send(:current_lambda_param_types)
+
+            # Transform parameters with type inference
+            params = node.params.each_with_index.map do |param, index|
+              if param.is_a?(Aurora::AST::LambdaParam)
+                param_type = if param.type
+                               transformer.send(:transform_type, param.type)
+                             elsif expected_param_types[index]
+                               expected_param_types[index]
+                             else
+                               Aurora::CoreIR::Builder.primitive_type("i32")
+                             end
+                transformer.instance_variable_get(:@var_types)[param.name] = param_type
+                Aurora::CoreIR::Param.new(name: param.name, type: param_type)
+              else
+                param_name = param.respond_to?(:name) ? param.name : param
+                param_type = expected_param_types[index] || Aurora::CoreIR::Builder.primitive_type("i32")
+                transformer.instance_variable_get(:@var_types)[param_name] = param_type
+                Aurora::CoreIR::Param.new(name: param_name, type: param_type)
+              end
+            end
+
+            # Transform lambda body with parameters in scope
+            body = transformer.send(:transform_expression, node.body)
+
+            # Build function type from parameters and return type
+            ret_type = body.type
+            param_types = params.map { |p| {name: p.name, type: p.type} }
+            function_type = Aurora::CoreIR::FunctionType.new(
+              params: param_types,
+              ret_type: ret_type
+            )
+
+            # Build CoreIR lambda expression (captures empty for now)
+            captures = []
+
+            Aurora::CoreIR::LambdaExpr.new(
+              captures: captures,
+              params: params,
+              body: body,
+              function_type: function_type
+            )
+          ensure
+            # Restore previous var_types scope
+            transformer.instance_variable_set(:@var_types, saved_var_types) if saved_var_types
+          end
+        end
+      end
+    end
+  end
+end

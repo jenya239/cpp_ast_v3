@@ -1,0 +1,52 @@
+# frozen_string_literal: true
+
+require_relative "../../base_rule"
+
+module Aurora
+  module Rules
+    module IRGen
+      module Statement
+        # ReturnRule: Transform AST return statements to CoreIR
+        # Contains FULL logic (no delegation to transformer)
+        # Validates return type compatibility with function signature
+        class ReturnRule < BaseRule
+          def applies?(node, _context = {})
+            node.is_a?(Aurora::AST::Return)
+          end
+
+          def apply(node, context = {})
+            transformer = context.fetch(:transformer)
+
+            # Validate: return must be inside function
+            expected = transformer.send(:current_function_return)
+            unless expected
+              transformer.send(:type_error, "return statement outside of function")
+            end
+
+            # Transform return expression (if present)
+            expr_ir = node.expr ? transformer.send(:transform_expression, node.expr) : nil
+
+            # Validate return type compatibility
+            if transformer.send(:void_type?, expected)
+              # Void function: no return value allowed
+              if expr_ir
+                transformer.send(:type_error, "return value not allowed in void function", node: node)
+              end
+            else
+              # Non-void function: return value required
+              unless expr_ir
+                expected_name = transformer.send(:describe_type, expected)
+                transformer.send(:type_error, "return statement requires a value of type #{expected_name}", node: node)
+              end
+              # Check type compatibility
+              transformer.send(:ensure_compatible_type, expr_ir.type, expected, "return statement", node: node)
+            end
+
+            # Build return statement (wrap in array for statement rule convention)
+            [Aurora::CoreIR::Builder.return_stmt(expr_ir)]
+          end
+        end
+      end
+    end
+  end
+end
