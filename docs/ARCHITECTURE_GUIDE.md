@@ -1,8 +1,8 @@
-# Aurora Compiler Architecture Guide
+# MLC Compiler Architecture Guide
 
 ## Purpose
 
-Документ фиксирует целевую архитектуру трансформаций Aurora, чтобы разработчики и ИИ‑агенты могли безопасно расширять систему типов, добавлять эвристики и обслуживать стандартную библиотеку.
+Документ фиксирует целевую архитектуру трансформаций MLC, чтобы разработчики и ИИ‑агенты могли безопасно расширять систему типов, добавлять эвристики и обслуживать стандартную библиотеку.
 
 ## Целевое состояние
 
@@ -72,11 +72,11 @@ end
 
 ### Интеграция
 
-Сервисы инициализируются в `Aurora::IRGen` и передаются правилам через контекст:
+Сервисы инициализируются в `MLC::IRGen` и передаются правилам через контекст:
 
 ```ruby
-@expression_transformer_service = Aurora::Services::ExpressionTransformer.new(self)
-@type_checker_service = Aurora::Services::TypeChecker.new(self)
+@expression_transformer_service = MLC::Services::ExpressionTransformer.new(self)
+@type_checker_service = MLC::Services::TypeChecker.new(self)
 # ... остальные сервисы
 
 context = {
@@ -121,7 +121,7 @@ inst.ret_type    # конкретный тип возврата
 
 ## C++ Lowering Rules
 
-`Aurora::Backend::CppLowering` использует тот же rule engine, что и трансформации AST ➜ CoreIR. Стадия `:cpp_function_declaration` (правило `Rules::CodeGen::FunctionRule`) обогащает декларации C++ информацией об эффектах (`constexpr`, `noexcept`) прямо на уровне `CppAst`. Это позволяет расширять генерацию (атрибуты, диагностика, дополнительные модификаторы) без изменения внутренних методов `lower_function`.
+`MLC::Backend::CppLowering` использует тот же rule engine, что и трансформации AST ➜ CoreIR. Стадия `:cpp_function_declaration` (правило `Rules::CodeGen::FunctionRule`) обогащает декларации C++ информацией об эффектах (`constexpr`, `noexcept`) прямо на уровне `CppAst`. Это позволяет расширять генерацию (атрибуты, диагностика, дополнительные модификаторы) без изменения внутренних методов `lower_function`.
 
 ## Stdlib Signature Registry
 
@@ -135,22 +135,22 @@ inst.ret_type    # конкретный тип возврата
 
 ## Pass Manager
 
-`Aurora::PassManager` управляет последовательностью стадиц, из которых складывается трансформация IR. Каждая стадия получает общий контекст (импорты, таблицы типов, промежуточные результаты) и может добавлять свои правила/сервисы. Это шаг к полноценному pass managerʼу в духе LLVM/MLIR: rule engine работает внутри отдельных пассов, а порядок/конфигурация управляется централизованно.
+`MLC::PassManager` управляет последовательностью стадиц, из которых складывается трансформация IR. Каждая стадия получает общий контекст (импорты, таблицы типов, промежуточные результаты) и может добавлять свои правила/сервисы. Это шаг к полноценному pass managerʼу в духе LLVM/MLIR: rule engine работает внутри отдельных пассов, а порядок/конфигурация управляется централизованно.
 
 ## Event Bus
 
-`Aurora::EventBus` обеспечивает лёгкую публикацию событий (например, `:stdlib_function_imported`, `:stdlib_missing_item`). Трансформеры и правила получают ссылку на общий bus через контекст; обработчики можно подключать динамически (агентами, инструментами). Это первый шаг к полноценной telemetry/diagnostics инфраструктуре, когда каждый пасс сообщает о своём прогрессе и аномалиях.
+`MLC::EventBus` обеспечивает лёгкую публикацию событий (например, `:stdlib_function_imported`, `:stdlib_missing_item`). Трансформеры и правила получают ссылку на общий bus через контекст; обработчики можно подключать динамически (агентами, инструментами). Это первый шаг к полноценной telemetry/diagnostics инфраструктуре, когда каждый пасс сообщает о своём прогрессе и аномалиях.
 
 Для отладки по умолчанию подключается `Diagnostics::EventLogger`, который пишет события в stderr. При интеграции в приложения/агентов вместо него можно зарегистрировать собственные подписчики, собирающие метрики или отображающие предупреждения в UI.
 
-## Aurora::Application
+## MLC::Application
 
-`Aurora::Application` собирает общий event bus, rule engine и фабрики для `IRGen`/`CppLowering`. Он служит точкой конфигурации: агенты или host-приложения могут переопределять bus, логгер и правила до запуска пайплайна. `Aurora.compile` использует `Application` по умолчанию, что гарантирует консистентный набор сервисов.
+`MLC::Application` собирает общий event bus, rule engine и фабрики для `IRGen`/`CppLowering`. Он служит точкой конфигурации: агенты или host-приложения могут переопределять bus, логгер и правила до запуска пайплайна. `MLC.compile` использует `Application` по умолчанию, что гарантирует консистентный набор сервисов.
 ```ruby
 custom_logger = ->(bus) { bus.subscribe(:type_mismatch) { |payload| warn payload.inspect } }
-app = Aurora::Application.new(logger: nil, subscribers: [custom_logger])
+app = MLC::Application.new(logger: nil, subscribers: [custom_logger])
 to_core = app.build_to_core
-cpp = app.build_cpp_lowering(type_registry: Aurora::TypeRegistry.new)
+cpp = app.build_cpp_lowering(type_registry: MLC::TypeRegistry.new)
 ```
 
 ## Match Analyzer
