@@ -34,8 +34,9 @@ module Aurora
       end
 
       # Получить placeholder type для функции
-      def function_placeholder_type
-        @transformer.send(:function_placeholder_type)
+      def function_placeholder_type(name = nil)
+        @transformer.send(:function_placeholder_type, name) if name
+        @transformer.send(:function_placeholder_type) unless name
       end
 
       # Описать тип (для error messages)
