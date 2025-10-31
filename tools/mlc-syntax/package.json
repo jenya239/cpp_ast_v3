@@ -1,0 +1,38 @@
+{
+  "name": "mlc-syntax",
+  "displayName": "MLC Language Support",
+  "description": "Syntax highlighting for the MLC (.mlc) language used in this workspace.",
+  "version": "0.2.0",
+  "publisher": "workspace-local",
+  "engines": {
+    "vscode": "^1.70.0"
+  },
+  "categories": [
+    "Programming Languages"
+  ],
+  "contributes": {
+    "languages": [
+      {
+        "id": "mlc",
+        "aliases": [
+          "MLC",
+          "mlc"
+        ],
+        "extensions": [
+          ".mlc"
+        ],
+        "filenames": [
+          "failing.mlc"
+        ],
+        "configuration": "./language-configuration.json"
+      }
+    ],
+    "grammars": [
+      {
+        "language": "mlc",
+        "scopeName": "source.mlc",
+        "path": "./syntaxes/mlc.tmLanguage.json"
+      }
+    ]
+  }
+}

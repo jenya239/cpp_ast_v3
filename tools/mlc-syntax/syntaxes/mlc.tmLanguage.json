@@ -1,6 +1,6 @@
 {
-  "scopeName": "source.aurora",
-  "name": "Aurora",
+  "scopeName": "source.mlc",
+  "name": "MLC",
   "patterns": [
     { "include": "#comments" },
     { "include": "#heredoc" },
@@ -12,20 +12,20 @@
     { "include": "#operators" },
     {
       "match": "\\b(true|false)\\b",
-      "name": "constant.language.boolean.aurora"
+      "name": "constant.language.boolean.mlc"
     },
     {
       "match": "\\b[A-Za-z_][A-Za-z0-9_]*\\b",
-      "name": "identifier.aurora"
+      "name": "identifier.mlc"
     }
   ],
   "repository": {
     "comments": {
       "patterns": [
         {
-          "name": "comment.line.double-slash.aurora",
+          "name": "comment.line.double-slash.mlc",
           "begin": "//",
-          "beginCaptures": { "0": { "name": "punctuation.definition.comment.aurora" } },
+          "beginCaptures": { "0": { "name": "punctuation.definition.comment.mlc" } },
           "end": "$\\n?",
           "patterns": []
         }
@@ -35,7 +35,7 @@
       "patterns": [
         {
           "match": "\\b(fn|type|let|mut|return|if|then|else|while|for|in|do|end|match|module|import|export|enum|from|as|where|case|of|break|continue|extern)\\b",
-          "name": "keyword.control.aurora"
+          "name": "keyword.control.mlc"
         }
       ]
     },
@@ -43,11 +43,11 @@
       "patterns": [
         {
           "match": "\\b(i32|f32|bool|str|string|void|regex)\\b",
-          "name": "storage.type.aurora"
+          "name": "storage.type.mlc"
         },
         {
           "match": "\\b[A-Z][A-Za-z0-9_]*\\b",
-          "name": "entity.name.type.aurora"
+          "name": "entity.name.type.mlc"
         }
       ]
     },
@@ -55,19 +55,19 @@
       "patterns": [
         {
           "match": "\\b\\d+(_\\d+)*(\\.\\d+(_\\d+)*)?\\b",
-          "name": "constant.numeric.aurora"
+          "name": "constant.numeric.mlc"
         }
       ]
     },
     "strings": {
-      "name": "string.quoted.double.aurora",
+      "name": "string.quoted.double.mlc",
       "begin": "\"",
-      "beginCaptures": { "0": { "name": "punctuation.definition.string.begin.aurora" } },
+      "beginCaptures": { "0": { "name": "punctuation.definition.string.begin.mlc" } },
       "end": "\"",
-      "endCaptures": { "0": { "name": "punctuation.definition.string.end.aurora" } },
+      "endCaptures": { "0": { "name": "punctuation.definition.string.end.mlc" } },
       "patterns": [
         {
-          "name": "constant.character.escape.aurora",
+          "name": "constant.character.escape.mlc",
           "match": "\\\\."
         }
       ]
@@ -76,32 +76,32 @@
       "patterns": [
         {
           "match": "(\\+|\\-|\\*|\\/|%|==|!=|<=|>=|<|>|&&|\\|\\||=|\\.|:|\\|>)",
-          "name": "keyword.operator.aurora"
+          "name": "keyword.operator.mlc"
         }
       ]
     },
     "heredoc": {
       "patterns": [
         {
-          "name": "string.unquoted.heredoc.aurora",
+          "name": "string.unquoted.heredoc.mlc",
           "begin": "<<~?[A-Z0-9_]+",
-          "beginCaptures": { "0": { "name": "punctuation.definition.string.begin.aurora" } },
+          "beginCaptures": { "0": { "name": "punctuation.definition.string.begin.mlc" } },
           "end": "^[A-Z0-9_]+$",
-          "endCaptures": { "0": { "name": "punctuation.definition.string.end.aurora" } }
+          "endCaptures": { "0": { "name": "punctuation.definition.string.end.mlc" } }
         }
       ]
     },
     "regex": {
       "patterns": [
         {
-          "name": "string.regexp.aurora",
+          "name": "string.regexp.mlc",
           "begin": "/",
-          "beginCaptures": { "0": { "name": "punctuation.definition.string.begin.aurora" } },
+          "beginCaptures": { "0": { "name": "punctuation.definition.string.begin.mlc" } },
           "end": "/[gimsuxy]*",
-          "endCaptures": { "0": { "name": "punctuation.definition.string.end.aurora" } },
+          "endCaptures": { "0": { "name": "punctuation.definition.string.end.mlc" } },
           "patterns": [
             {
-              "name": "constant.character.escape.aurora",
+              "name": "constant.character.escape.mlc",
               "match": "\\\\."
             }
           ]
