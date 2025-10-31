@@ -21,6 +21,75 @@
 2. **CoreIR ➜ Lowered CoreIR** — слой семантических эвристик. Здесь живут `instantiate_signature`, проверки ограничений `validate_type_constraints`, будущий rule‑engine. Слой не зависит от генерации C++.
 3. **Lowered CoreIR ➜ Target** — генерация (C++ AST DSL, CLI). Все решения по форматированию, ключевым словам и runtime живут только здесь.
 
+## Сервисная архитектура (Phase 2 Complete ✅)
+
+**Проблема:** Правила IRGen напрямую обращались к приватным методам трансформера через `transformer.send(:private_method)`, что нарушало инкапсуляцию и усложняло расширение компилятора.
+
+**Решение:** Внедрена сервисно-ориентированная архитектура по образцу LLVM/MLIR. Все 82 вызова `transformer.send` из 20 правил устранены и заменены на обращения к специализированным сервисам.
+
+### Сервисы (37 методов)
+
+Сервисы находятся в `lib/aurora/services/` и предоставляют чистый API для правил:
+
+1. **ExpressionTransformer** (8 методов) — рекурсивная трансформация выражений, statements, блоков
+2. **TypeChecker** (13 методов) — проверка типов, совместимости, валидация
+3. **PredicateService** (2 метода) — предикаты типов (void?, array?, record?)
+4. **ContextManager** (5 методов) — управление scope (loop depth, lambda params, function return)
+5. **TypeInferenceService** (5 методов) — вывод типов (переменные, вызовы, операции)
+6. **RecordBuilderService** (4 метода) — построение record типов (анонимные/именованные)
+
+### Пример использования
+
+**До (anti-pattern):**
+```ruby
+def apply(node, context)
+  transformer = context.fetch(:transformer)
+  left = transformer.send(:transform_expression, node.left)
+  type = transformer.send(:infer_binary_type, node.op, left.type, right.type)
+  # ...
+end
+```
+
+**После (clean separation):**
+```ruby
+def apply(node, context)
+  expr_svc = context.fetch(:expression_transformer)
+  type_inference = context.fetch(:type_inference)
+
+  left = expr_svc.transform_expression(node.left)
+  type = type_inference.infer_binary_type(node.op, left.type, right.type)
+  # ...
+end
+```
+
+### Архитектурные преимущества
+
+- ✅ **Чёткое разделение ответственности**: правила → сервисы → трансформер
+- ✅ **Нет нарушений инкапсуляции**: только публичный API через сервисы
+- ✅ **Упрощённое тестирование**: сервисы можно мокировать независимо
+- ✅ **Расширяемость**: новые правила добавляются без изменения трансформера
+- ✅ **Следование LLVM/MLIR паттернам**: pattern rewriters + pass infrastructure
+
+### Интеграция
+
+Сервисы инициализируются в `Aurora::Passes::ToCore` и передаются правилам через контекст:
+
+```ruby
+@expression_transformer_service = Aurora::Services::ExpressionTransformer.new(self)
+@type_checker_service = Aurora::Services::TypeChecker.new(self)
+# ... остальные сервисы
+
+context = {
+  transformer: self,
+  expression_transformer: @expression_transformer_service,
+  type_checker: @type_checker_service,
+  type_inference: @type_inference_service,
+  context_manager: @context_manager_service,
+  record_builder: @record_builder_service,
+  predicates: @predicate_service
+}
+```
+
 ## TypeContext
 
 `TypeContext` управляет стековыми состояниями: параметрами типов, ожиданиями параметров лямбд, ожидаемыми типами возврата. Используйте хелперы `with_type_params`, `with_function_return`, `with_lambda_param_types` вместо прямой работы с массивами — это предотвращает утечки состояния и делает код безопасным для параллельных трансформаций.
