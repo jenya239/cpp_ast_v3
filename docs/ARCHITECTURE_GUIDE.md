@@ -48,11 +48,11 @@ inst.ret_type    # конкретный тип возврата
 
 ## Effect Analyzer
 
-`EffectAnalyzer` оценивает CoreIR-тело функций и решает, какие эффекты (`:constexpr`, `:noexcept`) им назначить. Реальное применение эффектов происходит в правиле `Rules::CoreIR::FunctionEffectRule` на стадии `:core_ir_function`, поэтому трансформер ограничивается подготовкой тела и контекста — это упрощает расширение набора эффектов.
+`EffectAnalyzer` оценивает CoreIR-тело функций и решает, какие эффекты (`:constexpr`, `:noexcept`) им назначить. Реальное применение эффектов происходит в правиле `Rules::IRGen::FunctionEffectRule` на стадии `:core_ir_function`, поэтому трансформер ограничивается подготовкой тела и контекста — это упрощает расширение набора эффектов.
 
 ## C++ Lowering Rules
 
-`Aurora::Backend::CppLowering` использует тот же rule engine, что и трансформации AST ➜ CoreIR. Стадия `:cpp_function_declaration` (правило `CppLowering::Rules::FunctionRule`) обогащает декларации C++ информацией об эффектах (`constexpr`, `noexcept`) прямо на уровне `CppAst`. Это позволяет расширять генерацию (атрибуты, диагностика, дополнительные модификаторы) без изменения внутренних методов `lower_function`.
+`Aurora::Backend::CppLowering` использует тот же rule engine, что и трансформации AST ➜ CoreIR. Стадия `:cpp_function_declaration` (правило `Rules::CodeGen::FunctionRule`) обогащает декларации C++ информацией об эффектах (`constexpr`, `noexcept`) прямо на уровне `CppAst`. Это позволяет расширять генерацию (атрибуты, диагностика, дополнительные модификаторы) без изменения внутренних методов `lower_function`.
 
 ## Stdlib Signature Registry
 
@@ -62,7 +62,7 @@ inst.ret_type    # конкретный тип возврата
 - единый источник квалифицированных имён (`aurora::io::println` и т. п.);
 - доступ к тем же метаданным для бэкенда (C++ lowering) и инспекционных инструментов.
 
-Правило `Rules::CoreIR::StdlibImportRule` обслуживает стадию `:core_ir_stdlib_import` и, используя реестр, подключает необходимые функции и типы без прямого доступа этапов трансформации к файловой системе.
+Правило `Rules::IRGen::StdlibImportRule` обслуживает стадию `:core_ir_stdlib_import` и, используя реестр, подключает необходимые функции и типы без прямого доступа этапов трансформации к файловой системе.
 
 ## Pass Manager
 
@@ -86,7 +86,7 @@ cpp = app.build_cpp_lowering(type_registry: Aurora::TypeRegistry.new)
 
 ## Match Analyzer
 
-`MatchAnalyzer` концентрирует всю обработку ветвей `match` (проверка согласованности типов, в перспективе – исчерпываемости). Высокоуровневое построение CoreIR теперь живёт в правиле `Rules::CoreIR::MatchRule` (стадия `:core_ir_match_expr`), поэтому трансформер лишь подготавливает контекст и вызывает rule engine. Преобразование ветви (`transform_match_arm`) остаётся в трансформере, а анализ типов выполняется централизованно:
+`MatchAnalyzer` концентрирует всю обработку ветвей `match` (проверка согласованности типов, в перспективе – исчерпываемости). Высокоуровневое построение CoreIR теперь живёт в правиле `Rules::IRGen::MatchRule` (стадия `:core_ir_match_expr`), поэтому трансформер лишь подготавливает контекст и вызывает rule engine. Преобразование ветви (`transform_match_arm`) остаётся в трансформере, а анализ типов выполняется централизованно:
 
 ```ruby
 analysis = match_analyzer.analyze(

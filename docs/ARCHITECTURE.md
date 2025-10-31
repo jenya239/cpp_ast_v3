@@ -18,15 +18,27 @@ Aurora Source → Lexer → Parser → AST → CoreIR → C++ AST → C++ Code
 - Handles all Aurora language constructs
 - Generates AST nodes
 
-#### CoreIR (`lib/aurora/core_ir/`)
-- Intermediate representation
+#### IR Generation (`lib/aurora/passes/to_core.rb`)
+- AST → CoreIR transformation via rules
 - Type system and inference
-- Optimizations and transformations
+- Effect analysis (constexpr, noexcept)
+- Module: `Aurora::Passes::ToCore`
 
-#### C++ Lowering (`lib/aurora/backend/`)
-- Converts CoreIR to C++ AST
-- Handles type mapping
-- Generates modern C++ code
+#### Code Generation (`lib/aurora/backend/cpp_lowering.rb`)
+- CoreIR → C++ AST lowering via rules
+- Type mapping and qualification
+- Statement and expression lowering
+- Module: `Aurora::Backend::CppLowering`
+
+#### Rule Engine (`lib/aurora/rules/`)
+- **IRGen Rules** (`lib/aurora/rules/irgen/`) - AST → CoreIR transformation
+  - 16 expression rules (literal, binary, call, match, etc.)
+  - 10 statement rules (variable_decl, assignment, if, for, etc.)
+  - Module: `Aurora::Rules::IRGen`
+- **CodeGen Rules** (`lib/aurora/rules/codegen/`) - CoreIR → C++ lowering
+  - 15 expression rules (literal, binary, call, match, etc.)
+  - 10 statement rules (variable_decl, assignment, if, for, etc.)
+  - Module: `Aurora::Rules::CodeGen`
 
 ### 2. C++ AST DSL
 
@@ -117,13 +129,50 @@ Ruby DSL → C++ AST → C++ Code
 - **Generic Support**: Parametric polymorphism with constraints
 - **Type Safety**: Compile-time error checking
 
-### 4. Performance Optimizations
+### 4. Rules-Based Architecture (LLVM/Rust-style)
+- **Pure Transformation Logic**: All transformation logic lives in rules, not in transformer classes
+- **BaseRule Pattern**: Rules are self-contained with `applies?(node, context)` and `apply(node, context)` methods
+- **Staging**: Rules are organized by transformation stage:
+  - `:core_ir_expression` and `:core_ir_statement` for AST → CoreIR
+  - `:cpp_expression` and `:cpp_statement` for CoreIR → C++
+- **Event Bus**: Rules can publish events for logging, diagnostics, and instrumentation
+- **Professional Naming**: `irgen` (IR Generation) and `codegen` (Code Generation) match industry conventions
+
+### 5. Performance Optimizations
 - **Memoization**: Parser results are cached
 - **StringBuilder**: Efficient string concatenation
 - **Object Pooling**: Reuse of AST nodes
 - **Lazy Evaluation**: Deferred computation where possible
 
 ## Component Details
+
+### Rule Engine Architecture
+
+The Aurora compiler uses a rules-based architecture where all transformation logic is implemented as composable rules:
+
+```ruby
+# Example rule structure
+class LiteralRule < BaseRule
+  def applies?(node, context = {})
+    node.is_a?(Aurora::AST::IntLit)
+  end
+
+  def apply(node, context = {})
+    type = Aurora::CoreIR::Builder.primitive_type("i32")
+    Aurora::CoreIR::Builder.literal(node.value, type)
+  end
+end
+
+# Rules are registered by stage
+engine = Aurora::Rules::RuleEngine.new
+engine.register(:core_ir_expression, LiteralRule.new)
+```
+
+**Benefits:**
+- **Testability**: Each rule can be tested independently
+- **Composability**: Rules can be added, removed, or replaced without affecting others
+- **Maintainability**: Transformation logic is isolated and easy to understand
+- **Extensibility**: New language features require only new rules, not changes to existing code
 
 ### Parser Architecture
 
