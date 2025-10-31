@@ -90,7 +90,7 @@ def parse_arguments(argv)
     end
 
     opts.on("--version", "Show CLI version information") do
-      puts "Aurora CLI (experimental)"
+      puts "MLC CLI (experimental)"
       exit
     end
 
@@ -223,8 +223,8 @@ def main
   source_code, source_name = read_source(input_path)
 
   begin
-    generated_cpp = Aurora.to_cpp(source_code, filename: source_name)
-  rescue Aurora::ParseError, Aurora::CompileError => e
+    generated_cpp = MLC.to_cpp(source_code, filename: source_name)
+  rescue MLC::ParseError, MLC::CompileError => e
     warn e.message
     exit 1
   end
