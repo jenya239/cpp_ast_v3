@@ -296,9 +296,9 @@ class AuroraXQRTest < Test::Unit::TestCase
       assert XQR.respond_to?(:transform_to_core)
       assert XQR.respond_to?(:lower_to_cpp)
       assert XQR.respond_to?(:to_cpp)
-      
-      # Test that XQR includes Aurora
-      assert XQR.ancestors.include?(Aurora)
+
+      # Test that XQR includes MLC
+      assert XQR.ancestors.include?(MLC)
     rescue => e
       # XQR might not be fully implemented yet
       assert_match(/not implemented|undefined method|Parse error|Lowering error/, e.message)

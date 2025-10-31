@@ -1,26 +1,26 @@
 # frozen_string_literal: true
 
-# XQR Language - Alias for Aurora
-# This file provides the XQR language interface as an alias for Aurora
+# XQR Language - Alias for MLC
+# This file provides the XQR language interface as an alias for MLC
 
 require_relative "mlc"
 
-# Alias Aurora as XQR
+# Alias MLC as XQR
 module XQR
-  # Re-export all Aurora functionality
-  include Aurora
+  # Re-export all MLC functionality
+  include MLC
   
   # XQR-specific extensions can be added here
   module Extensions
     # XQR-specific language features
-    # These can extend Aurora with additional syntax or features
+    # These can extend MLC with additional syntax or features
   end
 end
 
 # Make XQR available as the main module
 module XQR
   class << self
-    # Delegate all Aurora methods to XQR
+    # Delegate all MLC methods to XQR
     def method_missing(method_name, *args, &block)
       MLC.send(method_name, *args, &block)
     end
