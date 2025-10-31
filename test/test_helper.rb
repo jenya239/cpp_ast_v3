@@ -3,7 +3,7 @@
 require "minitest/autorun"
 require "minitest/pride"
 require_relative "../lib/cpp_ast"
-require_relative "../lib/aurora"
+require_relative "../lib/mlc"
 
 module TestHelpers
   # Helper method to test roundtrip accuracy

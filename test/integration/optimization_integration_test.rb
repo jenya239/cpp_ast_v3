@@ -1,8 +1,8 @@
 # frozen_string_literal: true
 
 require_relative "../test_helper"
-require_relative "../../lib/aurora"
-require_relative "../../lib/aurora/parser/optimized_parser"
+require_relative "../../lib/mlc"
+require_relative "../../lib/mlc/parser/optimized_parser"
 require_relative "../../lib/cpp_ast/builder/optimized_generator"
 require "benchmark"
 
@@ -13,10 +13,10 @@ class OptimizationIntegrationTest < Minitest::Test
     AURORA
     
     # Test that optimized parser works with simple code
-    parser = Aurora::Parser::OptimizedParser.new(source)
+    parser = MLC::Parser::OptimizedParser.new(source)
     ast = parser.parse
     
-    assert_equal ast.class, Aurora::AST::Program
+    assert_equal ast.class, MLC::AST::Program
     assert_equal ast.declarations.length, 1
   end
   
@@ -27,7 +27,7 @@ class OptimizationIntegrationTest < Minitest::Test
       fn add(a: i32, b: i32) -> i32 = a + b
     AURORA
 
-    ast = Aurora.parse(source)
+    ast = MLC.parse(source)
 
     # Test that optimized generator produces same result as original
     original_generator = CppAst::Builder::DSLGenerator.new
@@ -47,7 +47,7 @@ class OptimizationIntegrationTest < Minitest::Test
       fn test() -> i32 = 42
     AURORA
     
-    parser = Aurora::Parser::OptimizedParser.new(source)
+    parser = MLC::Parser::OptimizedParser.new(source)
     
     # Parse multiple times - should get same result
     ast1 = parser.parse
@@ -97,7 +97,7 @@ class OptimizationIntegrationTest < Minitest::Test
     AURORA
     
     # Test that optimized parser doesn't leak memory
-    parser = Aurora::Parser::OptimizedParser.new(source)
+    parser = MLC::Parser::OptimizedParser.new(source)
     
     # Measure memory before and after
     GC.start
@@ -119,7 +119,7 @@ class OptimizationIntegrationTest < Minitest::Test
     large_source = generate_large_aurora_source(500)
     
     # Test that optimized parser can handle large files
-    parser = Aurora::Parser::OptimizedParser.new(large_source)
+    parser = MLC::Parser::OptimizedParser.new(large_source)
     
     time = Benchmark.measure { parser.parse }
     

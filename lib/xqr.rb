@@ -3,7 +3,7 @@
 # XQR Language - Alias for Aurora
 # This file provides the XQR language interface as an alias for Aurora
 
-require_relative "aurora"
+require_relative "mlc"
 
 # Alias Aurora as XQR
 module XQR
@@ -22,11 +22,11 @@ module XQR
   class << self
     # Delegate all Aurora methods to XQR
     def method_missing(method_name, *args, &block)
-      Aurora.send(method_name, *args, &block)
+      MLC.send(method_name, *args, &block)
     end
     
     def respond_to_missing?(method_name, include_private = false)
-      Aurora.respond_to?(method_name, include_private)
+      MLC.respond_to?(method_name, include_private)
     end
   end
 end

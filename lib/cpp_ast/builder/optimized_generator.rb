@@ -35,7 +35,7 @@ module CppAst
           generate_function_optimized(ast)
         when Nodes::NamespaceDeclaration
           generate_namespace_optimized(ast)
-        when Aurora::AST::Program
+        when MLC::AST::Program
           generate_aurora_program_optimized(ast)
         else
           super(ast)
@@ -184,9 +184,9 @@ module CppAst
       
       def generate_aurora_declaration_optimized(decl)
         case decl
-        when Aurora::AST::FuncDecl
+        when MLC::AST::FuncDecl
           generate_aurora_function_optimized(decl)
-        when Aurora::AST::TypeDecl
+        when MLC::AST::TypeDecl
           generate_aurora_type_optimized(decl)
         else
           "// Unsupported declaration type: #{decl.class}"
@@ -209,13 +209,13 @@ module CppAst
       
     def generate_aurora_expression(expr)
       case expr
-      when Aurora::AST::IntLit
+      when MLC::AST::IntLit
         expr.value.to_s
-      when Aurora::AST::FloatLit
+      when MLC::AST::FloatLit
         expr.value.to_s
-      when Aurora::AST::VarRef
+      when MLC::AST::VarRef
         expr.name
-      when Aurora::AST::BinaryOp
+      when MLC::AST::BinaryOp
         left = generate_aurora_expression(expr.left)
         right = generate_aurora_expression(expr.right)
         if expr.op == "+" && is_string_expression(expr.left) && is_string_expression(expr.right)
@@ -233,12 +233,12 @@ module CppAst
     
     def is_string_expression(expr)
       case expr
-      when Aurora::AST::StringLit
+      when MLC::AST::StringLit
         true
-      when Aurora::AST::VarRef
+      when MLC::AST::VarRef
         # TODO: Check variable type from context
         true # Assume string for now
-      when Aurora::AST::BinaryOp
+      when MLC::AST::BinaryOp
         # Check if this is a string concatenation
         expr.op == "+" && is_string_expression(expr.left) && is_string_expression(expr.right)
       else

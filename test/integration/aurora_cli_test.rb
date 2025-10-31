@@ -5,7 +5,7 @@ require "open3"
 require "tmpdir"
 
 class AuroraCLITest < Minitest::Test
-  CLI = File.expand_path("../../bin/aurora", __dir__)
+  CLI = File.expand_path("../../bin/mlc", __dir__)
 
   def test_run_simple_program
     skip_unless_compiler_available

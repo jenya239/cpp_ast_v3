@@ -2,7 +2,7 @@
 
 require "benchmark"
 require_relative "../test_helper"
-require_relative "../../lib/aurora"
+require_relative "../../lib/mlc"
 require_relative "../../lib/cpp_ast"
 
 class SimpleBenchmark < Minitest::Test
@@ -45,7 +45,7 @@ class SimpleBenchmark < Minitest::Test
     
     # Test parsing performance
     parse_time = Benchmark.measure do
-      100.times { Aurora.parse(source) }
+      100.times { MLC.parse(source) }
     end
     
     puts "Parse 100 times: #{parse_time.real.round(4)}s"
@@ -67,7 +67,7 @@ class SimpleBenchmark < Minitest::Test
     
     # Test generation performance
     gen_time = Benchmark.measure do
-      100.times { Aurora.to_cpp(source) }
+      100.times { MLC.to_cpp(source) }
     end
     
     puts "Generate 100 times: #{gen_time.real.round(4)}s"
@@ -84,7 +84,7 @@ class SimpleBenchmark < Minitest::Test
     
     # Test parsing large file
     parse_time = Benchmark.measure do
-      Aurora.parse(large_source)
+      MLC.parse(large_source)
     end
     
     puts "Parse large file: #{parse_time.real.round(4)}s"
