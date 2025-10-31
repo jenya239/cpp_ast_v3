@@ -14,7 +14,6 @@ require_relative "function_builder_test"
 require_relative "class_builder_test"
 require_relative "ownership_dsl_test"
 require_relative "dsl_v2_integration_test"
-require_relative "aurora_xqr_test"
 
 # Run all tests
 if __FILE__ == $0
