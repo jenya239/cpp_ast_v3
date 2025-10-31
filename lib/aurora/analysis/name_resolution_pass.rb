@@ -17,6 +17,14 @@ module Aurora
         super(name: name)
       end
 
+      def required_keys
+        [:core_ir]
+      end
+
+      def produced_keys
+        [:symbol_table, :resolution_errors, :name_resolution_passed]
+      end
+
       def run(context)
         core_ir = context[:core_ir]
         return unless core_ir

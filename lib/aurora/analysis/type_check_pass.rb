@@ -17,6 +17,14 @@ module Aurora
         @type_registry = type_registry
       end
 
+      def required_keys
+        [:core_ir]
+      end
+
+      def produced_keys
+        [:type_errors, :type_check_passed]
+      end
+
       def run(context)
         core_ir = context[:core_ir]
         return unless core_ir

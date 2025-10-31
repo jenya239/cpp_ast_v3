@@ -20,6 +20,14 @@ module Aurora
         @effect_analyzer = effect_analyzer
       end
 
+      def required_keys
+        [:core_ir]
+      end
+
+      def produced_keys
+        [:function_effects]
+      end
+
       def run(context)
         core_ir = context[:core_ir]
         return unless core_ir
