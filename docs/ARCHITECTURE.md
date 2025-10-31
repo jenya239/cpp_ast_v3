@@ -22,7 +22,7 @@ Aurora Source → Lexer → Parser → AST → CoreIR → C++ AST → C++ Code
 - AST → CoreIR transformation via rules
 - Type system and inference
 - Effect analysis (constexpr, noexcept)
-- Module: `Aurora::Passes::ToCore`
+- Module: `Aurora::IRGen`
 
 #### Code Generation (`lib/aurora/backend/cpp_lowering.rb`)
 - CoreIR → C++ AST lowering via rules

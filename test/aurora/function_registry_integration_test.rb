@@ -52,7 +52,7 @@ module Aurora
           Math.hypotenuse(a, b)
       AURORA
 
-      transformer = Passes::ToCore.new
+      transformer = IRGen.new
       ast = Aurora.parse(source)
       core = transformer.transform(ast)
 
@@ -76,7 +76,7 @@ module Aurora
         export fn add(a: i32, b: i32) -> i32 = a + b
       AURORA
 
-      transformer = Passes::ToCore.new
+      transformer = IRGen.new
       transformer.transform(Aurora.parse(module_source))
 
       use_source = <<~AURORA
@@ -109,7 +109,7 @@ module Aurora
         export fn perimeter(a: f32, b: f32) -> f32 = 2.0 * (a + b)
       AURORA
 
-      transformer = Passes::ToCore.new
+      transformer = IRGen.new
       transformer.transform(Aurora.parse(module_source))
 
       use_source = <<~AURORA
@@ -150,7 +150,7 @@ module Aurora
           area(a, b)
       AURORA
 
-      transformer = Passes::ToCore.new
+      transformer = IRGen.new
       transformer.transform(Aurora.parse(geometry_source))
       core = transformer.transform(Aurora.parse(demo_source))
 

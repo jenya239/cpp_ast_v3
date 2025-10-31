@@ -72,7 +72,7 @@ end
 
 ### Интеграция
 
-Сервисы инициализируются в `Aurora::Passes::ToCore` и передаются правилам через контекст:
+Сервисы инициализируются в `Aurora::IRGen` и передаются правилам через контекст:
 
 ```ruby
 @expression_transformer_service = Aurora::Services::ExpressionTransformer.new(self)
@@ -125,7 +125,7 @@ inst.ret_type    # конкретный тип возврата
 
 ## Stdlib Signature Registry
 
-`StdlibSignatureRegistry` строит единую карту экспортируемых сущностей стандартной библиотеки на основе `StdlibScanner`. Реестр отдаёт `FunctionMetadata`/`TypeMetadata` вместе с исходными `AST::FuncDecl`/`AST::TypeDecl`, поэтому стадии `ToCore` могут регистрировать сигнатуры и типы без повторного чтения файлов. Это обеспечивает:
+`StdlibSignatureRegistry` строит единую карту экспортируемых сущностей стандартной библиотеки на основе `StdlibScanner`. Реестр отдаёт `FunctionMetadata`/`TypeMetadata` вместе с исходными `AST::FuncDecl`/`AST::TypeDecl`, поэтому стадии `IRGen` могут регистрировать сигнатуры и типы без повторного чтения файлов. Это обеспечивает:
 
 - однократный парсинг stdlib на сессию;
 - единый источник квалифицированных имён (`aurora::io::println` и т. п.);
@@ -135,7 +135,7 @@ inst.ret_type    # конкретный тип возврата
 
 ## Pass Manager
 
-`Aurora::Passes::PassManager` управляет последовательностью стадиц, из которых складывается трансформация `ToCore`. Каждая стадия получает общий контекст (импорты, таблицы типов, промежуточные результаты) и может добавлять свои правила/сервисы. Это шаг к полноценному pass managerʼу в духе LLVM/MLIR: rule engine работает внутри отдельных пассов, а порядок/конфигурация управляется централизованно.
+`Aurora::PassManager` управляет последовательностью стадиц, из которых складывается трансформация IR. Каждая стадия получает общий контекст (импорты, таблицы типов, промежуточные результаты) и может добавлять свои правила/сервисы. Это шаг к полноценному pass managerʼу в духе LLVM/MLIR: rule engine работает внутри отдельных пассов, а порядок/конфигурация управляется централизованно.
 
 ## Event Bus
 
@@ -145,7 +145,7 @@ inst.ret_type    # конкретный тип возврата
 
 ## Aurora::Application
 
-`Aurora::Application` собирает общий event bus, rule engine и фабрики для `ToCore`/`CppLowering`. Он служит точкой конфигурации: агенты или host-приложения могут переопределять bus, логгер и правила до запуска пайплайна. `Aurora.compile` использует `Application` по умолчанию, что гарантирует консистентный набор сервисов.
+`Aurora::Application` собирает общий event bus, rule engine и фабрики для `IRGen`/`CppLowering`. Он служит точкой конфигурации: агенты или host-приложения могут переопределять bus, логгер и правила до запуска пайплайна. `Aurora.compile` использует `Application` по умолчанию, что гарантирует консистентный набор сервисов.
 ```ruby
 custom_logger = ->(bus) { bus.subscribe(:type_mismatch) { |payload| warn payload.inspect } }
 app = Aurora::Application.new(logger: nil, subscribers: [custom_logger])
