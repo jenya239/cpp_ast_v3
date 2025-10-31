@@ -1,13 +1,14 @@
-# 🚀 C++ AST DSL & Aurora Language - Production Ready
+# 🚀 MLC - Multi-Level Compiler
 
 ## Overview
 
-This project contains **two powerful tools** for C++ development:
+**MLC** (Multi-Level Compiler) is a production-ready compiler framework featuring:
 
 1. **C++ AST DSL** - Ruby DSL for generating and manipulating C++ code
 2. **Aurora Language** - Modern, type-safe language that compiles to C++
+3. **Multi-Level IR Architecture** - High IR → Mid IR → Low IR → Target
 
-Both are **production-ready** with comprehensive test coverage!
+The project combines powerful metaprogramming tools with a modern language compiler, all with comprehensive test coverage!
 
 ---
 
@@ -56,23 +57,23 @@ This compiles to efficient C++ using `std::variant` and `std::visit`.
 
 ### Aurora CLI
 
-The repository ships with `bin/aurora`, a small helper that compiles Aurora source to C++20 behind the scenes, invokes the system compiler (`$CXX` or `g++`), and executes the resulting binary with standard streams intact. Typical usage:
+The repository ships with `bin/mlc`, the MLC compiler CLI that compiles Aurora source to C++20 behind the scenes, invokes the system compiler (`$CXX` or `g++`), and executes the resulting binary with standard streams intact. Typical usage:
 
 ```bash
 # Run a file
-bin/aurora examples/hello_world.aur
+bin/mlc examples/hello_world.aur
 
 # Stream source from STDIN
-cat examples/hello_world.aur | bin/aurora -
+cat examples/hello_world.aur | bin/mlc -
 
 # Pass arguments to the compiled program
-bin/aurora app.aur -- arg1 arg2
+bin/mlc app.aur -- arg1 arg2
 
 # Inspect the generated C++
-bin/aurora --emit-cpp app.aur
+bin/mlc --emit-cpp app.aur
 
 # Keep the temporary build directory for debugging
-bin/aurora --keep-tmp app.aur
+bin/mlc --keep-tmp app.aur
 ```
 
 Runtime headers (`aurora_string.hpp`, `aurora_buffer.hpp`, `aurora_regex.hpp`) are linked automatically, so `.aur` files can be treated like scripts that participate naturally in shell pipelines and I/O redirection.
