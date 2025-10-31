@@ -4,7 +4,7 @@ require_relative "../test_helper"
 
 class PassManagerTest < Minitest::Test
   def test_runs_passes_in_order
-    manager = Aurora::Passes::PassManager.new
+    manager = Aurora::PassManager.new
     trace = []
 
     manager.register(:first) do |context|
@@ -24,7 +24,7 @@ class PassManagerTest < Minitest::Test
   end
 
   def test_accepts_callable_objects
-    manager = Aurora::Passes::PassManager.new
+    manager = Aurora::PassManager.new
     accumulator = Class.new do
       attr_reader :calls
       def initialize
@@ -44,7 +44,7 @@ class PassManagerTest < Minitest::Test
   end
 
   def test_bubbles_up_pass_errors_with_context
-    manager = Aurora::Passes::PassManager.new
+    manager = Aurora::PassManager.new
     manager.register(:boom) { |_ctx| raise RuntimeError, "failure" }
 
     error = assert_raises(RuntimeError) { manager.run({}) }

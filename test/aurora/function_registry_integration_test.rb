@@ -11,7 +11,7 @@ module Aurora
         export fn add(a: i32, b: i32) -> i32 = a + b
       AURORA
 
-      transformer = Passes::ToCore.new
+      transformer = IRGen.new
       ast = Aurora.parse(source)
       transformer.transform(ast)
 
@@ -32,7 +32,7 @@ module Aurora
           hypotenuse(a, b)
       AURORA
 
-      transformer = Passes::ToCore.new
+      transformer = IRGen.new
       ast = Aurora.parse(source)
       transformer.transform(ast)
 

@@ -8,7 +8,7 @@ require_relative "aurora/diagnostics/event_logger"
 require_relative "aurora/application"
 require_relative "aurora/parser/lexer"
 require_relative "aurora/parser/parser"
-require_relative "aurora/passes/to_core"
+require_relative "aurora/irgen"
 require_relative "aurora/backend/cpp_lowering"
 require_relative "aurora/backend/header_generator"
 require_relative "aurora/stdlib_resolver"
@@ -85,7 +85,7 @@ module Aurora
 
     # Transform Aurora AST to CoreIR (with TypeRegistry)
     # Returns: [core_ir, type_registry]
-    def transform_to_core_with_registry(ast, transformer: Passes::ToCore.new)
+    def transform_to_core_with_registry(ast, transformer: IRGen.new)
       core_ir = transformer.transform(ast)
       [core_ir, transformer.type_registry, transformer.function_registry]
     rescue CompileError

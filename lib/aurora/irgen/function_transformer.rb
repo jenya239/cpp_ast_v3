@@ -1,8 +1,7 @@
 # frozen_string_literal: true
 
 module Aurora
-  module Passes
-    class ToCore
+  class IRGen
       # FunctionTransformer
       # Function and type declaration transformation
       # Auto-extracted from to_core.rb during refactoring
@@ -423,7 +422,7 @@ module Aurora
       end
 
       def build_program_pass_manager
-        Aurora::Passes::PassManager.new.tap do |manager|
+        Aurora::PassManager.new.tap do |manager|
           manager.register(:collect_imports, method(:pass_collect_imports))
           manager.register(:preregister_types, method(:pass_preregister_types))
           manager.register(:preregister_functions, method(:pass_preregister_functions))
@@ -589,6 +588,5 @@ module Aurora
       end
 
       end
-    end
   end
 end

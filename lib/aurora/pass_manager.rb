@@ -1,8 +1,7 @@
 # frozen_string_literal: true
 
 module Aurora
-  module Passes
-    class PassManager
+  class PassManager
       Pass = Struct.new(:name, :callable)
 
       def initialize
@@ -29,5 +28,4 @@ module Aurora
         @passes.map(&:name)
       end
     end
-  end
 end

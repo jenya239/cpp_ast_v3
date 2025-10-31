@@ -37,7 +37,7 @@ class RulesRuleEngineTest < Minitest::Test
     AURORA
 
     ast = Aurora.parse(source)
-    transformer = Aurora::Passes::ToCore.new(rule_engine: engine)
+    transformer = Aurora::IRGen.new(rule_engine: engine)
     transformer.transform(ast)
 
     assert_includes bucket, "id"
@@ -52,7 +52,7 @@ class RulesRuleEngineTest < Minitest::Test
     AURORA
 
     ast = Aurora.parse(source)
-    transformer = Aurora::Passes::ToCore.new(rule_engine: engine)
+    transformer = Aurora::IRGen.new(rule_engine: engine)
     transformer.transform(ast)
 
     info = transformer.send(:lookup_function_info, "Some")
@@ -74,7 +74,7 @@ class RulesRuleEngineTest < Minitest::Test
     AURORA
 
     ast = Aurora.parse(source)
-    transformer = Aurora::Passes::ToCore.new(rule_engine: engine)
+    transformer = Aurora::IRGen.new(rule_engine: engine)
     core = transformer.transform(ast)
     func = core.items.find { |item| item.is_a?(Aurora::CoreIR::Func) && item.name == "unwrap" }
 
@@ -90,7 +90,7 @@ class RulesRuleEngineTest < Minitest::Test
     AURORA
 
     ast = Aurora.parse(source)
-    transformer = Aurora::Passes::ToCore.new(rule_engine: engine)
+    transformer = Aurora::IRGen.new(rule_engine: engine)
     core = transformer.transform(ast)
     func = core.items.find { |item| item.is_a?(Aurora::CoreIR::Func) && item.name == "identity" }
 

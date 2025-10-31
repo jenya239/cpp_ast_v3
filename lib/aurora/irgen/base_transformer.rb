@@ -1,8 +1,7 @@
 # frozen_string_literal: true
 
 module Aurora
-  module Passes
-    class ToCore
+  class IRGen
       # BaseTransformer
       # Shared utilities for transformation
       # Auto-extracted from to_core.rb during refactoring
@@ -326,8 +325,6 @@ module Aurora
         yield
       ensure
         @current_node = previous
-      end
-
       end
     end
   end

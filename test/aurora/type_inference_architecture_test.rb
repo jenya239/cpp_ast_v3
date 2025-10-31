@@ -4,7 +4,7 @@ require_relative "../test_helper"
 
 class TypeInferenceArchitectureTest < Minitest::Test
   def build_core_ir(source)
-    passes = Aurora::Passes::ToCore.new
+    passes = Aurora::IRGen.new
     ast = Aurora.parse(source)
     passes.transform(ast)
   end

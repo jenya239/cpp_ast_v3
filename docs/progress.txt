@@ -1,0 +1,101 @@
+● Отлично! Фаза 2 полностью завершена. Вот что сделано:
+
+  ✅ Выполнено
+
+  1. Проверка Phase 2 - ничего не забыли:
+  - Подтверждено: 0 вызовов transformer.send в правилах
+  - Все 82 вызова из 20 файлов правил устранены
+  - 6 сервисов с 37 методами созданы и интегрированы
+  - Все тесты проходят (171 tests, 567 assertions)
+
+  2. Коммиты:
+  - feat(architecture): Complete Phase 2 - eliminate transformer.send anti-pattern
+  - docs: update ARCHITECTURE_GUIDE with Phase 2 service architecture
+  - chore: remove outdated ARCHITECTURE_IMPROVEMENTS.md (Phase 2 completed)
+
+  3. Документация:
+  - ARCHITECTURE_GUIDE.md обновлён с разделом "Сервисная архитектура (Phase 2 Complete ✅)"
+  - Задокументированы все 6 сервисов, примеры использования, архитектурные преимущества
+
+  4. Очистка:
+  - Удалены debug-файлы: test_bug.aur, test_constexpr.aur, test_debug.rb, test_debug_type.rb, test_variant.aur
+  - Удалён устаревший ARCHITECTURE_IMPROVEMENTS.md
+
+  🔍 Вопрос по именованиям "to_core" и "passes"
+
+  Вы упомянули отказ от этих именований. Сейчас структура:
+  Aurora::Passes::ToCore           # lib/aurora/passes/to_core.rb
+  Aurora::Passes::PassManager      # lib/aurora/passes/pass_manager.rb
+  lib/aurora/passes/to_core/       # вспомогательные модули
+
+  Предложения по переименованию:
+
+  Вариант 1: Упростить до IRGenerator
+  Aurora::IRGenerator              # вместо Aurora::Passes::ToCore
+  lib/aurora/ir_generator.rb
+  lib/aurora/ir_generator/         # expression_transformer.rb, etc.
+
+  Вариант 2: ASTTransformer
+  Aurora::Transform::ASTToCore     # явно показывает AST → CoreIR
+  lib/aurora/transform/ast_to_core.rb
+
+  Вариант 3: Полностью убрать вложенность
+  Aurora::ASTToCore                # плоская структура
+  lib/aurora/ast_to_core.rb
+
+  Какой вариант предпочитаете? Или предложите свой.
+
+  📋 Что дальше (на основе ARCHITECTURE_GUIDE)
+
+  Текущее состояние по дорожной карте:
+
+  Этап 1: Формальная грамматика ⏳
+  - Ручной парсер работает, но нужна явная спецификация для валидации
+
+  Этап 2: Pass Manager + Multi-level IR 🔄
+  - PassManager есть, но используется минимально
+  - Нужно развить: стадии (AST → High IR → Lowered IR → Target)
+  - Rule engine как pattern rewriter внутри пассов
+
+  Этап 3: Стандартные анализы ⏳
+  - Разрешение имён, SSA/dataflow, effect analysis нужно оформить как изолированные пассы
+
+  Следующие приоритеты:
+
+  1. Переименование модулей (если согласны) - быстро, ~14 файлов
+  2. Развитие Pass Manager - добавить явные стадии трансформации
+  3. Изоляция анализов - вынести type checking, effect analysis в отдельные пассы
+  4. Критические баги (если остались) - из старого ARCHITECTURE_IMPROVEMENTS:
+    - Обрывание тела функции с множественными statements
+    - Generic variant type generation
+    - constexpr для IO функций
+
+  Готов продолжить с переименованием или переходить к развитию Pass Manager?
+
+> да 
+
+● Отлично! Начинаю переименование модулей. Уберём "Passes" и переименуем "ToCore" в стиле LLVM.
+
+● Bash(mkdir -p lib/aurora/irgen)
+  ⎿  (No content)
+
+● Bash(ls lib/aurora/passes/to_core/)
+  ⎿  base_transformer.rb          
+     expression_transformer.rb
+     function_transformer.rb
+     … +4 lines (ctrl+o to expand)
+
+● Bash(git mv lib/aurora/passes/to_core/*.rb lib/aurora/irgen/)
+  ⎿  (No content)
+
+● Bash(git mv lib/aurora/passes/to_core.rb lib/aurora/irgen.rb)
+  ⎿  (No content)
+
+● Bash(ls -la lib/aurora/passes/to_core/rules/ 2>/dev/null || echo "No rules dir")
+  ⎿  total 16                                     
+     drwxrwxr-x 4 jenya jenya 4096 ოქტ 30 19:35 .
+     drwxrwxr-x 3 jenya jenya 4096 ოქტ 31 17:29 ..
+     … +2 lines (ctrl+o to expand)
+
+● Bash(git mv lib/aurora/passes/pass_manager.rb lib/aurora/pass_manager.rb)
+  ⎿  (No content)

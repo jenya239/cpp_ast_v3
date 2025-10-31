@@ -3,7 +3,7 @@
 require_relative "event_bus"
 require_relative "rules/rule_engine"
 require_relative "diagnostics/event_logger"
-require_relative "passes/to_core"
+require_relative "irgen"
 require_relative "backend/cpp_lowering"
 require_relative "stdlib_scanner"
 
@@ -20,7 +20,7 @@ module Aurora
     end
 
     def build_to_core
-      Passes::ToCore.new(rule_engine: @rule_engine, event_bus: @event_bus)
+      IRGen.new(rule_engine: @rule_engine, event_bus: @event_bus)
     end
 
     def build_cpp_lowering(type_registry:, function_registry: nil, stdlib_scanner: StdlibScanner.new, runtime_policy: nil)

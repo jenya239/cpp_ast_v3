@@ -1,8 +1,7 @@
 # frozen_string_literal: true
 
 module Aurora
-  module Passes
-    class ToCore
+  class IRGen
       # StatementTransformer
       # Statement transformation and control flow
       # Auto-extracted from to_core.rb during refactoring
@@ -241,6 +240,5 @@ module Aurora
       end
 
       end
-    end
   end
 end

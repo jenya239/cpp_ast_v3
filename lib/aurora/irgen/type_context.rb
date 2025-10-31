@@ -1,8 +1,7 @@
 # frozen_string_literal: true
 
 module Aurora
-  module Passes
-    class ToCore
+  class IRGen
       # TypeContext centralizes type-related stacked state.
       class TypeContext
         attr_reader :type_param_stack, :lambda_param_stack, :function_return_stack
@@ -46,6 +45,5 @@ module Aurora
           @lambda_param_stack.last || []
         end
       end
-    end
   end
 end
