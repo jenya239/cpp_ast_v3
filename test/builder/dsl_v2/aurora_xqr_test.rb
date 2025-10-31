@@ -3,7 +3,7 @@
 
 require "test/unit"
 require_relative "../../../lib/cpp_ast"
-require_relative "../../../lib/aurora"
+require_relative "../../../lib/mlc"
 require_relative "../../../lib/xqr"
 
 class AuroraXQRTest < Test::Unit::TestCase
@@ -22,16 +22,16 @@ class AuroraXQRTest < Test::Unit::TestCase
     AURORA
     
     begin
-      ast = Aurora.parse(aurora_source)
+      ast = MLC.parse(aurora_source)
       assert_not_nil ast
       
-      core_ir = Aurora.transform_to_core(ast)
+      core_ir = MLC.transform_to_core(ast)
       assert_not_nil core_ir
       
-      cpp_ast = Aurora.lower_to_cpp(core_ir)
+      cpp_ast = MLC.lower_to_cpp(core_ir)
       assert_not_nil cpp_ast
       
-      cpp_source = Aurora.to_cpp(aurora_source)
+      cpp_source = MLC.to_cpp(aurora_source)
       assert_not_nil cpp_source
       assert_kind_of String, cpp_source
     rescue => e
@@ -67,7 +67,7 @@ class AuroraXQRTest < Test::Unit::TestCase
     AURORA
     
     begin
-      ast = Aurora.parse(aurora_source)
+      ast = MLC.parse(aurora_source)
       assert_not_nil ast
     rescue => e
       # Aurora parser might not be fully implemented yet
@@ -92,7 +92,7 @@ class AuroraXQRTest < Test::Unit::TestCase
     AURORA
     
     begin
-      ast = Aurora.parse(aurora_source)
+      ast = MLC.parse(aurora_source)
       assert_not_nil ast
     rescue => e
       # Aurora parser might not be fully implemented yet
@@ -111,7 +111,7 @@ class AuroraXQRTest < Test::Unit::TestCase
     AURORA
     
     begin
-      ast = Aurora.parse(aurora_source)
+      ast = MLC.parse(aurora_source)
       assert_not_nil ast
     rescue => e
       # Aurora parser might not be fully implemented yet
@@ -130,7 +130,7 @@ class AuroraXQRTest < Test::Unit::TestCase
     AURORA
     
     begin
-      ast = Aurora.parse(aurora_source)
+      ast = MLC.parse(aurora_source)
       assert_not_nil ast
     rescue => e
       # Aurora parser might not be fully implemented yet
@@ -154,7 +154,7 @@ class AuroraXQRTest < Test::Unit::TestCase
     AURORA
     
     begin
-      ast = Aurora.parse(aurora_source)
+      ast = MLC.parse(aurora_source)
       assert_not_nil ast
     rescue => e
       # Aurora parser might not be fully implemented yet
@@ -181,7 +181,7 @@ class AuroraXQRTest < Test::Unit::TestCase
     AURORA
     
     begin
-      ast = Aurora.parse(aurora_source)
+      ast = MLC.parse(aurora_source)
       assert_not_nil ast
     rescue => e
       # Aurora parser might not be fully implemented yet
@@ -201,7 +201,7 @@ class AuroraXQRTest < Test::Unit::TestCase
     AURORA
     
     begin
-      ast = Aurora.parse(aurora_source)
+      ast = MLC.parse(aurora_source)
       assert_not_nil ast
     rescue => e
       # Aurora parser might not be fully implemented yet
@@ -220,7 +220,7 @@ class AuroraXQRTest < Test::Unit::TestCase
     AURORA
     
     begin
-      ast = Aurora.parse(aurora_source)
+      ast = MLC.parse(aurora_source)
       assert_not_nil ast
     rescue => e
       # Aurora parser might not be fully implemented yet
@@ -242,7 +242,7 @@ class AuroraXQRTest < Test::Unit::TestCase
     AURORA
     
     begin
-      ast = Aurora.parse(aurora_source)
+      ast = MLC.parse(aurora_source)
       assert_not_nil ast
     rescue => e
       # Aurora parser might not be fully implemented yet
@@ -265,16 +265,16 @@ class AuroraXQRTest < Test::Unit::TestCase
     
     begin
       # Test compilation pipeline
-      ast = Aurora.parse(aurora_source)
+      ast = MLC.parse(aurora_source)
       assert_not_nil ast
       
-      core_ir = Aurora.transform_to_core(ast)
+      core_ir = MLC.transform_to_core(ast)
       assert_not_nil core_ir
       
-      cpp_ast = Aurora.lower_to_cpp(core_ir)
+      cpp_ast = MLC.lower_to_cpp(core_ir)
       assert_not_nil cpp_ast
       
-      cpp_source = Aurora.to_cpp(aurora_source)
+      cpp_source = MLC.to_cpp(aurora_source)
       assert_not_nil cpp_source
       assert_kind_of String, cpp_source
       
@@ -310,7 +310,7 @@ class AuroraXQRTest < Test::Unit::TestCase
     invalid_source = "invalid syntax"
     
     begin
-      ast = Aurora.parse(invalid_source)
+      ast = MLC.parse(invalid_source)
       # Should raise an error for invalid syntax
       assert false, "Expected parse error for invalid syntax"
     rescue => e
@@ -331,11 +331,11 @@ class AuroraXQRTest < Test::Unit::TestCase
     AURORA
     
     begin
-      ast = Aurora.parse(aurora_source)
+      ast = MLC.parse(aurora_source)
       assert_not_nil ast
       
       # Test AST structure
-      assert_kind_of Aurora::AST::Program, ast
+      assert_kind_of MLC::AST::Program, ast
       assert ast.statements.size > 0
     rescue => e
       # Aurora might not be fully implemented yet
@@ -344,21 +344,21 @@ class AuroraXQRTest < Test::Unit::TestCase
   end
 
   def test_aurora_core_ir_transformation
-    # Test Aurora CoreIR transformation
+    # Test Aurora HighIR transformation
     aurora_source = <<~AURORA
       fn add(a: i32, b: i32) -> i32 =
         a + b
     AURORA
     
     begin
-      ast = Aurora.parse(aurora_source)
+      ast = MLC.parse(aurora_source)
       assert_not_nil ast
       
-      core_ir = Aurora.transform_to_core(ast)
+      core_ir = MLC.transform_to_core(ast)
       assert_not_nil core_ir
       
-      # Test CoreIR structure
-      assert_kind_of Aurora::CoreIR::Program, core_ir
+      # Test HighIR structure
+      assert_kind_of MLC::HighIR::Program, core_ir
     rescue => e
       # Aurora might not be fully implemented yet
       assert_match(/not implemented|undefined method|Parse error|Lowering error/, e.message)
@@ -373,13 +373,13 @@ class AuroraXQRTest < Test::Unit::TestCase
     AURORA
     
     begin
-      ast = Aurora.parse(aurora_source)
+      ast = MLC.parse(aurora_source)
       assert_not_nil ast
       
-      core_ir = Aurora.transform_to_core(ast)
+      core_ir = MLC.transform_to_core(ast)
       assert_not_nil core_ir
       
-      cpp_ast = Aurora.lower_to_cpp(core_ir)
+      cpp_ast = MLC.lower_to_cpp(core_ir)
       assert_not_nil cpp_ast
       
       # Test C++ AST structure
@@ -406,7 +406,7 @@ class AuroraXQRTest < Test::Unit::TestCase
     
     begin
       # Complete workflow
-      cpp_source = Aurora.to_cpp(aurora_source)
+      cpp_source = MLC.to_cpp(aurora_source)
       assert_not_nil cpp_source
       assert_kind_of String, cpp_source
       

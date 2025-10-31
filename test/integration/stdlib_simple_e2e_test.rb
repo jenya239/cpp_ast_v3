@@ -7,7 +7,7 @@ require "tmpdir"
 class StdlibSimpleE2ETest < Minitest::Test
   tag :slow  # Mark as slow test (requires C++ compilation)
 
-  CLI = File.expand_path("../../bin/aurora", __dir__)
+  CLI = File.expand_path("../../bin/mlc", __dir__)
 
   # Helper to run Aurora program and check result
   def run_aurora(source_code, &block)

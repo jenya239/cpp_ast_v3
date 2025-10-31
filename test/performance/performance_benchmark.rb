@@ -3,9 +3,9 @@
 require "benchmark"
 require "memory_profiler"
 require_relative "../test_helper"
-require_relative "../../lib/aurora"
+require_relative "../../lib/mlc"
 require_relative "../../lib/cpp_ast"
-require_relative "../../lib/aurora/parser/optimized_parser"
+require_relative "../../lib/mlc/parser/optimized_parser"
 require_relative "../../lib/cpp_ast/builder/optimized_generator"
 
 class PerformanceBenchmark < Minitest::Test
@@ -19,12 +19,12 @@ class PerformanceBenchmark < Minitest::Test
     
     # Test original parser
     original_time = Benchmark.measure do
-      10.times { Aurora.parse(@large_aurora_source) }
+      10.times { MLC.parse(@large_aurora_source) }
     end
     
     # Test optimized parser
     optimized_time = Benchmark.measure do
-      10.times { Aurora::Parser::OptimizedParser.new(@large_aurora_source).parse }
+      10.times { MLC::Parser::OptimizedParser.new(@large_aurora_source).parse }
     end
     
     puts "Original Parser: #{original_time.real.round(3)}s"
@@ -37,7 +37,7 @@ class PerformanceBenchmark < Minitest::Test
   def test_code_generation_performance
     puts "\n=== Code Generation Performance Benchmark ==="
     
-    ast = Aurora.parse(@large_aurora_source)
+    ast = MLC.parse(@large_aurora_source)
     
     # Test original generator
     original_time = Benchmark.measure do
@@ -61,14 +61,14 @@ class PerformanceBenchmark < Minitest::Test
     
     # Test memory usage of original parser
     original_memory = MemoryProfiler.report do
-      Aurora.parse(@large_aurora_source)
+      MLC.parse(@large_aurora_source)
     end
     
     original_total = original_memory.total_allocated_memsize
     
     # Test memory usage of optimized parser
     optimized_memory = MemoryProfiler.report do
-      Aurora::Parser::OptimizedParser.new(@large_aurora_source).parse
+      MLC::Parser::OptimizedParser.new(@large_aurora_source).parse
     end
     optimized_total = optimized_memory.total_allocated_memsize
     
@@ -89,7 +89,7 @@ class PerformanceBenchmark < Minitest::Test
     puts "\n=== Caching Effectiveness Test ==="
     
     # Test cache hit rate
-    parser = Aurora::Parser::OptimizedParser.new(@large_aurora_source)
+    parser = MLC::Parser::OptimizedParser.new(@large_aurora_source)
     
     # First parse (cache miss)
     first_time = Benchmark.measure { parser.parse }
