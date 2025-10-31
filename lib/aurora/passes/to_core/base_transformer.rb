@@ -120,8 +120,7 @@ module Aurora
         when CoreIR::UnaryExpr
           is_pure_expression(expr.operand)
         when CoreIR::CallExpr
-          # Assume all calls are pure for now
-          true
+          is_pure_call?(expr)
         when CoreIR::MemberExpr
           is_pure_expression(expr.object)
         when CoreIR::RecordExpr
@@ -131,6 +130,33 @@ module Aurora
         else
           false
         end
+      end
+
+      def is_pure_call?(call_expr)
+        # Check if function name indicates non-pure operation
+        if call_expr.callee.is_a?(CoreIR::VarExpr)
+          func_name = call_expr.callee.name
+          # IO functions are not constexpr-compatible
+          return false if func_name =~ /^(println|print|read|write|open|close)/
+          # Stdlib functions that return non-literal types
+          return false if func_name =~ /^(to_string|format|String)/
+        end
+
+        # Check if return type is non-literal (String, collections, etc.)
+        return false if non_literal_type?(call_expr.type)
+
+        # Recursively check arguments
+        call_expr.args.all? { |arg| is_pure_expression(arg) }
+      end
+
+      def non_literal_type?(type)
+        return false if type.nil?
+        return false unless type.respond_to?(:name)
+
+        # String and collection types are not literal types in C++20
+        type.name == "string" ||
+          type.name == "String" ||
+          type.name =~ /^(Array|Vec|HashMap|HashSet)$/
       end
 
       def pure_block_expr?(block_expr)

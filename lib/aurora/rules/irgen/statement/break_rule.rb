@@ -15,11 +15,12 @@ module Aurora
 
           def apply(node, context = {})
             transformer = context.fetch(:transformer)
+            type_checker = context.fetch(:type_checker)
 
             # Validate: break must be inside loop
             loop_depth = transformer.instance_variable_get(:@loop_depth).to_i
             if loop_depth <= 0
-              transformer.send(:type_error, "'break' used outside of loop", node: node)
+              type_checker.type_error("'break' used outside of loop", node: node)
             end
 
             # Build break statement

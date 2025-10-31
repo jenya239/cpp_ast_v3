@@ -15,18 +15,20 @@ module Aurora
 
           def apply(node, context = {})
             transformer = context.fetch(:transformer)
+            expr_svc = context.fetch(:expression_transformer)
+            type_checker = context.fetch(:type_checker)
 
             # Transform array and index expressions recursively
-            object = transformer.send(:transform_expression, node.object)
-            index = transformer.send(:transform_expression, node.index)
+            object = expr_svc.transform_expression(node.object)
+            index = expr_svc.transform_expression(node.index)
 
             # Validate: object must be array type
             unless object.type.is_a?(Aurora::CoreIR::ArrayType)
-              transformer.send(:type_error, "Indexing requires an array, got #{transformer.send(:describe_type, object.type)}", node: node.object)
+              type_checker.type_error("Indexing requires an array, got #{type_checker.describe_type(object.type)}", node: node.object)
             end
 
             # Validate: index must be numeric
-            transformer.send(:ensure_numeric_type, index.type, "array index", node: node.index)
+            type_checker.ensure_numeric_type(index.type, "array index", node: node.index)
 
             # Build CoreIR index access with array element type
             Aurora::CoreIR::IndexExpr.new(

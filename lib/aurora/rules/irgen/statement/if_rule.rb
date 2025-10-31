@@ -15,14 +15,16 @@ module Aurora
 
           def apply(node, context = {})
             transformer = context.fetch(:transformer)
+            expr_svc = context.fetch(:expression_transformer)
+            type_checker = context.fetch(:type_checker)
 
             # Transform condition and validate boolean type
-            condition_ir = transformer.send(:transform_expression, node.condition)
-            transformer.send(:ensure_boolean_type, condition_ir.type, "if condition", node: node.condition)
+            condition_ir = expr_svc.transform_expression(node.condition)
+            type_checker.ensure_boolean(condition_ir.type, "if condition", node: node.condition)
 
             # Transform then and else branches
-            then_ir = transformer.send(:transform_statement_block, node.then_branch)
-            else_ir = node.else_branch ? transformer.send(:transform_statement_block, node.else_branch) : nil
+            then_ir = expr_svc.transform_statement_block(node.then_branch)
+            else_ir = node.else_branch ? expr_svc.transform_statement_block(node.else_branch) : nil
 
             # Build if statement
             [Aurora::CoreIR::Builder.if_stmt(condition_ir, then_ir, else_ir)]

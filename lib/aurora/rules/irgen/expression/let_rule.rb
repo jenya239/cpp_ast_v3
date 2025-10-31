@@ -16,6 +16,7 @@ module Aurora
 
           def apply(node, context = {})
             transformer = context.fetch(:transformer)
+            expr_svc = context.fetch(:expression_transformer)
 
             # Normalize let expression as block expression
             # This ensures type annotations, mutability checks, and scope management
@@ -38,7 +39,7 @@ module Aurora
             )
 
             # Transform the normalized block
-            transformer.send(:transform_block_expr, block)
+            expr_svc.transform_block_expr(block)
           end
         end
       end

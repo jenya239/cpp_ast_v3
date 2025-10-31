@@ -16,23 +16,26 @@ module Aurora
 
           def apply(node, context = {})
             transformer = context.fetch(:transformer)
+            expr_svc = context.fetch(:expression_transformer)
+            type_checker = context.fetch(:type_checker)
+            context_mgr = context.fetch(:context_manager)
 
             # Transform iterable expression
-            iterable_ir = transformer.send(:transform_expression, node.iterable)
+            iterable_ir = expr_svc.transform_expression(node.iterable)
 
             # Save loop variable if it exists (for scope restoration)
             var_types = transformer.instance_variable_get(:@var_types)
             saved = var_types[node.var_name]
 
             # Infer element type from iterable
-            element_type = transformer.send(:infer_iterable_type, iterable_ir)
+            element_type = type_checker.infer_iterable_type(iterable_ir)
 
             # Add loop variable to scope
             var_types[node.var_name] = element_type
 
             # Transform body within loop scope (for break/continue validation)
-            body_ir = transformer.send(:within_loop_scope) do
-              transformer.send(:transform_statement_block, node.body, preserve_scope: true)
+            body_ir = context_mgr.within_loop do
+              expr_svc.transform_statement_block(node.body, preserve_scope: true)
             end
 
             # Build for statement

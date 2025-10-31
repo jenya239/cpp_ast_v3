@@ -15,7 +15,7 @@ module Aurora
           analyzer = context[:effect_analyzer]
           return func unless analyzer
 
-          effects = analyzer.analyze(func.body)
+          effects = analyzer.analyze(func.body, return_type: func.ret_type)
           return func if effects == func.effects
 
           Aurora::CoreIR::Func.new(

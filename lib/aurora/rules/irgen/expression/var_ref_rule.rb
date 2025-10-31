@@ -15,9 +15,10 @@ module Aurora
 
           def apply(node, context = {})
             transformer = context.fetch(:transformer)
+            type_inference = context.fetch(:type_inference)
 
             # Infer variable type from transformer's type context
-            type = transformer.send(:infer_type, node.name)
+            type = type_inference.infer_variable_type(node.name)
 
             # Build CoreIR variable reference
             Aurora::CoreIR::Builder.var(node.name, type)

@@ -16,10 +16,12 @@ module Aurora
 
           def apply(node, context = {})
             transformer = context.fetch(:transformer)
+            expr_svc = context.fetch(:expression_transformer)
+            type_checker = context.fetch(:type_checker)
 
             # Validate: target must be variable reference
             unless node.target.is_a?(Aurora::AST::VarRef)
-              transformer.send(:type_error, "Assignment target must be a variable", node: node)
+              type_checker.type_error("Assignment target must be a variable", node: node)
             end
 
             target_name = node.target.name
@@ -28,14 +30,14 @@ module Aurora
             # Validate: variable must exist
             existing_type = var_types[target_name]
             unless existing_type
-              transformer.send(:type_error, "Assignment to undefined variable '#{target_name}'", node: node)
+              type_checker.type_error("Assignment to undefined variable '#{target_name}'", node: node)
             end
 
             # Transform value expression
-            value_ir = transformer.send(:transform_expression, node.value)
+            value_ir = expr_svc.transform_expression(node.value)
 
             # Validate: value type must be compatible with variable type
-            transformer.send(:ensure_compatible_type, value_ir.type, existing_type, "assignment to '#{target_name}'")
+            type_checker.ensure_compatible(value_ir.type, existing_type, "assignment to '#{target_name}'")
 
             # Update variable type in scope (may refine type)
             var_types[target_name] = existing_type

@@ -16,22 +16,24 @@ module Aurora
 
           def apply(node, context = {})
             transformer = context.fetch(:transformer)
+            expr_svc = context.fetch(:expression_transformer)
+            type_checker = context.fetch(:type_checker)
 
             # Transform initialization value
-            value_ir = transformer.send(:transform_expression, node.value)
+            value_ir = expr_svc.transform_expression(node.value)
 
             # Determine variable type: explicit annotation or inferred from value
             var_type = if node.type
                          # Explicit type annotation provided
-                         explicit_type = transformer.send(:transform_type, node.type)
+                         explicit_type = type_checker.transform_type(node.type)
 
                          # Special case: anonymous record with explicit type - refine to named record
                          if value_ir.is_a?(Aurora::CoreIR::RecordExpr) && value_ir.type_name == "record"
-                           actual_type_name = transformer.send(:type_name, explicit_type)
+                           actual_type_name = type_checker.type_name(explicit_type)
                            value_ir = Aurora::CoreIR::Builder.record(actual_type_name, value_ir.fields, explicit_type)
                          else
                            # Validate type compatibility
-                           transformer.send(:ensure_compatible_type, value_ir.type, explicit_type, "variable '#{node.name}' initialization")
+                           type_checker.ensure_compatible(value_ir.type, explicit_type, "variable '#{node.name}' initialization")
                          end
                          explicit_type
                        else

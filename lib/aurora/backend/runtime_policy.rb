@@ -37,6 +37,9 @@ module Aurora
 
       # Выбрать стратегию для block expression
       def strategy_for_block(block_analysis)
+        # Trivial blocks (только result, без statements) - inline
+        return :inline if block_analysis.trivial?
+
         if block_analysis.simple?
           @block_expr_simple_strategy
         else

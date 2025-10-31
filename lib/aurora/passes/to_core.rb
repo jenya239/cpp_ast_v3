@@ -53,6 +53,12 @@ require_relative "to_core/type_inference"
 require_relative "to_core/expression_transformer"
 require_relative "to_core/statement_transformer"
 require_relative "to_core/function_transformer"
+require_relative "../services/expression_transformer"
+require_relative "../services/type_checker"
+require_relative "../services/predicate_service"
+require_relative "../services/context_manager"
+require_relative "../services/type_inference_service"
+require_relative "../services/record_builder_service"
 
 module Aurora
   module Passes
@@ -130,8 +136,17 @@ module Aurora
         )
 
         @effect_analyzer ||= TypeSystem::EffectAnalyzer.new(
-          pure_expression: method(:is_pure_expression)
+          pure_expression: method(:is_pure_expression),
+          non_literal_type: ->(type) { non_literal_type?(type) }
         )
+
+        # Initialize services for rules
+        @expression_transformer_service = Services::ExpressionTransformer.new(self)
+        @type_checker_service = Services::TypeChecker.new(self)
+        @predicate_service = Services::PredicateService.new(self)
+        @context_manager_service = Services::ContextManager.new(self)
+        @type_inference_service = Services::TypeInferenceService.new(self)
+        @record_builder_service = Services::RecordBuilderService.new(self)
 
         ensure_required_rules!
       end

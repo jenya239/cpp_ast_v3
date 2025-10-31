@@ -16,6 +16,7 @@ module Aurora
 
           def apply(node, context = {})
             transformer = context.fetch(:transformer)
+            expr_svc = context.fetch(:expression_transformer)
 
             # Handle empty do block
             if node.body.empty?
@@ -24,7 +25,7 @@ module Aurora
                 result_expr: Aurora::AST::UnitLit.new(origin: node.origin),
                 origin: node.origin
               )
-              return transformer.send(:transform_block_expr, block)
+              return expr_svc.transform_block_expr(block)
             end
 
             # Normalize do body items into block structure
@@ -74,7 +75,7 @@ module Aurora
 
             # Build normalized block and transform
             block = Aurora::AST::BlockExpr.new(statements: statements, result_expr: result_expr, origin: node.origin)
-            transformer.send(:transform_block_expr, block)
+            expr_svc.transform_block_expr(block)
           end
         end
       end

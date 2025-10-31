@@ -12,7 +12,13 @@ module Aurora
           transformer: self,
           type_registry: @type_registry,
           function_registry: @function_registry,
-          rule_engine: @rule_engine
+          rule_engine: @rule_engine,
+          expression_transformer: @expression_transformer_service,
+          type_checker: @type_checker_service,
+          predicates: @predicate_service,
+          context_manager: @context_manager_service,
+          type_inference: @type_inference_service,
+          record_builder: @record_builder_service
         }
         result = @rule_engine.apply(:core_ir_statement, stmt, context: context)
         return nil if result.equal?(stmt)

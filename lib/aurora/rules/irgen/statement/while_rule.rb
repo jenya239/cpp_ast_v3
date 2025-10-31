@@ -16,14 +16,17 @@ module Aurora
 
           def apply(node, context = {})
             transformer = context.fetch(:transformer)
+            expr_svc = context.fetch(:expression_transformer)
+            type_checker = context.fetch(:type_checker)
+            context_mgr = context.fetch(:context_manager)
 
             # Transform condition and validate boolean type
-            condition_ir = transformer.send(:transform_expression, node.condition)
-            transformer.send(:ensure_boolean_type, condition_ir.type, "while condition", node: node.condition)
+            condition_ir = expr_svc.transform_expression(node.condition)
+            type_checker.ensure_boolean(condition_ir.type, "while condition", node: node.condition)
 
             # Transform body within loop scope (for break/continue validation)
-            body_ir = transformer.send(:within_loop_scope) do
-              transformer.send(:transform_statement_block, node.body, preserve_scope: true)
+            body_ir = context_mgr.within_loop do
+              expr_svc.transform_statement_block(node.body, preserve_scope: true)
             end
 
             # Build while statement

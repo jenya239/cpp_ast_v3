@@ -103,7 +103,13 @@ module Aurora
               end
       
               # Generate using declaration for std::variant
-              variant_type_names = sum_type.variants.map { |v| v[:name] }.join(", ")
+              # If type has generic parameters, add them to each variant name
+              variant_type_names = if type_params.any?
+                                     type_params_str = type_params.map { |tp| tp.name }.join(", ")
+                                     sum_type.variants.map { |v| "#{v[:name]}<#{type_params_str}>" }.join(", ")
+                                   else
+                                     sum_type.variants.map { |v| v[:name] }.join(", ")
+                                   end
               using_decl = CppAst::Nodes::UsingDeclaration.new(
                 kind: :alias,
                 name: name,

@@ -16,6 +16,8 @@ module Aurora
 
           def apply(node, context = {})
             transformer = context.fetch(:transformer)
+            expr_svc = context.fetch(:expression_transformer)
+            type_checker = context.fetch(:type_checker)
 
             # Save variable types for scoping
             saved_var_types = transformer.instance_variable_get(:@var_types).dup
@@ -24,8 +26,8 @@ module Aurora
             generators = []
 
             node.generators.each do |gen|
-              iterable_ir = transformer.send(:transform_expression, gen.iterable)
-              element_type = transformer.send(:infer_iterable_type, iterable_ir)
+              iterable_ir = expr_svc.transform_expression(gen.iterable)
+              element_type = type_checker.infer_iterable_type(iterable_ir)
 
               generators << {
                 var_name: gen.var_name,
@@ -38,10 +40,10 @@ module Aurora
             end
 
             # Transform filters
-            filters = node.filters.map { |filter| transformer.send(:transform_expression, filter) }
+            filters = node.filters.map { |filter| expr_svc.transform_expression(filter) }
 
             # Transform output expression with generators in scope
-            output_expr = transformer.send(:transform_expression, node.output_expr)
+            output_expr = expr_svc.transform_expression(node.output_expr)
             element_type = output_expr.type || Aurora::CoreIR::Builder.primitive_type("i32")
 
             # Build array type and list comprehension expression

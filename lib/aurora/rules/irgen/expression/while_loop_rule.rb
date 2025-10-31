@@ -16,9 +16,10 @@ module Aurora
 
           def apply(node, context = {})
             transformer = context.fetch(:transformer)
+            expr_svc = context.fetch(:expression_transformer)
 
             # Transform as statement-level while-loop
-            loop_stmt = transformer.send(:transform_while_statement, node.condition, node.body)
+            loop_stmt = expr_svc.transform_while_statement(node.condition, node.body)
 
             # Wrap in block expression with unit result (while-loops return unit)
             unit_result = Aurora::CoreIR::Builder.unit_literal(origin: node.origin)
