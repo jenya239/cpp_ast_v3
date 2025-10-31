@@ -1,0 +1,42 @@
+# frozen_string_literal: true
+
+require_relative "base_pass"
+
+module Aurora
+  module Analysis
+    # EffectAnalysisPass - analyzes CoreIR functions for effects (constexpr, noexcept)
+    # This pass walks through all functions in a CoreIR module and annotates them
+    # with effects based on their body and return type.
+    #
+    # Results stored in context[:function_effects] = { function_name => [:constexpr, :noexcept] }
+    #
+    # Usage:
+    #   pass = EffectAnalysisPass.new(effect_analyzer: analyzer)
+    #   pass.run(context)
+    #   effects = context[:function_effects]
+    class EffectAnalysisPass < BasePass
+      def initialize(effect_analyzer:, name: "effect_analysis")
+        super(name: name)
+        @effect_analyzer = effect_analyzer
+      end
+
+      def run(context)
+        core_ir = context[:core_ir]
+        return unless core_ir
+
+        function_effects = {}
+
+        # Analyze each function in the module
+        core_ir.items.each do |item|
+          next unless item.is_a?(CoreIR::Func)
+
+          effects = @effect_analyzer.analyze(item.body, return_type: item.ret_type)
+          function_effects[item.name] = effects
+        end
+
+        # Store results in context for other passes or lowering
+        context[:function_effects] = function_effects
+      end
+    end
+  end
+end
