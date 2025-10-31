@@ -1,49 +1,49 @@
-# Aurora Language User Guide
+# MLC Language User Guide
 
 ## Quick Start
 
 ### Installation
 ```bash
 # Clone the repository
-git clone https://github.com/your-username/cpp_ast_v3.git
-cd cpp_ast_v3
+git clone https://github.com/your-username/mlc.git
+cd mlc
 
 # Install dependencies
 bundle install
 
-# Build the Aurora compiler
+# Build the MLC compiler
 bundle exec rake build
 
 # Run tests to verify installation
 bundle exec rake test
 
-# Verify Aurora binary is available
-ls -la bin/aurora
+# Verify MLC binary is available
+ls -la bin/mlc
 ```
 
-### Your First Aurora Program
+### Your First MLC Program
 
-Create a file called `hello.aur`:
+Create a file called `hello.mlc`:
 
-```aurora
+```mlc
 fn main() -> i32 = 42
 ```
 
 Compile and run:
 ```bash
-bin/aurora hello.aur
+bin/mlc hello.mlc
 ```
 
 ## Language Features
 
 ### 1. Functions
-```aurora
+```mlc
 fn add(a: i32, b: i32) -> i32 = a + b
 fn greet(name: str) -> str = "Hello, " + name
 ```
 
 ### 2. Sum Types and Pattern Matching
-```aurora
+```mlc
 type Result<T, E> = Ok(T) | Err(E)
 
 fn divide(a: i32, b: i32) -> Result<i32, str> =
@@ -59,7 +59,7 @@ fn handle_result(r: Result<i32, str>) -> i32 =
 ```
 
 ### 3. Generic Programming
-```aurora
+```mlc
 fn identity<T>(x: T) -> T = x
 
 type Option<T> = Some(T) | None
@@ -71,7 +71,7 @@ fn map<T, R>(opt: Option<T>, f: T => R) -> Option<R> =
 ```
 
 ### 4. Module System
-```aurora
+```mlc
 module Math
   fn add(a: i32, b: i32) -> i32 = a + b
   fn multiply(a: i32, b: i32) -> i32 = a * b
@@ -82,7 +82,7 @@ fn calculate() -> i32 = Math.add(2, 3)
 ```
 
 ### 5. Functional Programming
-```aurora
+```mlc
 fn process_data(numbers: i32[]) -> i32 =
   numbers
     |> filter(x => x > 0)
@@ -95,33 +95,33 @@ fn process_data(numbers: i32[]) -> i32 =
 ### Basic Commands
 ```bash
 # Run a file
-bin/aurora program.aur
+bin/mlc program.mlc
 
 # Compile to C++
-bin/aurora --emit-cpp program.aur
+bin/mlc --emit-cpp program.mlc
 
 # Keep temporary files for debugging
-bin/aurora --keep-tmp program.aur
+bin/mlc --keep-tmp program.mlc
 
 # Use different compiler
-bin/aurora --compiler=clang++ program.aur
+bin/mlc --compiler=clang++ program.mlc
 ```
 
 ### Advanced Usage
 ```bash
 # Pass arguments to your program
-bin/aurora program.aur -- arg1 arg2
+bin/mlc program.mlc -- arg1 arg2
 
 # Generate C++ to file
-bin/aurora -o output.cpp program.aur
+bin/mlc -o output.cpp program.mlc
 
 # Verbose compilation
-bin/aurora --verbose program.aur
+bin/mlc --verbose program.mlc
 ```
 
 ## Error Handling
 
-Aurora provides rich error messages with suggestions:
+MLC provides rich error messages with suggestions:
 
 ```
 line 5, column 12: Syntax error: missing expression
@@ -132,7 +132,7 @@ line 5, column 12: Syntax error: missing expression
 
 ## Performance Tips
 
-1. **Use immutable data structures** - Aurora optimizes for functional programming
+1. **Use immutable data structures** - MLC optimizes for functional programming
 2. **Leverage pattern matching** - More efficient than if-else chains
 3. **Use generic functions** - Zero-cost abstractions
 4. **Prefer pure functions** - Easier to optimize and test
@@ -140,7 +140,7 @@ line 5, column 12: Syntax error: missing expression
 ## Best Practices
 
 ### Code Organization
-```aurora
+```mlc
 module MyApp
   // Public API
   export fn main() -> i32 = run()
@@ -152,7 +152,7 @@ end
 ```
 
 ### Error Handling
-```aurora
+```mlc
 type Result<T, E> = Ok(T) | Err(E)
 
 fn safe_divide(a: i32, b: i32) -> Result<i32, str> =
@@ -163,7 +163,7 @@ fn safe_divide(a: i32, b: i32) -> Result<i32, str> =
 ```
 
 ### Type Safety
-```aurora
+```mlc
 // Use specific types instead of generic ones
 fn process_user_id(id: UserId) -> User = 
   // Type-safe operations
@@ -172,7 +172,7 @@ fn process_user_id(id: UserId) -> User =
 ## Common Patterns
 
 ### Option Type
-```aurora
+```mlc
 type Option<T> = Some(T) | None
 
 fn find_user(users: User[], id: UserId) -> Option<User> =
@@ -180,7 +180,7 @@ fn find_user(users: User[], id: UserId) -> Option<User> =
 ```
 
 ### Result Type
-```aurora
+```mlc
 type Result<T, E> = Ok(T) | Err(E)
 
 fn parse_number(s: str) -> Result<i32, str> =
@@ -188,7 +188,7 @@ fn parse_number(s: str) -> Result<i32, str> =
 ```
 
 ### State Management
-```aurora
+```mlc
 type State = { count: i32, name: str }
 
 fn update_count(state: State, delta: i32) -> State =
