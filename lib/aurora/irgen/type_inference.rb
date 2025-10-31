@@ -201,18 +201,18 @@ module Aurora
             ensure_argument_count(member, args, 0)
             CoreIR::Builder.primitive_type("f32")
           else
-            type_error("Unknown member '#{member}' for type #{describe_type(object_type)}")
+            type_error("Unknown member '#{member}' for type #{describe_type(object_type)}", node: node)
           end
         else
           type_error("Cannot call value of type #{describe_type(callee.type)}")
         end
       end
 
-      def infer_iterable_type(iterable_ir)
+      def infer_iterable_type(iterable_ir, node: nil)
         if iterable_ir.type.is_a?(CoreIR::ArrayType)
           iterable_ir.type.element_type
         else
-          type_error("Iterable expression must be an array, got #{describe_type(iterable_ir.type)}")
+          type_error("Iterable expression must be an array, got #{describe_type(iterable_ir.type)}", node: node)
         end
       end
 
@@ -220,8 +220,8 @@ module Aurora
         @generic_call_resolver.instantiate(info, args, name: name || info.name)
       end
 
-      def infer_member_type(object_type, member)
-        type_error("Cannot access member '#{member}' on value without type") unless object_type
+      def infer_member_type(object_type, member, node: nil)
+        type_error("Cannot access member '#{member}' on value without type", node: node) unless object_type
 
         if object_type.is_a?(CoreIR::GenericType)
           base_name = type_name(object_type.base_type)
@@ -247,7 +247,7 @@ module Aurora
 
         if object_type.record?
           field = object_type.fields.find { |f| f[:name] == member }
-          type_error("Unknown field '#{member}' for type #{object_type.name}") unless field
+          type_error("Unknown field '#{member}' for type #{object_type.name}", node: node) unless field
           field[:type]
         elsif object_type.is_a?(CoreIR::ArrayType)
           case member
@@ -258,7 +258,7 @@ module Aurora
           when "map", "filter", "fold"
             CoreIR::Builder.function_type([], CoreIR::Builder.primitive_type("auto"))
           else
-            type_error("Unknown array member '#{member}'. Known members: length, size, is_empty, map, filter, fold")
+            type_error("Unknown array member '#{member}'. Known members: length, size, is_empty, map, filter, fold", node: node)
           end
         elsif string_type?(object_type)
           case member
@@ -271,13 +271,13 @@ module Aurora
           when "length"
             CoreIR::Builder.primitive_type("i32")
           else
-            type_error("Unknown string member '#{member}'. Known members: split, trim, trim_start, trim_end, upper, lower, is_empty, length")
+            type_error("Unknown string member '#{member}'. Known members: split, trim, trim_start, trim_end, upper, lower, is_empty, length", node: node)
           end
         elsif numeric_type?(object_type) && member == "sqrt"
           f32 = CoreIR::Builder.primitive_type("f32")
           CoreIR::Builder.function_type([], f32)
         else
-          type_error("Unknown member '#{member}' for type #{describe_type(object_type)}")
+          type_error("Unknown member '#{member}' for type #{describe_type(object_type)}", node: node)
         end
       end
 
