@@ -5,6 +5,76 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.0] - 2025-10-31
+
+### 🎉 BREAKING: Complete Aurora Branding Removal
+
+#### Summary
+Complete removal of "Aurora" branding. The project is now **fully unified under MLC**.
+
+#### Changed
+- **Language Name**: Aurora → **MLC**
+- **File Extension**: `.aur` → **`.mlc`**
+- **Runtime Namespace**: `aurora::` → **`mlc::`**
+- **Runtime Headers**: `aurora_*.hpp` → **`mlc_*.hpp`**
+
+#### Migration for Users
+
+**Source Files:**
+```bash
+# Rename your source files
+mv app.aur app.mlc
+```
+
+**Code (No Changes Required):**
+- Language syntax is unchanged
+- All features work exactly the same
+- Generated C++ now uses `mlc::` namespace
+
+**CLI:**
+```bash
+# Usage is the same, just .mlc instead of .aur
+mlc app.mlc
+mlc --emit-cpp app.mlc
+```
+
+#### Technical Details
+
+**Files Renamed (72 total):**
+- 22 source files: `*.aur` → `*.mlc` (stdlib + examples)
+- 12 runtime headers: `aurora_*.hpp` → `mlc_*.hpp`
+- 2 runtime sources: `aurora_*.cpp` → `mlc_*.cpp`
+
+**Code Changes (~500 occurrences):**
+- Namespace: `aurora::` → `mlc::`
+- Includes: `"aurora_*.hpp"` → `"mlc_*.hpp"`
+- CLI helpers: `aurora_user_main` → `mlc_user_main`
+- StdlibScanner: Updated all namespace inferences
+
+**Test Status:**
+- ✅ **421 tests**, **1622 assertions**
+- ✅ **0 failures**, **0 errors**
+- ✅ **100% passing**
+
+#### Rationale
+
+**Before (Confusing):**
+- Compiler: "MLC"
+- Language: "Aurora"
+- Files: `.aur`
+- Runtime: `aurora::`
+- Users: "Am I using Aurora or MLC?"
+
+**After (Clear):**
+- Everything: **"MLC"**
+- Files: **`.mlc`**
+- Runtime: **`mlc::`**
+- Users: "I'm using MLC!"
+
+No more confusion! One name, one brand, one ecosystem.
+
+---
+
 ## [0.2.0] - 2025-10-31
 
 ### 🎉 Major Changes - Project Renamed to MLC
