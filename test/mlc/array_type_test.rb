@@ -15,7 +15,7 @@ class AuroraArrayTypeTest < Minitest::Test
 
     cpp = MLC.to_cpp(aurora_source)
 
-    assert_includes cpp, "std::vector<aurora::String>"
+    assert_includes cpp, "std::vector<mlc::String>"
     assert_includes cpp, "items.size"
     assert_includes cpp, "items.empty"
   end

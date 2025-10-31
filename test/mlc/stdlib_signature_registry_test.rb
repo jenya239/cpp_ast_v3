@@ -13,7 +13,7 @@ class StdlibSignatureRegistryTest < Minitest::Test
 
     metadata = info.functions["println"]
     refute_nil metadata
-    assert_equal "aurora::io::println", metadata.qualified_name
+    assert_equal "mlc::io::println", metadata.qualified_name
     assert_instance_of MLC::AST::FuncDecl, metadata.ast_node
   end
 
@@ -23,7 +23,7 @@ class StdlibSignatureRegistryTest < Minitest::Test
 
     metadata = info.types["Option"]
     refute_nil metadata
-    assert_equal "aurora::option::Option", metadata.qualified_name
+    assert_equal "mlc::option::Option", metadata.qualified_name
     assert_instance_of MLC::AST::TypeDecl, metadata.ast_node
   end
 end

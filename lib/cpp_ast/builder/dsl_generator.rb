@@ -1082,7 +1082,7 @@ module CppAst
           right = generate_aurora_expression(expr.right)
           if expr.op == "+" && is_string_expression(expr.left) && is_string_expression(expr.right)
             # String concatenation
-            "aurora::String(#{left}) + aurora::String(#{right})"
+            "mlc::String(#{left}) + mlc::String(#{right})"
           else
             "#{left} #{expr.op} #{right}"
           end
@@ -1118,7 +1118,7 @@ module CppAst
         result = []
         
         # Add includes
-        result << '#include "aurora_match.hpp"'
+        result << '#include "mlc_match.hpp"'
         result << ""
         
         # Generate module namespace if present
@@ -1203,7 +1203,7 @@ module CppAst
           right = generate_aurora_expression(expr.right)
           if expr.op == "+" && is_string_expression(expr.left) && is_string_expression(expr.right)
             # String concatenation
-            "aurora::String(#{left}) + aurora::String(#{right})"
+            "mlc::String(#{left}) + mlc::String(#{right})"
           else
             "#{left} #{expr.op} #{right}"
           end

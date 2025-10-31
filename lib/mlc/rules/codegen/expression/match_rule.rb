@@ -101,7 +101,7 @@ module MLC
 
             # Create regex object
             pattern_string = build_aurora_string(regex_pattern)
-            func_name = regex_flags.include?("i") ? "aurora::regex_i" : "aurora::regex"
+            func_name = regex_flags.include?("i") ? "mlc::regex_i" : "mlc::regex"
             regex_obj = CppAst::Nodes::FunctionCallExpression.new(
               callee: CppAst::Nodes::Identifier.new(name: func_name),
               arguments: [pattern_string],

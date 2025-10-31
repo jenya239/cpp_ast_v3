@@ -6,9 +6,9 @@
 #include <string>
 #include <optional>
 #include "json.hpp"
-#include "aurora_string.hpp"
+#include "mlc_string.hpp"
 
-namespace aurora::json {
+namespace mlc::json {
 
 using json = nlohmann::json;
 
@@ -22,7 +22,7 @@ struct JsonValue {
         std::monostate,              // JsonNull
         bool,                        // JsonBool
         double,                      // JsonNumber (using double for better precision)
-        aurora::String,              // JsonString
+        mlc::String,              // JsonString
         std::vector<JsonValue>,      // JsonArray
         json                         // JsonObject (using nlohmann::json for objects)
     > value;
@@ -34,7 +34,7 @@ struct JsonValue {
     JsonValue(double n) : value(n) {}
     JsonValue(float n) : value(static_cast<double>(n)) {}
     JsonValue(int32_t n) : value(static_cast<double>(n)) {}
-    JsonValue(const aurora::String& s) : value(s) {}
+    JsonValue(const mlc::String& s) : value(s) {}
     JsonValue(const std::vector<JsonValue>& arr) : value(arr) {}
     JsonValue(const json& obj) : value(obj) {}
 
@@ -42,7 +42,7 @@ struct JsonValue {
     bool is_null() const { return std::holds_alternative<std::monostate>(value); }
     bool is_bool() const { return std::holds_alternative<bool>(value); }
     bool is_number() const { return std::holds_alternative<double>(value); }
-    bool is_string() const { return std::holds_alternative<aurora::String>(value); }
+    bool is_string() const { return std::holds_alternative<mlc::String>(value); }
     bool is_array() const { return std::holds_alternative<std::vector<JsonValue>>(value); }
     bool is_object() const { return std::holds_alternative<json>(value); }
 
@@ -57,8 +57,8 @@ struct JsonValue {
         return std::nullopt;
     }
 
-    std::optional<aurora::String> as_string() const {
-        if (auto* s = std::get_if<aurora::String>(&value)) return *s;
+    std::optional<mlc::String> as_string() const {
+        if (auto* s = std::get_if<mlc::String>(&value)) return *s;
         return std::nullopt;
     }
 
@@ -82,7 +82,7 @@ inline JsonValue from_nlohmann_json(const json& j) {
     } else if (j.is_number()) {
         return JsonValue(j.get<double>());
     } else if (j.is_string()) {
-        return JsonValue(aurora::String(j.get<std::string>().c_str()));
+        return JsonValue(mlc::String(j.get<std::string>().c_str()));
     } else if (j.is_array()) {
         std::vector<JsonValue> arr;
         arr.reserve(j.size());
@@ -120,7 +120,7 @@ inline json to_nlohmann_json(const JsonValue& jv) {
 
 // Parse JSON string - returns JsonValue or JsonNull on error
 // TODO: Return Result<JsonValue, String> when Result type is available
-inline JsonValue parse_json(const aurora::String& json_str) {
+inline JsonValue parse_json(const mlc::String& json_str) {
     try {
         json parsed = json::parse(json_str.c_str());
         return from_nlohmann_json(parsed);
@@ -133,15 +133,15 @@ inline JsonValue parse_json(const aurora::String& json_str) {
 }
 
 // Stringify JSON value to string
-inline aurora::String stringify_json(const JsonValue& value) {
+inline mlc::String stringify_json(const JsonValue& value) {
     json j = to_nlohmann_json(value);
-    return aurora::String(j.dump().c_str());
+    return mlc::String(j.dump().c_str());
 }
 
 // Stringify JSON value with pretty printing
-inline aurora::String stringify_json_pretty(const JsonValue& value, int32_t indent) {
+inline mlc::String stringify_json_pretty(const JsonValue& value, int32_t indent) {
     json j = to_nlohmann_json(value);
-    return aurora::String(j.dump(indent).c_str());
+    return mlc::String(j.dump(indent).c_str());
 }
 
 // Helper constructors
@@ -157,7 +157,7 @@ inline JsonValue json_number(float n) {
     return JsonValue(n);
 }
 
-inline JsonValue json_string(const aurora::String& s) {
+inline JsonValue json_string(const mlc::String& s) {
     return JsonValue(s);
 }
 
@@ -171,7 +171,7 @@ inline JsonValue json_object() {
 }
 
 // Get value from JSON object by key
-inline std::optional<JsonValue> json_get(const JsonValue& obj, const aurora::String& key) {
+inline std::optional<JsonValue> json_get(const JsonValue& obj, const mlc::String& key) {
     if (auto* j = std::get_if<json>(&obj.value)) {
         if (j->is_object() && j->contains(key.c_str())) {
             return from_nlohmann_json((*j)[key.c_str()]);
@@ -181,7 +181,7 @@ inline std::optional<JsonValue> json_get(const JsonValue& obj, const aurora::Str
 }
 
 // Set value in JSON object
-inline JsonValue json_set(JsonValue obj, const aurora::String& key, const JsonValue& value) {
+inline JsonValue json_set(JsonValue obj, const mlc::String& key, const JsonValue& value) {
     if (auto* j = std::get_if<json>(&obj.value)) {
         if (j->is_object()) {
             json new_obj = *j;
@@ -196,7 +196,7 @@ inline JsonValue json_set(JsonValue obj, const aurora::String& key, const JsonVa
 }
 
 // Check if object has key
-inline bool json_has_key(const JsonValue& obj, const aurora::String& key) {
+inline bool json_has_key(const JsonValue& obj, const mlc::String& key) {
     if (auto* j = std::get_if<json>(&obj.value)) {
         if (j->is_object()) {
             return j->contains(key.c_str());
@@ -206,12 +206,12 @@ inline bool json_has_key(const JsonValue& obj, const aurora::String& key) {
 }
 
 // Get all keys from JSON object
-inline std::vector<aurora::String> json_keys(const JsonValue& obj) {
-    std::vector<aurora::String> keys;
+inline std::vector<mlc::String> json_keys(const JsonValue& obj) {
+    std::vector<mlc::String> keys;
     if (auto* j = std::get_if<json>(&obj.value)) {
         if (j->is_object()) {
             for (auto it = j->begin(); it != j->end(); ++it) {
-                keys.push_back(aurora::String(it.key().c_str()));
+                keys.push_back(mlc::String(it.key().c_str()));
             }
         }
     }
@@ -248,6 +248,6 @@ inline JsonValue json_array_push(const JsonValue& arr, const JsonValue& value) {
     return JsonValue(new_arr);
 }
 
-} // namespace aurora::json
+} // namespace mlc::json
 
 #endif // AURORA_JSON_HPP

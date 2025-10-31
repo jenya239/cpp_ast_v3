@@ -1,12 +1,12 @@
 #pragma once
 
-#include "aurora_string.hpp"
+#include "mlc_string.hpp"
 #include <vector>
 #include <cstring>
 #include <stdexcept>
 #include <cstdint>
 
-namespace aurora {
+namespace mlc {
 
 // ============================================================================
 // Endianness Support
@@ -435,4 +435,4 @@ public:
     }
 };
 
-} // namespace aurora
+} // namespace mlc

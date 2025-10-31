@@ -27,7 +27,7 @@ module MLC
       @registry.register(
         "bar",
         info,
-        namespace: "aurora::math",
+        namespace: "mlc::math",
         module_name: "Math",
         exported: true,
         external: true,
@@ -35,16 +35,16 @@ module MLC
       )
 
       entry = @registry.fetch_entry("bar")
-      assert_equal "aurora::math", entry.namespace
+      assert_equal "mlc::math", entry.namespace
       assert_equal "Math", entry.module_name
       assert entry.exported?
       assert entry.external?
       assert_equal [:noexcept], entry.effects
-      assert_equal "aurora::math::bar", entry.qualified_name
+      assert_equal "mlc::math::bar", entry.qualified_name
 
-      @registry.update("bar", namespace: "aurora::core", exported: false, append_effects: [:constexpr])
+      @registry.update("bar", namespace: "mlc::core", exported: false, append_effects: [:constexpr])
       entry = @registry.fetch_entry("bar")
-      assert_equal "aurora::core", entry.namespace
+      assert_equal "mlc::core", entry.namespace
       refute entry.exported?
       assert_includes entry.effects, :constexpr
       assert_equal [:noexcept, :constexpr].sort, entry.effects.sort
@@ -97,11 +97,11 @@ module MLC
       info_b = TestFunctionInfo.new("fn_b", [], :void, [])
       info_c = TestFunctionInfo.new("fn_c", [], :void, [])
 
-      @registry.register("fn_a", info_a, namespace: "aurora::math", module_name: "Math")
-      @registry.register("fn_b", info_b, namespace: "aurora::math", module_name: "Math")
-      @registry.register("fn_c", info_c, namespace: "aurora::io", module_name: "IO")
+      @registry.register("fn_a", info_a, namespace: "mlc::math", module_name: "Math")
+      @registry.register("fn_b", info_b, namespace: "mlc::math", module_name: "Math")
+      @registry.register("fn_c", info_c, namespace: "mlc::io", module_name: "IO")
 
-      math_entries = @registry.functions_in_namespace("aurora::math")
+      math_entries = @registry.functions_in_namespace("mlc::math")
       assert_equal 2, math_entries.size
       assert_equal %w[fn_a fn_b].sort, math_entries.map(&:name).sort
 

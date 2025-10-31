@@ -29,7 +29,7 @@ class CppLoweringGenericsTest < Minitest::Test
   end
 
   def test_generic_type_multiple_params
-    # Result<i32, str> -> Result<int, aurora::String>
+    # Result<i32, str> -> Result<int, mlc::String>
     result_base = Builder.primitive_type('Result')
     i32_type = Builder.primitive_type('i32')
     str_type = Builder.primitive_type('str')
@@ -37,7 +37,7 @@ class CppLoweringGenericsTest < Minitest::Test
 
     cpp_type = @lowerer.map_type(result_type)
 
-    assert_equal 'Result<int, aurora::String>', cpp_type
+    assert_equal 'Result<int, mlc::String>', cpp_type
   end
 
   def test_generic_type_with_type_variable
@@ -52,7 +52,7 @@ class CppLoweringGenericsTest < Minitest::Test
   end
 
   def test_nested_generic_types
-    # Option<Result<i32, str>> -> Option<Result<int, aurora::String>>
+    # Option<Result<i32, str>> -> Option<Result<int, mlc::String>>
     option_base = Builder.primitive_type('Option')
     result_base = Builder.primitive_type('Result')
     i32_type = Builder.primitive_type('i32')
@@ -63,7 +63,7 @@ class CppLoweringGenericsTest < Minitest::Test
 
     cpp_type = @lowerer.map_type(option_result)
 
-    assert_equal 'Option<Result<int, aurora::String>>', cpp_type
+    assert_equal 'Option<Result<int, mlc::String>>', cpp_type
   end
 
   def test_array_of_generic_type
@@ -90,7 +90,7 @@ class CppLoweringGenericsTest < Minitest::Test
   end
 
   def test_function_type_multiple_params
-    # fn(i32, f32, str) -> bool -> std::function<bool(int, float, aurora::String)>
+    # fn(i32, f32, str) -> bool -> std::function<bool(int, float, mlc::String)>
     i32_type = Builder.primitive_type('i32')
     f32_type = Builder.primitive_type('f32')
     str_type = Builder.primitive_type('str')
@@ -103,7 +103,7 @@ class CppLoweringGenericsTest < Minitest::Test
 
     cpp_type = @lowerer.map_type(fn_type)
 
-    assert_equal 'std::function<bool(int, float, aurora::String)>', cpp_type
+    assert_equal 'std::function<bool(int, float, mlc::String)>', cpp_type
   end
 
   def test_function_type_with_type_variables
@@ -118,7 +118,7 @@ class CppLoweringGenericsTest < Minitest::Test
   end
 
   def test_function_type_with_generic_types
-    # fn(Option<i32>) -> Result<f32, str> -> std::function<Result<float, aurora::String>(Option<int>)>
+    # fn(Option<i32>) -> Result<f32, str> -> std::function<Result<float, mlc::String>(Option<int>)>
     option_base = Builder.primitive_type('Option')
     result_base = Builder.primitive_type('Result')
     i32_type = Builder.primitive_type('i32')
@@ -132,7 +132,7 @@ class CppLoweringGenericsTest < Minitest::Test
 
     cpp_type = @lowerer.map_type(fn_type)
 
-    assert_equal 'std::function<Result<float, aurora::String>(Option<int>)>', cpp_type
+    assert_equal 'std::function<Result<float, mlc::String>(Option<int>)>', cpp_type
   end
 
   def test_generic_function_lowering

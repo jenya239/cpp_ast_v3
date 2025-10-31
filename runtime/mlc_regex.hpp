@@ -1,12 +1,12 @@
 #ifndef AURORA_REGEX_HPP
 #define AURORA_REGEX_HPP
 
-#include "aurora_string.hpp"
+#include "mlc_string.hpp"
 #include <regex>
 #include <optional>
 #include <vector>
 
-namespace aurora {
+namespace mlc {
 
 // Forward declaration
 class Match;
@@ -239,6 +239,6 @@ inline Regex regex_i(const String& pattern) {
     return Regex(pattern, std::regex_constants::ECMAScript | std::regex_constants::icase);
 }
 
-} // namespace aurora
+} // namespace mlc
 
 #endif // AURORA_REGEX_HPP

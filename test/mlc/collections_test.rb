@@ -12,8 +12,8 @@ class AuroraCollectionsTest < Minitest::Test
 
     cpp = MLC.to_cpp(aurora_source)
 
-    assert_includes cpp, "aurora::collections::map"
-    assert_includes cpp, "aurora::collections::filter"
+    assert_includes cpp, "mlc::collections::map"
+    assert_includes cpp, "mlc::collections::filter"
   end
 
   def test_fold_lowering
@@ -33,6 +33,6 @@ class AuroraCollectionsTest < Minitest::Test
 
     cpp = MLC.to_cpp(aurora_source)
 
-    assert_includes cpp, "aurora::collections::fold"
+    assert_includes cpp, "mlc::collections::fold"
   end
 end

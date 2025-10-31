@@ -19,15 +19,15 @@ module MLC
 
           # IO function mappings
           IO_FUNCTIONS = {
-            "print" => "aurora::io::print",
-            "println" => "aurora::io::println",
-            "eprint" => "aurora::io::eprint",
-            "eprintln" => "aurora::io::eprintln",
-            "read_line" => "aurora::io::read_line",
-            "input" => "aurora::io::read_all",
-            "args" => "aurora::io::args",
-            "to_string" => "aurora::to_string",
-            "format" => "aurora::format"
+            "print" => "mlc::io::print",
+            "println" => "mlc::io::println",
+            "eprint" => "mlc::io::eprint",
+            "eprintln" => "mlc::io::eprintln",
+            "read_line" => "mlc::io::read_line",
+            "input" => "mlc::io::read_all",
+            "args" => "mlc::io::args",
+            "to_string" => "mlc::to_string",
+            "format" => "mlc::format"
           }.freeze
 
           # Stdlib function overrides
@@ -186,25 +186,25 @@ module MLC
               )
 
             when "map"
-              # arr.map(f) -> aurora::collections::map(arr, f)
+              # arr.map(f) -> mlc::collections::map(arr, f)
               func_arg = call.args.first ? lowerer.send(:lower_expression, call.args.first) : nil
               CppAst::Nodes::FunctionCallExpression.new(
-                callee: CppAst::Nodes::Identifier.new(name: "aurora::collections::map"),
+                callee: CppAst::Nodes::Identifier.new(name: "mlc::collections::map"),
                 arguments: [array_obj, func_arg].compact,
                 argument_separators: func_arg ? [", "] : []
               )
 
             when "filter"
-              # arr.filter(pred) -> aurora::collections::filter(arr, pred)
+              # arr.filter(pred) -> mlc::collections::filter(arr, pred)
               predicate = call.args.first ? lowerer.send(:lower_expression, call.args.first) : nil
               CppAst::Nodes::FunctionCallExpression.new(
-                callee: CppAst::Nodes::Identifier.new(name: "aurora::collections::filter"),
+                callee: CppAst::Nodes::Identifier.new(name: "mlc::collections::filter"),
                 arguments: [array_obj, predicate].compact,
                 argument_separators: predicate ? [", "] : []
               )
 
             when "fold"
-              # arr.fold(init, f) -> aurora::collections::fold(arr, init, f)
+              # arr.fold(init, f) -> mlc::collections::fold(arr, init, f)
               init_arg = call.args[0] ? lowerer.send(:lower_expression, call.args[0]) : nil
               func_arg = call.args[1] ? lowerer.send(:lower_expression, call.args[1]) : nil
               arguments = [array_obj]
@@ -218,7 +218,7 @@ module MLC
                 separators << ", "
               end
               CppAst::Nodes::FunctionCallExpression.new(
-                callee: CppAst::Nodes::Identifier.new(name: "aurora::collections::fold"),
+                callee: CppAst::Nodes::Identifier.new(name: "mlc::collections::fold"),
                 arguments: arguments,
                 argument_separators: separators
               )

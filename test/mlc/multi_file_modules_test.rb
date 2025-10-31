@@ -7,7 +7,7 @@ require "fileutils"
 
 class AuroraMultiFileModulesTest < Minitest::Test
   def setup
-    @tmpdir = Dir.mktmpdir("aurora_test")
+    @tmpdir = Dir.mktmpdir("mlc_test")
   end
 
   def teardown
@@ -15,15 +15,15 @@ class AuroraMultiFileModulesTest < Minitest::Test
   end
 
   def test_compile_two_files_with_import
-    # Create math.aurora
-    math_file = File.join(@tmpdir, "math.aurora")
+    # Create math.mlcora
+    math_file = File.join(@tmpdir, "math.mlcora")
     File.write(math_file, <<~AURORA)
       export fn add(a: i32, b: i32) -> i32 = a + b
       export fn multiply(a: i32, b: i32) -> i32 = a * b
     AURORA
 
-    # Create main.aurora that imports from math
-    main_file = File.join(@tmpdir, "main.aurora")
+    # Create main.mlcora that imports from math
+    main_file = File.join(@tmpdir, "main.mlcora")
     File.write(main_file, <<~AURORA)
       import { add, multiply } from "./math"
 
@@ -46,15 +46,15 @@ class AuroraMultiFileModulesTest < Minitest::Test
   def test_compile_nested_directories
     # Create directory structure:
     # tmpdir/
-    #   main.aurora
+    #   main.mlcora
     #   math/
-    #     vector.aurora
+    #     vector.mlcora
 
     math_dir = File.join(@tmpdir, "math")
     FileUtils.mkdir_p(math_dir)
 
-    # Create math/vector.aurora
-    vector_file = File.join(math_dir, "vector.aurora")
+    # Create math/vector.mlcora
+    vector_file = File.join(math_dir, "vector.mlcora")
     File.write(vector_file, <<~AURORA)
       export type Vec2 = { x: f32, y: f32 }
 
@@ -62,8 +62,8 @@ class AuroraMultiFileModulesTest < Minitest::Test
         a.x * b.x + a.y * b.y
     AURORA
 
-    # Create main.aurora that imports from subdirectory
-    main_file = File.join(@tmpdir, "main.aurora")
+    # Create main.mlcora that imports from subdirectory
+    main_file = File.join(@tmpdir, "main.mlcora")
     File.write(main_file, <<~AURORA)
       import { Vec2, dot } from "./math/vector"
 
@@ -87,23 +87,23 @@ class AuroraMultiFileModulesTest < Minitest::Test
     # Create directory structure:
     # tmpdir/
     #   core/
-    #     utils.aurora
+    #     utils.mlcora
     #   app/
-    #     main.aurora
+    #     main.mlcora
 
     core_dir = File.join(@tmpdir, "core")
     app_dir = File.join(@tmpdir, "app")
     FileUtils.mkdir_p(core_dir)
     FileUtils.mkdir_p(app_dir)
 
-    # Create core/utils.aurora
-    utils_file = File.join(core_dir, "utils.aurora")
+    # Create core/utils.mlcora
+    utils_file = File.join(core_dir, "utils.mlcora")
     File.write(utils_file, <<~AURORA)
       export fn helper() -> i32 = 42
     AURORA
 
-    # Create app/main.aurora that imports from parent
-    main_file = File.join(app_dir, "main.aurora")
+    # Create app/main.mlcora that imports from parent
+    main_file = File.join(app_dir, "main.mlcora")
     File.write(main_file, <<~AURORA)
       import { helper } from "../core/utils"
 
@@ -120,14 +120,14 @@ class AuroraMultiFileModulesTest < Minitest::Test
   end
 
   def test_compile_with_sum_types_across_files
-    # Create types.aurora with sum type
-    types_file = File.join(@tmpdir, "types.aurora")
+    # Create types.mlcora with sum type
+    types_file = File.join(@tmpdir, "types.mlcora")
     File.write(types_file, <<~AURORA)
       export type Result<T, E> = Ok(T) | Err(E)
     AURORA
 
-    # Create main.aurora that uses the sum type
-    main_file = File.join(@tmpdir, "main.aurora")
+    # Create main.mlcora that uses the sum type
+    main_file = File.join(@tmpdir, "main.mlcora")
     File.write(main_file, <<~AURORA)
       import { Result } from "./types"
 
@@ -150,16 +150,16 @@ class AuroraMultiFileModulesTest < Minitest::Test
   end
 
   def test_multiple_imports_from_same_file
-    # Create utils.aurora with multiple exports
-    utils_file = File.join(@tmpdir, "utils.aurora")
+    # Create utils.mlcora with multiple exports
+    utils_file = File.join(@tmpdir, "utils.mlcora")
     File.write(utils_file, <<~AURORA)
       export fn add(a: i32, b: i32) -> i32 = a + b
       export fn sub(a: i32, b: i32) -> i32 = a - b
       export fn mul(a: i32, b: i32) -> i32 = a * b
     AURORA
 
-    # Create main.aurora importing multiple items
-    main_file = File.join(@tmpdir, "main.aurora")
+    # Create main.mlcora importing multiple items
+    main_file = File.join(@tmpdir, "main.mlcora")
     File.write(main_file, <<~AURORA)
       import { add, sub, mul } from "./utils"
 
@@ -181,15 +181,15 @@ class AuroraMultiFileModulesTest < Minitest::Test
   end
 
   def test_wildcard_import
-    # Create math.aurora
-    math_file = File.join(@tmpdir, "math.aurora")
+    # Create math.mlcora
+    math_file = File.join(@tmpdir, "math.mlcora")
     File.write(math_file, <<~AURORA)
       export fn add(a: i32, b: i32) -> i32 = a + b
       export fn multiply(a: i32, b: i32) -> i32 = a * b
     AURORA
 
-    # Create main.aurora with wildcard import
-    main_file = File.join(@tmpdir, "main.aurora")
+    # Create main.mlcora with wildcard import
+    main_file = File.join(@tmpdir, "main.mlcora")
     File.write(main_file, <<~AURORA)
       import * as Math from "./math"
 
@@ -205,7 +205,7 @@ class AuroraMultiFileModulesTest < Minitest::Test
 
   def test_write_generated_files_to_disk
     # Create a simple Aurora file
-    aurora_file = File.join(@tmpdir, "test.aurora")
+    aurora_file = File.join(@tmpdir, "test.mlcora")
     File.write(aurora_file, <<~AURORA)
       export fn hello() -> i32 = 42
     AURORA

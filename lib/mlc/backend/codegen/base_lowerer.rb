@@ -150,7 +150,7 @@ module MLC
 
       def build_aurora_string(value)
               CppAst::Nodes::FunctionCallExpression.new(
-                callee: CppAst::Nodes::Identifier.new(name: "aurora::String"),
+                callee: CppAst::Nodes::Identifier.new(name: "mlc::String"),
                 arguments: [cpp_string_literal(value)],
                 argument_separators: []
               )

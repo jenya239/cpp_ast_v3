@@ -23,33 +23,33 @@ def wrap_cpp(body)
     #include <string>
     #include <variant>
     #include <vector>
-    #include "aurora_collections.hpp"
-    #include "aurora_string.hpp"
-    #include "aurora_buffer.hpp"
-    #include "aurora_regex.hpp"
-    #include "aurora_io.hpp"
-    #include "aurora_math.hpp"
-    #include "aurora_file.hpp"
-    #include "aurora_json.hpp"
-    #include "aurora_graphics.hpp"
-    #include "aurora_match.hpp"
+    #include "mlc_collections.hpp"
+    #include "mlc_string.hpp"
+    #include "mlc_buffer.hpp"
+    #include "mlc_regex.hpp"
+    #include "mlc_io.hpp"
+    #include "mlc_math.hpp"
+    #include "mlc_file.hpp"
+    #include "mlc_json.hpp"
+    #include "mlc_graphics.hpp"
+    #include "mlc_match.hpp"
 
-    #define main aurora_user_main
+    #define main mlc_user_main
     #{body}
     #undef main
 
-    static void aurora_cli_set_args(int argc, char** argv) {
-      std::vector<aurora::String> arguments;
+    static void mlc_cli_set_args(int argc, char** argv) {
+      std::vector<mlc::String> arguments;
       arguments.reserve(argc > 0 ? argc - 1 : 0);
       for (int i = 1; i < argc; ++i) {
         arguments.emplace_back(argv[i]);
       }
-      aurora::io::set_args(std::move(arguments));
+      mlc::io::set_args(std::move(arguments));
     }
 
     int main(int argc, char** argv) {
-      aurora_cli_set_args(argc, argv);
-      return aurora_user_main();
+      mlc_cli_set_args(argc, argv);
+      return mlc_user_main();
     }
   CPP
 end
@@ -66,7 +66,7 @@ def parse_arguments(argv)
   raw_args = []
 
   parser = OptionParser.new do |opts|
-    opts.banner = "Usage: aurora [options] [file] [-- program-args]"
+    opts.banner = "Usage: mlc [options] [file] [-- program-args]"
 
     opts.on("--emit-cpp", "Emit generated C++ to STDOUT") do
       options[:emit_cpp] = true
@@ -156,14 +156,14 @@ def emit_cpp(options, cpp_source)
 end
 
 def compile_cpp(options, cpp_source)
-  dir = Dir.mktmpdir("aurora-cli")
-  source_path = File.join(dir, "aurora_main.cpp")
-  binary_path = File.join(dir, "aurora_program")
+  dir = Dir.mktmpdir("mlc-cli")
+  source_path = File.join(dir, "mlc_main.cpp")
+  binary_path = File.join(dir, "mlc_program")
 
   File.write(source_path, cpp_source)
 
-  runtime_cpp = File.join(RUNTIME_DIR, "aurora_string.cpp")
-  runtime_io_cpp = File.join(RUNTIME_DIR, "aurora_io.cpp")
+  runtime_cpp = File.join(RUNTIME_DIR, "mlc_string.cpp")
+  runtime_io_cpp = File.join(RUNTIME_DIR, "mlc_io.cpp")
 
   # Get XCB and Cairo flags via pkg-config
   xcb_flags = `pkg-config --cflags --libs xcb cairo cairo-xcb 2>/dev/null`.strip.split

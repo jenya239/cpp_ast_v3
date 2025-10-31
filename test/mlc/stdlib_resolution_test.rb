@@ -29,7 +29,7 @@ class StdlibResolutionTest < Minitest::Test
     path = resolver.resolve('Math')
     refute_nil path
     assert File.exist?(path)
-    assert path.end_with?('math.aur')
+    assert path.end_with?('math.mlc')
   end
 
   def test_stdlib_resolver_resolves_io
@@ -37,7 +37,7 @@ class StdlibResolutionTest < Minitest::Test
     path = resolver.resolve('IO')
     refute_nil path
     assert File.exist?(path)
-    assert path.end_with?('io.aur')
+    assert path.end_with?('io.mlc')
   end
 
   def test_stdlib_resolver_resolves_string
@@ -45,7 +45,7 @@ class StdlibResolutionTest < Minitest::Test
     path = resolver.resolve('String')
     refute_nil path
     assert File.exist?(path)
-    assert path.end_with?('string.aur')
+    assert path.end_with?('string.mlc')
   end
 
   def test_stdlib_resolver_returns_nil_for_unknown

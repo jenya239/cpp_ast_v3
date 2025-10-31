@@ -143,7 +143,7 @@ class AuroraBlockExprTest < Minitest::Test
   def test_block_expr_origin_tracking
     # Test that origin information is preserved
     origin = MLC::SourceOrigin.new(
-      file: "test.aur",
+      file: "test.mlc",
       line: 10,
       column: 5
     )
@@ -155,7 +155,7 @@ class AuroraBlockExprTest < Minitest::Test
     )
 
     assert_equal origin, block.origin
-    assert_equal "test.aur", block.origin.file
+    assert_equal "test.mlc", block.origin.file
     assert_equal 10, block.origin.line
     assert_equal 5, block.origin.column
   end

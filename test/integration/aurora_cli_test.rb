@@ -11,7 +11,7 @@ class AuroraCLITest < Minitest::Test
     skip_unless_compiler_available
 
     Dir.mktmpdir do |dir|
-      source = File.join(dir, "main.aur")
+      source = File.join(dir, "main.mlc")
       File.write(source, <<~AUR)
         fn main() -> i32 =
           println("hello")
@@ -41,7 +41,7 @@ class AuroraCLITest < Minitest::Test
     skip_unless_compiler_available
 
     Dir.mktmpdir do |dir|
-      source = File.join(dir, "stdin.aur")
+      source = File.join(dir, "stdin.mlc")
       File.write(source, <<~AUR)
         fn main() -> i32 = println(read_line())
       AUR
@@ -66,7 +66,7 @@ class AuroraCLITest < Minitest::Test
 
   def test_compile_error_includes_filename
     Dir.mktmpdir do |dir|
-      source = File.join(dir, "invalid.aur")
+      source = File.join(dir, "invalid.mlc")
       File.write(source, <<~AUR)
         fn main() -> void =
           if true then 1 else 2
@@ -83,7 +83,7 @@ class AuroraCLITest < Minitest::Test
     skip_unless_compiler_available
 
     Dir.mktmpdir do |dir|
-      source = File.join(dir, "args.aur")
+      source = File.join(dir, "args.mlc")
       File.write(source, <<~AUR)
         fn main() -> i32 = println(args()[1])
       AUR
@@ -99,7 +99,7 @@ class AuroraCLITest < Minitest::Test
     skip_unless_compiler_available
 
     Dir.mktmpdir do |dir|
-      source = File.join(dir, "let.aur")
+      source = File.join(dir, "let.mlc")
       File.write(source, <<~AUR)
         fn main() -> i32 =
           let x = 41
@@ -117,7 +117,7 @@ class AuroraCLITest < Minitest::Test
     skip_unless_compiler_available
 
     Dir.mktmpdir do |dir|
-      source = File.join(dir, "array.aur")
+      source = File.join(dir, "array.mlc")
       File.write(source, <<~AUR)
         fn count(items: str[]) -> i32 =
           items.length()
@@ -137,7 +137,7 @@ class AuroraCLITest < Minitest::Test
     skip_unless_compiler_available
 
     Dir.mktmpdir do |dir|
-      source = File.join(dir, "stats.aur")
+      source = File.join(dir, "stats.mlc")
       File.write(source, <<~AUR)
         type Stats = { total: i32, warnings: i32, errors: i32 }
 

@@ -8,7 +8,7 @@
 #include <sstream>
 #include <utility>
 
-namespace aurora {
+namespace mlc {
 
 // Forward declarations
 class Bytes;
@@ -325,6 +325,6 @@ inline String format(const String& fmt, Args&&... args) {
     return format(fmt, parts);
 }
 
-} // namespace aurora
+} // namespace mlc
 
 #endif // AURORA_STRING_HPP

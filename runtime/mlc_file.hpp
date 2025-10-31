@@ -5,9 +5,9 @@
 #include <string>
 #include <vector>
 #include <optional>
-#include "aurora_string.hpp"
+#include "mlc_string.hpp"
 
-namespace aurora::file {
+namespace mlc::file {
 
 // File handle wrapper with RAII
 class File {
@@ -85,7 +85,7 @@ public:
     }
 
     // Read entire file as string
-    std::optional<aurora::String> read_all() {
+    std::optional<mlc::String> read_all() {
         if (!is_open_) return std::nullopt;
 
         stream_.seekg(0, std::ios::end);
@@ -95,48 +95,48 @@ public:
         std::string content(size, '\0');
         stream_.read(&content[0], size);
 
-        return aurora::String(content);
+        return mlc::String(content);
     }
 
     // Read one line
-    std::optional<aurora::String> read_line() {
+    std::optional<mlc::String> read_line() {
         if (!is_open_) return std::nullopt;
 
         std::string line;
         if (std::getline(stream_, line)) {
-            return aurora::String(line);
+            return mlc::String(line);
         }
         return std::nullopt;
     }
 
     // Read all lines
-    std::vector<aurora::String> read_lines() {
-        std::vector<aurora::String> lines;
+    std::vector<mlc::String> read_lines() {
+        std::vector<mlc::String> lines;
         if (!is_open_) return lines;
 
         std::string line;
         while (std::getline(stream_, line)) {
-            lines.push_back(aurora::String(line));
+            lines.push_back(mlc::String(line));
         }
         return lines;
     }
 
     // Write string to file
-    bool write(const aurora::String& content) {
+    bool write(const mlc::String& content) {
         if (!is_open_) return false;
         stream_ << content.as_std_string();
         return stream_.good();
     }
 
     // Write line to file (adds newline)
-    bool write_line(const aurora::String& line) {
+    bool write_line(const mlc::String& line) {
         if (!is_open_) return false;
         stream_ << line.as_std_string() << '\n';
         return stream_.good();
     }
 
     // Write multiple lines
-    bool write_lines(const std::vector<aurora::String>& lines) {
+    bool write_lines(const std::vector<mlc::String>& lines) {
         if (!is_open_) return false;
         for (const auto& line : lines) {
             stream_ << line.as_std_string() << '\n';
@@ -160,10 +160,10 @@ public:
 
 // Convenience functions for reading files
 
-inline aurora::String read_to_string(const aurora::String& path) {
+inline mlc::String read_to_string(const mlc::String& path) {
     std::ifstream file(path.as_std_string());
     if (!file.is_open()) {
-        return aurora::String("");
+        return mlc::String("");
     }
 
     file.seekg(0, std::ios::end);
@@ -173,11 +173,11 @@ inline aurora::String read_to_string(const aurora::String& path) {
     std::string content(size, '\0');
     file.read(&content[0], size);
 
-    return aurora::String(content);
+    return mlc::String(content);
 }
 
-inline std::vector<aurora::String> read_lines(const aurora::String& path) {
-    std::vector<aurora::String> lines;
+inline std::vector<mlc::String> read_lines(const mlc::String& path) {
+    std::vector<mlc::String> lines;
     std::ifstream file(path.as_std_string());
     if (!file.is_open()) {
         return lines;
@@ -185,7 +185,7 @@ inline std::vector<aurora::String> read_lines(const aurora::String& path) {
 
     std::string line;
     while (std::getline(file, line)) {
-        lines.push_back(aurora::String(line));
+        lines.push_back(mlc::String(line));
     }
 
     return lines;
@@ -193,7 +193,7 @@ inline std::vector<aurora::String> read_lines(const aurora::String& path) {
 
 // Convenience functions for writing files
 
-inline bool write_string(const aurora::String& path, const aurora::String& content) {
+inline bool write_string(const mlc::String& path, const mlc::String& content) {
     std::ofstream file(path.as_std_string(), std::ios::out | std::ios::trunc);
     if (!file.is_open()) {
         return false;
@@ -203,7 +203,7 @@ inline bool write_string(const aurora::String& path, const aurora::String& conte
     return file.good();
 }
 
-inline bool write_lines(const aurora::String& path, const std::vector<aurora::String>& lines) {
+inline bool write_lines(const mlc::String& path, const std::vector<mlc::String>& lines) {
     std::ofstream file(path.as_std_string(), std::ios::out | std::ios::trunc);
     if (!file.is_open()) {
         return false;
@@ -217,7 +217,7 @@ inline bool write_lines(const aurora::String& path, const std::vector<aurora::St
     return true;
 }
 
-inline bool append_string(const aurora::String& path, const aurora::String& content) {
+inline bool append_string(const mlc::String& path, const mlc::String& content) {
     std::ofstream file(path.as_std_string(), std::ios::out | std::ios::app);
     if (!file.is_open()) {
         return false;
@@ -227,7 +227,7 @@ inline bool append_string(const aurora::String& path, const aurora::String& cont
     return file.good();
 }
 
-inline bool append_line(const aurora::String& path, const aurora::String& line) {
+inline bool append_line(const mlc::String& path, const mlc::String& line) {
     std::ofstream file(path.as_std_string(), std::ios::out | std::ios::app);
     if (!file.is_open()) {
         return false;
@@ -239,20 +239,20 @@ inline bool append_line(const aurora::String& path, const aurora::String& line) 
 
 // File system operations
 
-inline bool exists(const aurora::String& path) {
+inline bool exists(const mlc::String& path) {
     std::ifstream file(path.as_std_string());
     return file.good();
 }
 
-inline bool remove_file(const aurora::String& path) {
+inline bool remove_file(const mlc::String& path) {
     return std::remove(path.as_std_string().c_str()) == 0;
 }
 
-inline bool rename_file(const aurora::String& old_path, const aurora::String& new_path) {
+inline bool rename_file(const mlc::String& old_path, const mlc::String& new_path) {
     return std::rename(old_path.as_std_string().c_str(),
                       new_path.as_std_string().c_str()) == 0;
 }
 
-} // namespace aurora::file
+} // namespace mlc::file
 
 #endif // AURORA_FILE_HPP

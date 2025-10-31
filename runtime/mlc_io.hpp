@@ -4,9 +4,9 @@
 #include <iostream>
 #include <cstdlib>
 #include <vector>
-#include "aurora_string.hpp"
+#include "mlc_string.hpp"
 
-namespace aurora {
+namespace mlc {
 namespace io {
 
 // Basic console output
@@ -26,6 +26,6 @@ const std::vector<String>& args();
 void set_args(std::vector<String>&& new_args);
 
 } // namespace io
-} // namespace aurora
+} // namespace mlc
 
 #endif // AURORA_IO_HPP

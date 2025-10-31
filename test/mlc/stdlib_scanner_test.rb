@@ -11,8 +11,8 @@ class StdlibScannerTest < Minitest::Test
     refute_nil math, "Math module should be found"
 
     assert_equal 'Math', math.name
-    assert_equal 'aurora::math', math.namespace
-    assert math.file_path.end_with?('math.aur')
+    assert_equal 'mlc::math', math.namespace
+    assert math.file_path.end_with?('math.mlc')
 
     # Check some known functions
     assert math.functions.key?('sqrt_f')
@@ -22,7 +22,7 @@ class StdlibScannerTest < Minitest::Test
     # Check function metadata
     sqrt = math.functions['sqrt_f']
     assert_equal 'sqrt_f', sqrt.name
-    assert_equal 'aurora::math::sqrt_f', sqrt.qualified_name
+    assert_equal 'mlc::math::sqrt_f', sqrt.qualified_name
     assert sqrt.extern?, "sqrt_f should be extern"
   end
 
@@ -34,7 +34,7 @@ class StdlibScannerTest < Minitest::Test
     refute_nil graphics, "Graphics module should be found"
 
     assert_equal 'Graphics', graphics.name
-    assert_equal 'aurora::graphics', graphics.namespace
+    assert_equal 'mlc::graphics', graphics.namespace
 
     # Check functions
     assert graphics.functions.key?('create_window')
@@ -48,12 +48,12 @@ class StdlibScannerTest < Minitest::Test
     # Check opaque type
     window_type = graphics.types['Window']
     assert window_type.opaque?, "Window should be opaque"
-    assert_equal 'aurora::graphics::Window', window_type.qualified_name
+    assert_equal 'mlc::graphics::Window', window_type.qualified_name
 
     # Check record type
     event_type = graphics.types['Event']
     refute event_type.opaque?, "Event should not be opaque"
-    assert_equal 'aurora::graphics::Event', event_type.qualified_name
+    assert_equal 'mlc::graphics::Event', event_type.qualified_name
   end
 
   def test_cpp_function_name_lookup
@@ -61,16 +61,16 @@ class StdlibScannerTest < Minitest::Test
     scanner.scan_all
 
     # Math functions
-    assert_equal 'aurora::math::sqrt_f', scanner.cpp_function_name('sqrt_f')
-    assert_equal 'aurora::math::sin_f', scanner.cpp_function_name('sin_f')
-    assert_equal 'aurora::math::abs', scanner.cpp_function_name('abs')
+    assert_equal 'mlc::math::sqrt_f', scanner.cpp_function_name('sqrt_f')
+    assert_equal 'mlc::math::sin_f', scanner.cpp_function_name('sin_f')
+    assert_equal 'mlc::math::abs', scanner.cpp_function_name('abs')
 
     # Graphics functions
-    assert_equal 'aurora::graphics::create_window', scanner.cpp_function_name('create_window')
-    assert_equal 'aurora::graphics::poll_event', scanner.cpp_function_name('poll_event')
+    assert_equal 'mlc::graphics::create_window', scanner.cpp_function_name('create_window')
+    assert_equal 'mlc::graphics::poll_event', scanner.cpp_function_name('poll_event')
 
     # IO functions
-    assert_equal 'aurora::io::println', scanner.cpp_function_name('println')
+    assert_equal 'mlc::io::println', scanner.cpp_function_name('println')
 
     # Non-existent function
     assert_nil scanner.cpp_function_name('nonexistent_function')
@@ -83,12 +83,12 @@ class StdlibScannerTest < Minitest::Test
     conv = scanner.module_info('Conv')
     refute_nil conv
 
-    # Conv uses 'aurora' namespace, not 'aurora::conv'
-    assert_equal 'aurora', conv.namespace
+    # Conv uses 'mlc' namespace, not 'mlc::conv'
+    assert_equal 'mlc', conv.namespace
 
     # Check function mapping
-    assert_equal 'aurora::parse_i32', scanner.cpp_function_name('parse_i32')
-    assert_equal 'aurora::to_string_i32', scanner.cpp_function_name('to_string_i32')
+    assert_equal 'mlc::parse_i32', scanner.cpp_function_name('parse_i32')
+    assert_equal 'mlc::to_string_i32', scanner.cpp_function_name('to_string_i32')
   end
 
   def test_io_module_preserves_case
@@ -99,7 +99,7 @@ class StdlibScannerTest < Minitest::Test
     refute_nil io
 
     # IO should preserve uppercase
-    assert_equal 'aurora::io', io.namespace
+    assert_equal 'mlc::io', io.namespace
   end
 
   def test_available_modules
@@ -127,7 +127,7 @@ class StdlibScannerTest < Minitest::Test
     math_path = scanner.module_file_path('Math')
     refute_nil math_path
     assert File.exist?(math_path)
-    assert math_path.end_with?('math.aur')
+    assert math_path.end_with?('math.mlc')
 
     assert_nil scanner.module_file_path('NonExistentModule')
   end

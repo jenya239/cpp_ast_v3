@@ -66,7 +66,7 @@ module MLC
     def scan_all
       return if @scanned
 
-      Dir.glob(File.join(@stdlib_dir, '*.aur')).each do |file_path|
+      Dir.glob(File.join(@stdlib_dir, '*.mlc')).each do |file_path|
         begin
           module_info = scan_module(file_path)
           @modules[module_info.name] = module_info
@@ -128,7 +128,7 @@ module MLC
         ast.module_decl.name
       else
         # Fallback: use filename (capitalize first letter)
-        File.basename(file_path, '.aur').capitalize
+        File.basename(file_path, '.mlc').capitalize
       end
 
       namespace = infer_namespace(module_name)
@@ -198,22 +198,22 @@ module MLC
       end
     end
 
-    # Infer C++ namespace from Aurora module name
-    # Convention: ModuleName -> aurora::modulename
+    # Infer C++ namespace from MLC module name
+    # Convention: ModuleName -> mlc::modulename
     # Special cases handled here
     def infer_namespace(module_name)
       case module_name
       when 'Array'
-        'aurora::collections'
+        'mlc::collections'
       when 'Conv'
-        # Conv functions are in aurora namespace (aurora_string.hpp)
-        'aurora'
+        # Conv functions are in mlc namespace (mlc_string.hpp)
+        'mlc'
       when 'IO'
         # Preserve uppercase for IO
-        'aurora::io'
+        'mlc::io'
       else
         # Default: lowercase the module name
-        "aurora::#{module_name.downcase}"
+        "mlc::#{module_name.downcase}"
       end
     end
   end

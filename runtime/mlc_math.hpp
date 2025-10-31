@@ -5,7 +5,7 @@
 #include <cstdint>
 #include <algorithm>
 
-namespace aurora::math {
+namespace mlc::math {
 
 // Basic arithmetic functions
 inline int32_t abs(int32_t x) {
@@ -58,6 +58,6 @@ inline float tan_f(float x) {
 constexpr float PI = 3.14159265359f;
 constexpr float E = 2.71828182846f;
 
-} // namespace aurora::math
+} // namespace mlc::math
 
 #endif // AURORA_MATH_HPP

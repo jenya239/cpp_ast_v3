@@ -15,7 +15,7 @@ Aurora Source → Lexer → Parser → AST → CoreIR → C++ AST → C++ Code
 
 #### Parser (`lib/aurora/parser/parser.rb`)
 - Recursive descent parser
-- Handles all Aurora language constructs
+- Handles all MLC language constructs
 - Generates AST nodes
 
 #### IR Generation (`lib/aurora/passes/to_core.rb`)
@@ -341,7 +341,7 @@ end
 
 ```
 test/
-├── aurora/           # Aurora language tests
+├── aurora/           # MLC language tests
 ├── builder/          # DSL builder tests
 ├── integration/      # End-to-end tests
 ├── performance/      # Performance benchmarks

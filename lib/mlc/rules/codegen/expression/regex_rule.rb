@@ -7,7 +7,7 @@ module MLC
   module Rules
     module CodeGen
       module Expression
-        # Rule for lowering HighIR regex expressions to C++ aurora::Regex objects
+        # Rule for lowering HighIR regex expressions to C++ mlc::Regex objects
         # Pure function - all logic contained, no delegation
         class RegexRule < BaseRule
           include MLC::Backend::CodeGenHelpers
@@ -17,14 +17,14 @@ module MLC
           end
 
           def apply(node, _context = {})
-            # Generate: aurora::regex_i(String("pattern")) or aurora::regex(String("pattern"))
+            # Generate: mlc::regex_i(String("pattern")) or mlc::regex(String("pattern"))
             pattern_string = build_aurora_string(node.pattern)
 
             # Choose function based on flags
             func_name = if node.flags.include?("i")
-                          "aurora::regex_i"
+                          "mlc::regex_i"
                         else
-                          "aurora::regex"
+                          "mlc::regex"
                         end
 
             CppAst::Nodes::FunctionCallExpression.new(

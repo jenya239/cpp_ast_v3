@@ -89,8 +89,8 @@ class OpaqueTypeTest < Minitest::Test
     cpp = MLC.compile(source).to_source
 
     # Window should be opaque pointer type with namespace
-    assert_match /aurora::graphics::Window\*/, cpp
-    assert_match /aurora::graphics::create_window/, cpp
+    assert_match /mlc::graphics::Window\*/, cpp
+    assert_match /mlc::graphics::create_window/, cpp
   end
 
   def test_opaque_type_vs_record_type

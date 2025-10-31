@@ -39,7 +39,7 @@ module MLC
       entry = transformer.function_registry.fetch_entry("hypotenuse")
       refute_nil entry
       assert_equal "Math", entry.module_name
-      assert_equal "aurora::math", entry.namespace
+      assert_equal "mlc::math", entry.namespace
       assert entry.exported?
       refute entry.external?
     end

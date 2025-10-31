@@ -4,7 +4,7 @@ require_relative "../test_helper"
 
 class StdlibIOTest < Minitest::Test
   def test_io_module_parses
-    source = File.read(File.expand_path('../../lib/mlc/stdlib/io.aur', __dir__))
+    source = File.read(File.expand_path('../../lib/mlc/stdlib/io.mlc', __dir__))
     ast = MLC.parse(source)
 
     assert_equal 'IO', ast.module_decl.name
@@ -12,7 +12,7 @@ class StdlibIOTest < Minitest::Test
   end
 
   def test_io_extern_functions_are_marked_external
-    source = File.read(File.expand_path('../../lib/mlc/stdlib/io.aur', __dir__))
+    source = File.read(File.expand_path('../../lib/mlc/stdlib/io.mlc', __dir__))
     ast = MLC.parse(source)
 
     # Find println function
@@ -22,7 +22,7 @@ class StdlibIOTest < Minitest::Test
   end
 
   def test_io_helper_functions_not_external
-    source = File.read(File.expand_path('../../lib/mlc/stdlib/io.aur', __dir__))
+    source = File.read(File.expand_path('../../lib/mlc/stdlib/io.mlc', __dir__))
     ast = MLC.parse(source)
 
     # Find debug_print function

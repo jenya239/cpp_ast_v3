@@ -5,20 +5,20 @@
 **MLC** (Multi-Level Compiler) is a production-ready compiler framework featuring:
 
 1. **C++ AST DSL** - Ruby DSL for generating and manipulating C++ code
-2. **Aurora Language** - Modern, type-safe language that compiles to C++
+2. **MLC Language** - Modern, type-safe language that compiles to C++
 3. **Multi-Level IR Architecture** - High IR → Mid IR → Low IR → Target
 
 The project combines powerful metaprogramming tools with a modern language compiler, all with comprehensive test coverage!
 
 ---
 
-## 🌟 Aurora Language
+## 🌟 MLC Language
 
-**Aurora** is a modern, statically-typed programming language that compiles to C++. It combines the safety of Rust, the expressiveness of functional languages, and the performance of C++.
+**MLC** is a modern, statically-typed programming language that compiles to C++. It combines the safety of Rust, the expressiveness of functional languages, and the performance of C++.
 
 ### Quick Example
 
-```aurora
+```mlc
 type Result<T, E> = Ok(T) | Err(E)
 
 fn divide(a: i32, b: i32) -> Result<i32, str> =
@@ -35,7 +35,7 @@ fn main() -> i32 =
 
 This compiles to efficient C++ using `std::variant` and `std::visit`.
 
-### ✨ Aurora Features
+### ✨ Language Features
 
 #### ✅ Fully Implemented
 - **Sum Types** - Type-safe unions with pattern matching
@@ -51,32 +51,32 @@ This compiles to efficient C++ using `std::variant` and `std::visit`.
 - **Array Operations** - Indexing, methods, literals
 
 #### 📊 Test Coverage
-- **Aurora test suite**: all scenarios passing
-- **Total tests**: 1030 runs / 2308 assertions (0 failures)
+- **MLC test suite**: all scenarios passing
+- **Total tests**: 421 runs / 1622 assertions (0 failures)
 - Sum types, pattern matching, generics, modules all fully working
 
-### Aurora CLI
+### MLC CLI
 
-The repository ships with `bin/mlc`, the MLC compiler CLI that compiles Aurora source to C++20 behind the scenes, invokes the system compiler (`$CXX` or `g++`), and executes the resulting binary with standard streams intact. Typical usage:
+The repository ships with `bin/mlc`, the MLC compiler CLI that compiles MLC source to C++20 behind the scenes, invokes the system compiler (`$CXX` or `g++`), and executes the resulting binary with standard streams intact. Typical usage:
 
 ```bash
 # Run a file
-bin/mlc examples/hello_world.aur
+bin/mlc examples/hello_world.mlc
 
 # Stream source from STDIN
-cat examples/hello_world.aur | bin/mlc -
+cat examples/hello_world.mlc | bin/mlc -
 
 # Pass arguments to the compiled program
-bin/mlc app.aur -- arg1 arg2
+bin/mlc app.mlc -- arg1 arg2
 
 # Inspect the generated C++
-bin/mlc --emit-cpp app.aur
+bin/mlc --emit-cpp app.mlc
 
 # Keep the temporary build directory for debugging
-bin/mlc --keep-tmp app.aur
+bin/mlc --keep-tmp app.mlc
 ```
 
-Runtime headers (`aurora_string.hpp`, `aurora_buffer.hpp`, `aurora_regex.hpp`) are linked automatically, so `.aur` files can be treated like scripts that participate naturally in shell pipelines and I/O redirection.
+Runtime headers (`mlc_string.hpp`, `mlc_buffer.hpp`, `mlc_regex.hpp`) are linked automatically, so `.mlc` files can be treated like scripts that participate naturally in shell pipelines and I/O redirection.
 
 ---
 
@@ -322,11 +322,11 @@ graphics_lib = program(
 - **[CHANGELOG.md](CHANGELOG.md)** - Project changelog
 - **[TODO.md](TODO.md)** - Future work and improvements
 
-### Aurora Language
-- **[Aurora Architecture](docs/AURORA_ADVANCED_FEATURES_ARCHITECTURE.md)** - Complete architecture for advanced features
-- **[Aurora Final Report](docs/aurora/AURORA_FINAL_SUCCESS_REPORT.md)** - Implementation results (100% tests passing!)
-- **[Aurora Concept](docs/rubydslchatgpt.md)** - Original language design (keep this!)
-- **[Cursor Notes](docs/cursor_cppastv3.md)** - Development notes (keep this!)
+### MLC Language
+- **[MLC Architecture](docs/AURORA_ADVANCED_FEATURES_ARCHITECTURE.md)** - Complete architecture for advanced features
+- **[MLC Final Report](docs/aurora/AURORA_FINAL_SUCCESS_REPORT.md)** - Implementation results (100% tests passing!)
+- **[MLC Language Concept](docs/rubydslchatgpt.md)** - Original language design
+- **[Cursor Notes](docs/cursor_cppastv3.md)** - Development notes
 
 ### Technical Guides
 - **[Architecture Guide](ARCHITECTURE_WHITESPACE_GUIDE.md)** - Whitespace handling architecture
@@ -334,5 +334,5 @@ graphics_lib = program(
 ---
 
 **Status**: ✅ **PRODUCTION READY**
-**Test Coverage**: 1030 runs, 2308 assertions, **100% passing**
-**Aurora Language**: all language tests passing
+**Test Coverage**: 421 runs, 1622 assertions, **100% passing**
+**MLC Language**: all language tests passing

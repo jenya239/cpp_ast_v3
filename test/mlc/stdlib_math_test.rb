@@ -4,7 +4,7 @@ require_relative "../test_helper"
 
 class StdlibMathTest < Minitest::Test
   def test_math_module_parses
-    source = File.read(File.expand_path('../../lib/mlc/stdlib/math.aur', __dir__))
+    source = File.read(File.expand_path('../../lib/mlc/stdlib/math.mlc', __dir__))
     ast = MLC.parse(source)
 
     assert_equal 'Math', ast.module_decl.name
@@ -12,7 +12,7 @@ class StdlibMathTest < Minitest::Test
   end
 
   def test_math_extern_functions_are_marked_external
-    source = File.read(File.expand_path('../../lib/mlc/stdlib/math.aur', __dir__))
+    source = File.read(File.expand_path('../../lib/mlc/stdlib/math.mlc', __dir__))
     ast = MLC.parse(source)
 
     # Find sqrt_f function
@@ -23,7 +23,7 @@ class StdlibMathTest < Minitest::Test
   end
 
   def test_math_helper_functions_not_external
-    source = File.read(File.expand_path('../../lib/mlc/stdlib/math.aur', __dir__))
+    source = File.read(File.expand_path('../../lib/mlc/stdlib/math.mlc', __dir__))
     ast = MLC.parse(source)
 
     # Find hypotenuse function

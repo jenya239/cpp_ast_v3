@@ -8,9 +8,9 @@
 #include <xcb/xcb.h>
 #include <cairo/cairo.h>
 #include <cairo/cairo-xcb.h>
-#include "aurora_string.hpp"
+#include "mlc_string.hpp"
 
-namespace aurora::graphics {
+namespace mlc::graphics {
 
 // Forward declarations
 struct Window;
@@ -32,7 +32,7 @@ struct Window {
     int32_t width;
     int32_t height;
 
-    Window(int32_t w, int32_t h, const aurora::String& title)
+    Window(int32_t w, int32_t h, const mlc::String& title)
         : width(w), height(h) {
 
         // Connect to X server
@@ -166,7 +166,7 @@ struct Event {
 // ============================================================================
 
 // Create a window
-inline Window* create_window(int32_t width, int32_t height, const aurora::String& title) {
+inline Window* create_window(int32_t width, int32_t height, const mlc::String& title) {
     return new Window(width, height, title);
 }
 
@@ -268,7 +268,7 @@ inline void draw_line(DrawContext* ctx, double x1, double y1, double x2, double 
 }
 
 // Draw text
-inline void draw_text(DrawContext* ctx, const aurora::String& text, double x, double y, double font_size) {
+inline void draw_text(DrawContext* ctx, const mlc::String& text, double x, double y, double font_size) {
     cairo_select_font_face(ctx->cr, "sans-serif", CAIRO_FONT_SLANT_NORMAL, CAIRO_FONT_WEIGHT_NORMAL);
     cairo_set_font_size(ctx->cr, font_size);
     cairo_move_to(ctx->cr, x, y);
@@ -299,6 +299,6 @@ inline bool is_quit_event(const Event& evt) {
            evt.type == EventType::Quit;
 }
 
-} // namespace aurora::graphics
+} // namespace mlc::graphics
 
 #endif // AURORA_GRAPHICS_HPP

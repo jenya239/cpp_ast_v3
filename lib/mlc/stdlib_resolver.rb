@@ -9,11 +9,11 @@ module MLC
     # DEPRECATED: Legacy constant for backward compatibility
     # Use StdlibScanner for automatic module discovery
     STDLIB_MODULES = {
-      'Math' => 'math.aur',
-      'IO' => 'io.aur',
-      'String' => 'string.aur',
-      'Conv' => 'conv.aur',
-      'Graphics' => 'graphics.aur'
+      'Math' => 'math.mlc',
+      'IO' => 'io.mlc',
+      'String' => 'string.mlc',
+      'Conv' => 'conv.mlc',
+      'Graphics' => 'graphics.mlc'
     }.freeze
 
     def initialize(stdlib_dir = nil, scanner: nil)

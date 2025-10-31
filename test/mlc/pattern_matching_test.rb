@@ -83,7 +83,7 @@ class AuroraPatternMatchingTest < Minitest::Test
     cpp_code = MLC.to_cpp(aurora_source)
 
     # Should generate std::visit with lambda overload and helper include
-    assert_includes cpp_code, '#include "aurora_match.hpp"'
+    assert_includes cpp_code, '#include "mlc_match.hpp"'
     assert_includes cpp_code, "std::visit"
     assert_includes cpp_code, "overloaded"
     assert_includes cpp_code, "Ok"
@@ -152,7 +152,7 @@ private
 
 def assert_cpp_compiles_and_runs(cpp_code)
   runtime_dir = File.expand_path("../../runtime", __dir__)
-  Dir.mktmpdir("aurora_pattern") do |dir|
+  Dir.mktmpdir("mlc_pattern") do |dir|
     source_path = File.join(dir, "pattern_test.cpp")
     binary_path = File.join(dir, "pattern_test")
 

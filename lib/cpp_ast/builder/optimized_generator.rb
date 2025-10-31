@@ -220,7 +220,7 @@ module CppAst
         right = generate_aurora_expression(expr.right)
         if expr.op == "+" && is_string_expression(expr.left) && is_string_expression(expr.right)
           # String concatenation
-          "aurora::String(#{left}) + aurora::String(#{right})"
+          "mlc::String(#{left}) + mlc::String(#{right})"
         else
           "#{left} #{expr.op} #{right}"
         end

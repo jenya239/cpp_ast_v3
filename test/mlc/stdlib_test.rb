@@ -51,10 +51,10 @@ class AuroraStdlibTest < Minitest::Test
     # Test that working stdlib files exist
     project_root = File.expand_path('../..', __dir__)
     stdlib_files = [
-      "lib/mlc/stdlib/math.aur",
-      "lib/mlc/stdlib/io.aur",
-      "lib/mlc/stdlib/string.aur",
-      "lib/mlc/stdlib/conv.aur"
+      "lib/mlc/stdlib/math.mlc",
+      "lib/mlc/stdlib/io.mlc",
+      "lib/mlc/stdlib/string.mlc",
+      "lib/mlc/stdlib/conv.mlc"
     ]
 
     stdlib_files.each do |file|
@@ -91,7 +91,7 @@ class AuroraStdlibTest < Minitest::Test
 
     cpp = MLC.to_cpp(aurora_source)
     
-    assert_includes cpp, "aurora::String"
+    assert_includes cpp, "mlc::String"
     assert_includes cpp, "Hello"
     assert_includes cpp, "World"
   end

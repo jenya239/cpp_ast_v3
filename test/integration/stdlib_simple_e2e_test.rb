@@ -12,7 +12,7 @@ class StdlibSimpleE2ETest < Minitest::Test
   # Helper to run Aurora program and check result
   def run_aurora(source_code, &block)
     Dir.mktmpdir do |dir|
-      source = File.join(dir, "test.aur")
+      source = File.join(dir, "test.mlc")
       File.write(source, source_code)
       stdout, stderr, status = Open3.capture3(CLI, source)
 

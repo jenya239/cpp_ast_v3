@@ -4,9 +4,9 @@
 #include <vector>
 #include <type_traits>
 #include <utility>
-#include "aurora_string.hpp"
+#include "mlc_string.hpp"
 
-namespace aurora::collections {
+namespace mlc::collections {
 
 template <typename T, typename Func>
 auto map(const std::vector<T>& items, Func&& func) {
@@ -44,21 +44,21 @@ bool is_empty(const std::vector<T>& items) {
 }
 
 template <typename T>
-aurora::String join(const std::vector<T>& items, const aurora::String& separator) {
+mlc::String join(const std::vector<T>& items, const mlc::String& separator) {
     if (items.empty()) {
-        return aurora::String("");
+        return mlc::String("");
     }
 
-    aurora::String result = aurora::to_string(items.front());
+    mlc::String result = mlc::to_string(items.front());
     for (size_t i = 1; i < items.size(); ++i) {
         result += separator;
-        result += aurora::to_string(items[i]);
+        result += mlc::to_string(items[i]);
     }
     return result;
 }
 
 // Specialized version for string arrays
-inline aurora::String join_strings(const std::vector<aurora::String>& items, const aurora::String& separator) {
+inline mlc::String join_strings(const std::vector<mlc::String>& items, const mlc::String& separator) {
     return join(items, separator);
 }
 
@@ -78,7 +78,7 @@ inline std::vector<float> reverse_f32(const std::vector<float>& items) {
     return reverse(items);
 }
 
-inline std::vector<aurora::String> reverse_str(const std::vector<aurora::String>& items) {
+inline std::vector<mlc::String> reverse_str(const std::vector<mlc::String>& items) {
     return reverse(items);
 }
 
@@ -99,7 +99,7 @@ inline std::vector<float> take_f32(const std::vector<float>& items, int32_t n) {
     return take(items, n);
 }
 
-inline std::vector<aurora::String> take_str(const std::vector<aurora::String>& items, int32_t n) {
+inline std::vector<mlc::String> take_str(const std::vector<mlc::String>& items, int32_t n) {
     return take(items, n);
 }
 
@@ -120,7 +120,7 @@ inline std::vector<float> drop_f32(const std::vector<float>& items, int32_t n) {
     return drop(items, n);
 }
 
-inline std::vector<aurora::String> drop_str(const std::vector<aurora::String>& items, int32_t n) {
+inline std::vector<mlc::String> drop_str(const std::vector<mlc::String>& items, int32_t n) {
     return drop(items, n);
 }
 
@@ -142,7 +142,7 @@ inline std::vector<float> slice_f32(const std::vector<float>& items, int32_t sta
     return slice(items, start, end);
 }
 
-inline std::vector<aurora::String> slice_str(const std::vector<aurora::String>& items, int32_t start, int32_t end) {
+inline std::vector<mlc::String> slice_str(const std::vector<mlc::String>& items, int32_t start, int32_t end) {
     return slice(items, start, end);
 }
 
@@ -164,7 +164,7 @@ inline bool contains_f32(const std::vector<float>& items, float element) {
     return contains(items, element);
 }
 
-inline bool contains_str(const std::vector<aurora::String>& items, const aurora::String& element) {
+inline bool contains_str(const std::vector<mlc::String>& items, const mlc::String& element) {
     return contains(items, element);
 }
 
@@ -238,6 +238,6 @@ inline std::vector<int32_t> range(int32_t start, int32_t end) {
     return result;
 }
 
-} // namespace aurora::collections
+} // namespace mlc::collections
 
 #endif // AURORA_COLLECTIONS_HPP

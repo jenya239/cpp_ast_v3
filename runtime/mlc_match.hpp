@@ -3,7 +3,7 @@
 
 #include <utility>
 
-namespace aurora {
+namespace mlc {
 
 // Helper for building overloaded lambda sets for std::visit
 template <class... Ts>
@@ -14,9 +14,9 @@ struct overloaded : Ts... {
 template <class... Ts>
 overloaded(Ts...) -> overloaded<Ts...>;
 
-}  // namespace aurora
+}  // namespace mlc
 
 // Provide the helper in the global namespace to match existing codegen
-using aurora::overloaded;
+using mlc::overloaded;
 
 #endif  // AURORA_MATCH_HPP

@@ -1,9 +1,9 @@
-#include "aurora_io.hpp"
+#include "mlc_io.hpp"
 
 #include <iostream>
 #include <sstream>
 
-namespace aurora::io {
+namespace mlc::io {
 namespace {
 std::vector<String> g_args;
 
@@ -55,4 +55,4 @@ void set_args(std::vector<String>&& new_args) {
     g_args = std::move(new_args);
 }
 
-} // namespace aurora::io
+} // namespace mlc::io

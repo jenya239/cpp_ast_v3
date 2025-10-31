@@ -11,7 +11,7 @@ class AuroraRuntimeFormatTest < Minitest::Test
     AUR
 
     cpp = MLC.to_cpp(source)
-    assert_includes cpp, "aurora::format"
+    assert_includes cpp, "mlc::format"
   end
 
 end

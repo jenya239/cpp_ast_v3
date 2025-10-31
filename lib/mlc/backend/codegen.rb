@@ -58,15 +58,15 @@ module MLC
       include FunctionLowerer
 
       IO_FUNCTIONS = {
-        "print" => "aurora::io::print",
-        "println" => "aurora::io::println",
-        "eprint" => "aurora::io::eprint",
-        "eprintln" => "aurora::io::eprintln",
-        "read_line" => "aurora::io::read_line",
-        "input" => "aurora::io::read_all",
-        "args" => "aurora::io::args",
-        "to_string" => "aurora::to_string",
-        "format" => "aurora::format"
+        "print" => "mlc::io::print",
+        "println" => "mlc::io::println",
+        "eprint" => "mlc::io::eprint",
+        "eprintln" => "mlc::io::eprintln",
+        "read_line" => "mlc::io::read_line",
+        "input" => "mlc::io::read_all",
+        "args" => "mlc::io::args",
+        "to_string" => "mlc::to_string",
+        "format" => "mlc::format"
       }.freeze
 
       # Stdlib function overrides that need special lowering behavior
@@ -94,9 +94,9 @@ module MLC
           "f64" => "double",
           "bool" => "bool",
           "void" => "void",
-          "str" => "aurora::String",
-          "string" => "aurora::String",
-          "regex" => "aurora::Regex"
+          "str" => "mlc::String",
+          "string" => "mlc::String",
+          "regex" => "mlc::Regex"
         }
 
         # NEW: Use StdlibScanner for automatic function name resolution

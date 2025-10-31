@@ -11,8 +11,8 @@ class AuroraIOTest < Minitest::Test
 
     cpp = MLC.to_cpp(aurora_source)
 
-    assert_includes cpp, "aurora::io::println"
-    assert_includes cpp, 'aurora::String("hello")'
+    assert_includes cpp, "mlc::io::println"
+    assert_includes cpp, 'mlc::String("hello")'
   end
 
   def test_read_line_and_args_lowering
@@ -23,7 +23,7 @@ class AuroraIOTest < Minitest::Test
 
     cpp = MLC.to_cpp(aurora_source)
 
-    assert_includes cpp, "aurora::io::read_line"
-    assert_includes cpp, "aurora::io::args"
+    assert_includes cpp, "mlc::io::read_line"
+    assert_includes cpp, "mlc::io::args"
   end
 end

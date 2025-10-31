@@ -1,9 +1,9 @@
-#include "aurora_string.hpp"
+#include "mlc_string.hpp"
 #include <algorithm>
 #include <cctype>
 #include <sstream>
 
-namespace aurora {
+namespace mlc {
 
 // UTF-8 helper: count characters in a UTF-8 string
 size_t String::utf8_length(const std::string& str) {
@@ -181,4 +181,4 @@ std::vector<String> String::split(const String& delimiter) const {
     return result;
 }
 
-} // namespace aurora
+} // namespace mlc

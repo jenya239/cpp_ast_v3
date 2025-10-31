@@ -24,7 +24,7 @@ module MLC
     # @param name [String] Type name in Aurora (e.g., "Event", "Window")
     # @param ast_node [AST::TypeDecl, nil] Original AST node
     # @param core_ir_type [HighIR::Type] Transformed HighIR type
-    # @param namespace [String, nil] C++ namespace (e.g., "aurora::graphics")
+    # @param namespace [String, nil] C++ namespace (e.g., "mlc::graphics")
     # @param kind [Symbol] :primitive, :record, :sum, :opaque, :function, :array
     # @param exported [Boolean] Is this type exported from module?
     def initialize(name:, ast_node: nil, core_ir_type:, namespace: nil, kind:, exported: false, module_name: nil)
@@ -168,9 +168,9 @@ module MLC
       'f32' => 'float',
       'f64' => 'double',
       'usize' => 'size_t',
-      'str' => 'aurora::String',
-      'string' => 'aurora::String',
-      'regex' => 'aurora::Regex'
+      'str' => 'mlc::String',
+      'string' => 'mlc::String',
+      'regex' => 'mlc::Regex'
     }.freeze
   end
 

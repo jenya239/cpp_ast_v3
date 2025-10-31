@@ -19,8 +19,8 @@ class StdlibScannerIntegrationTest < Minitest::Test
     cpp = MLC.compile(source).to_source
 
     # Should use proper C++ namespaced function names
-    assert_includes cpp, "aurora::math::sqrt_f"
-    assert_includes cpp, "aurora::math::sin_f"
+    assert_includes cpp, "mlc::math::sqrt_f"
+    assert_includes cpp, "mlc::math::sin_f"
   end
 
   def test_compile_with_graphics_functions
@@ -41,8 +41,8 @@ class StdlibScannerIntegrationTest < Minitest::Test
     cpp = MLC.compile(source).to_source
 
     # Should use proper C++ namespaced function names
-    assert_includes cpp, "aurora::graphics::create_window"
-    assert_includes cpp, "aurora::graphics::flush_window"
+    assert_includes cpp, "mlc::graphics::create_window"
+    assert_includes cpp, "mlc::graphics::flush_window"
   end
 
   def test_imported_graphics_record_type_uses_namespace
@@ -58,8 +58,8 @@ class StdlibScannerIntegrationTest < Minitest::Test
 
     cpp = MLC.compile(source).to_source
 
-    assert_includes cpp, "int handle(aurora::graphics::Event evt)"
-    refute_includes cpp, "aurora::graphics::Event*"
+    assert_includes cpp, "int handle(mlc::graphics::Event evt)"
+    refute_includes cpp, "mlc::graphics::Event*"
     assert_includes cpp, "return evt.x;"
   end
 
@@ -76,7 +76,7 @@ class StdlibScannerIntegrationTest < Minitest::Test
     cpp = MLC.compile(source).to_source
 
     # IO functions should work
-    assert_includes cpp, "aurora::io::println"
+    assert_includes cpp, "mlc::io::println"
   end
 
   def test_compile_with_conv_functions
@@ -95,7 +95,7 @@ class StdlibScannerIntegrationTest < Minitest::Test
     cpp = MLC.compile(source).to_source
 
     # Conv functions should use aurora namespace (not aurora::conv)
-    assert_includes cpp, "aurora::to_string_i32"
+    assert_includes cpp, "mlc::to_string_i32"
   end
 
   def test_stdlib_resolver_uses_scanner
@@ -118,7 +118,7 @@ class StdlibScannerIntegrationTest < Minitest::Test
     math_path = resolver.resolve('Math')
     refute_nil math_path
     assert File.exist?(math_path)
-    assert math_path.end_with?('math.aur')
+    assert math_path.end_with?('math.mlc')
   end
 
   def test_scanner_available_from_resolver
@@ -129,7 +129,7 @@ class StdlibScannerIntegrationTest < Minitest::Test
     assert_instance_of MLC::StdlibScanner, scanner
 
     # Can use scanner to look up functions
-    assert_equal 'aurora::math::sqrt_f', scanner.cpp_function_name('sqrt_f')
+    assert_equal 'mlc::math::sqrt_f', scanner.cpp_function_name('sqrt_f')
   end
 
   def test_compile_with_multiple_modules
@@ -154,9 +154,9 @@ class StdlibScannerIntegrationTest < Minitest::Test
     cpp = MLC.compile(source).to_source
 
     # All namespaced functions should work
-    assert_includes cpp, "aurora::math::sqrt_f"
-    assert_includes cpp, "aurora::graphics::create_window"
-    assert_includes cpp, "aurora::io::println"
+    assert_includes cpp, "mlc::math::sqrt_f"
+    assert_includes cpp, "mlc::graphics::create_window"
+    assert_includes cpp, "mlc::io::println"
   end
 
   def test_scanner_resolves_math_functions_without_overrides
@@ -175,7 +175,7 @@ class StdlibScannerIntegrationTest < Minitest::Test
     cpp = MLC.compile(source).to_source
 
     # Should use proper namespace provided by StdlibScanner
-    assert_includes cpp, "aurora::math::abs"
+    assert_includes cpp, "mlc::math::abs"
   end
 
   def test_conv_to_f32_uses_static_cast_override
@@ -201,7 +201,7 @@ class StdlibScannerIntegrationTest < Minitest::Test
     assert graphics.functions.key?('create_window')
     create_window = graphics.functions['create_window']
     assert create_window.extern?
-    assert_equal 'aurora::graphics::create_window', create_window.qualified_name
+    assert_equal 'mlc::graphics::create_window', create_window.qualified_name
   end
 
   def test_scanner_handles_export_functions
@@ -214,6 +214,6 @@ class StdlibScannerIntegrationTest < Minitest::Test
     assert graphics.functions.key?('is_quit_event')
     is_quit = graphics.functions['is_quit_event']
     refute is_quit.extern?
-    assert_equal 'aurora::graphics::is_quit_event', is_quit.qualified_name
+    assert_equal 'mlc::graphics::is_quit_event', is_quit.qualified_name
   end
 end

@@ -104,7 +104,7 @@ class LoweringStrategyIntegrationTest < Minitest::Test
 
     # Regex match must use IIFE for early returns
     assert_includes cpp, "[&]()"
-    assert_includes cpp, "aurora::regex"
+    assert_includes cpp, "mlc::regex"
   end
 
   def test_list_comprehension_uses_iife
@@ -167,7 +167,7 @@ class LoweringStrategyIntegrationTest < Minitest::Test
     cpp = MLC.to_cpp(source)
 
     # Should use aurora::io runtime
-    assert_includes cpp, "aurora::io::println"
+    assert_includes cpp, "mlc::io::println"
   end
 
   def test_policy_configuration_affects_lowering
