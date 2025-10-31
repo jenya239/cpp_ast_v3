@@ -10,7 +10,7 @@ class ApplicationTest < Minitest::Test
     assert_instance_of Aurora::IRGen, to_core
 
     lowering = app.build_cpp_lowering(type_registry: Aurora::TypeRegistry.new)
-    assert_instance_of Aurora::Backend::CppLowering, lowering
+    assert_instance_of Aurora::Backend::CodeGen, lowering
     assert_same app.event_bus, lowering.event_bus
   end
 

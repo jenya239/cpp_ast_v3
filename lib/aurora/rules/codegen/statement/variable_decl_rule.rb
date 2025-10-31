@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 require_relative "../../base_rule"
-require_relative "../../../backend/cpp_lowering/helpers"
+require_relative "../../../backend/codegen/helpers"
 
 module Aurora
   module Rules
@@ -9,7 +9,7 @@ module Aurora
       module Statement
         # Rule for lowering CoreIR variable declarations to C++ variable declarations
         class VariableDeclRule < BaseRule
-          include Aurora::Backend::CppLoweringHelpers
+          include Aurora::Backend::CodeGenHelpers
 
           def applies?(node, _context = {})
             node.is_a?(Aurora::CoreIR::VariableDeclStmt)

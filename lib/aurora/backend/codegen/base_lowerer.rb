@@ -2,7 +2,7 @@
 
 module Aurora
   module Backend
-    class CppLowering
+    class CodeGen
       # BaseLowerer
       # Base utilities for C++ code generation
       # Auto-extracted from cpp_lowering.rb during refactoring

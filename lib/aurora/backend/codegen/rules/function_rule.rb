@@ -5,7 +5,7 @@ require_relative "../../../rules/base_rule"
 
 module Aurora
   module Backend
-    class CppLowering
+    class CodeGen
       module Rules
         class FunctionRule < Aurora::Rules::BaseRule
           def applies?(node, context = {})

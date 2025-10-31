@@ -4,7 +4,7 @@ module Aurora
   module Backend
     # Pure helper functions for C++ code generation
     # All functions are stateless and testable independently
-    module CppLoweringHelpers
+    module CodeGenHelpers
         CPP_KEYWORDS = %w[
           alignas alignof and and_eq asm atomic_cancel atomic_commit atomic_noexcept auto bitand
           bitor bool break case catch char char8_t char16_t char32_t class compl concept const

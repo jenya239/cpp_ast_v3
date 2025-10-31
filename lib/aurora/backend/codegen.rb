@@ -4,12 +4,12 @@ require_relative "../../cpp_ast"
 require_relative "../core_ir/nodes"
 require_relative "../rules/rule_engine"
 require_relative "../type_registry"
-require_relative "cpp_lowering/base_lowerer"
-require_relative "cpp_lowering/expression_lowerer"
-require_relative "cpp_lowering/statement_lowerer"
-require_relative "cpp_lowering/type_lowerer"
-require_relative "cpp_lowering/function_lowerer"
-require_relative "cpp_lowering/rules/function_rule"
+require_relative "codegen/base_lowerer"
+require_relative "codegen/expression_lowerer"
+require_relative "codegen/statement_lowerer"
+require_relative "codegen/type_lowerer"
+require_relative "codegen/function_lowerer"
+require_relative "codegen/rules/function_rule"
 require_relative "runtime_policy"
 require_relative "block_complexity_analyzer"
 require_relative "../rules/codegen/cpp_expression_rule"
@@ -49,7 +49,7 @@ module Aurora
       end
     end
 
-    class CppLowering
+    class CodeGen
       # Include all lowering modules
       include BaseLowerer
       include ExpressionLowerer
@@ -132,7 +132,7 @@ module Aurora
 
       def register_cpp_rules(engine)
         # Function-level rules
-        engine.register(:cpp_function_declaration, Aurora::Backend::CppLowering::Rules::FunctionRule.new)
+        engine.register(:cpp_function_declaration, Aurora::Backend::CodeGen::Rules::FunctionRule.new)
 
         # C++ expression lowering rules (all 15 expression types)
         engine.register(:cpp_expression, Aurora::Rules::CodeGen::Expression::LiteralRule.new)

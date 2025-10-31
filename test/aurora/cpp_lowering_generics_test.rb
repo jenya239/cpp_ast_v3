@@ -6,7 +6,7 @@ class CppLoweringGenericsTest < Minitest::Test
   include Aurora::CoreIR
 
   def setup
-    @lowerer = Aurora::Backend::CppLowering.new
+    @lowerer = Aurora::Backend::CodeGen.new
   end
 
   def test_type_variable_lowering

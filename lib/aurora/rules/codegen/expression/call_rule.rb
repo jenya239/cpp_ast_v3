@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 require_relative "../../base_rule"
-require_relative "../../../backend/cpp_lowering/helpers"
+require_relative "../../../backend/codegen/helpers"
 
 module Aurora
   module Rules
@@ -15,7 +15,7 @@ module Aurora
         # 4. Array method calls (length, push, map, filter, fold, etc.)
         # 5. Regular function calls
         class CallRule < BaseRule
-          include Aurora::Backend::CppLoweringHelpers
+          include Aurora::Backend::CodeGenHelpers
 
           # IO function mappings
           IO_FUNCTIONS = {

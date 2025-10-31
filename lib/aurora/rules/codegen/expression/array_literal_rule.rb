@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 require_relative "../../base_rule"
-require_relative "../../../backend/cpp_lowering/helpers"
+require_relative "../../../backend/codegen/helpers"
 
 module Aurora
   module Rules
@@ -10,7 +10,7 @@ module Aurora
         # Rule for lowering CoreIR array literals to C++ std::vector initializer
         # Example: [1, 2, 3] -> std::vector<int>{1, 2, 3}
         class ArrayLiteralRule < BaseRule
-          include Aurora::Backend::CppLoweringHelpers
+          include Aurora::Backend::CodeGenHelpers
 
           def applies?(node, _context = {})
             node.is_a?(Aurora::CoreIR::ArrayLiteralExpr)

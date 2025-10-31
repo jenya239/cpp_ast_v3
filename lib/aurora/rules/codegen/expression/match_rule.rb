@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 require_relative "../../base_rule"
-require_relative "../../../backend/cpp_lowering/helpers"
+require_relative "../../../backend/codegen/helpers"
 
 module Aurora
   module Rules
@@ -12,7 +12,7 @@ module Aurora
         # 1. Regex patterns -> if-else chain in IIFE
         # 2. Sum type patterns -> std::visit with overloaded lambdas
         class MatchRule < BaseRule
-          include Aurora::Backend::CppLoweringHelpers
+          include Aurora::Backend::CodeGenHelpers
 
           def applies?(node, _context = {})
             node.is_a?(Aurora::CoreIR::MatchExpr)

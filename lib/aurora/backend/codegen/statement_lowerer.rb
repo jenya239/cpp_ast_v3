@@ -2,7 +2,7 @@
 
 module Aurora
   module Backend
-    class CppLowering
+    class CodeGen
       # StatementLowerer
       # Statement lowering to C++
       # Auto-extracted from cpp_lowering.rb during refactoring

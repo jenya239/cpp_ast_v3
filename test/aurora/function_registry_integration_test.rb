@@ -154,7 +154,7 @@ module Aurora
       transformer.transform(Aurora.parse(geometry_source))
       core = transformer.transform(Aurora.parse(demo_source))
 
-      lowerer = Backend::CppLowering.new(
+      lowerer = Backend::CodeGen.new(
         type_registry: transformer.type_registry,
         function_registry: transformer.function_registry
       )

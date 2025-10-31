@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 require_relative "../../base_rule"
-require_relative "../../../backend/cpp_lowering/helpers"
+require_relative "../../../backend/codegen/helpers"
 
 module Aurora
   module Rules
@@ -10,7 +10,7 @@ module Aurora
         # Rule for lowering CoreIR if expressions to C++ ternary operator
         # Unit-type ifs should be lowered as statements, not expressions
         class IfRule < BaseRule
-          include Aurora::Backend::CppLoweringHelpers
+          include Aurora::Backend::CodeGenHelpers
 
           def applies?(node, _context = {})
             node.is_a?(Aurora::CoreIR::IfExpr)

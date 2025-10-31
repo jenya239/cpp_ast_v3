@@ -9,7 +9,7 @@ require_relative "aurora/application"
 require_relative "aurora/parser/lexer"
 require_relative "aurora/parser/parser"
 require_relative "aurora/irgen"
-require_relative "aurora/backend/cpp_lowering"
+require_relative "aurora/backend/codegen"
 require_relative "aurora/backend/header_generator"
 require_relative "aurora/stdlib_resolver"
 require_relative "aurora/stdlib_scanner"
@@ -101,7 +101,7 @@ module Aurora
     # @param stdlib_scanner [StdlibScanner] Scanner for automatic stdlib function resolution
     # @param runtime_policy [Backend::RuntimePolicy] Policy for choosing lowering strategies
     def lower_to_cpp(core_ir, type_registry: nil, function_registry: nil, stdlib_scanner: nil, event_bus: nil, runtime_policy: nil)
-      lowerer = Backend::CppLowering.new(
+      lowerer = Backend::CodeGen.new(
         type_registry: type_registry,
         function_registry: function_registry,
         stdlib_scanner: stdlib_scanner,
@@ -133,7 +133,7 @@ module Aurora
       stdlib_scanner = StdlibScanner.new
 
       # Generate header and implementation
-      lowering = Backend::CppLowering.new(
+      lowering = Backend::CodeGen.new(
         type_registry: type_registry,
         function_registry: function_registry,
         stdlib_scanner: stdlib_scanner,
