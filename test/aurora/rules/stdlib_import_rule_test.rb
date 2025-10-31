@@ -5,7 +5,7 @@ require_relative "../../test_helper"
 class StdlibImportRuleTest < Minitest::Test
   def setup
     @registry = Aurora::StdlibSignatureRegistry.new
-    @rule = Aurora::Rules::CoreIR::StdlibImportRule.new
+    @rule = Aurora::Rules::IRGen::StdlibImportRule.new
   end
 
   def test_registers_selected_functions

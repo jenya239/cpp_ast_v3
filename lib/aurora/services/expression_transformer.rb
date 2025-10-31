@@ -39,8 +39,8 @@ module Aurora
       end
 
       # Трансформация while statement
-      def transform_while_statement(node)
-        @transformer.send(:transform_while_statement, node)
+      def transform_while_statement(condition_node, body_node)
+        @transformer.send(:transform_while_statement, condition_node, body_node)
       end
 
       # Трансформация block
